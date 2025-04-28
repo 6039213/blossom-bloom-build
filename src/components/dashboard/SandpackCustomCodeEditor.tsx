@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { 
   SandpackCodeEditor, 
   FileTabs, 
-  useSandpack
+  useSandpack,
 } from '@codesandbox/sandpack-react';
 
 interface ProjectFile {
@@ -23,10 +23,10 @@ export default function SandpackCustomCodeEditor({ onCodeChange }: CustomCodeEdi
   
   // Update parent component when code changes
   useEffect(() => {
-    // No sandpackClient means no editor is ready yet
-    if (!sandpack.sandpackClient) return;
+    // No sandpack.clients means no editor is ready yet
+    if (!sandpack.clients) return;
     
-    const unsubscribe = sandpack.sandpackClient.listen(message => {
+    const unsubscribe = sandpack.listen((message) => {
       if (message.type === 'file-update') {
         // Get the current files with their updated content
         const currentFiles = Object.entries(sandpack.files).reduce((acc, [path, file]) => {

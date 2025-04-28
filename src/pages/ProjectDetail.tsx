@@ -339,7 +339,7 @@ export default function ProjectDetail() {
           </div>
         </header>
         
-        <main className="flex-1 overflow-hidden p-6">
+        <main className="flex-1 overflow-hidden p-4">
           {Object.keys(projectFiles).length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-md">
@@ -356,15 +356,15 @@ export default function ProjectDetail() {
                 onValueChange={setActiveTab} 
                 className="w-full h-full flex flex-col"
               >
-                <div className="flex items-center justify-between w-full mb-4">
-                  <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between w-full mb-2">
+                  <div className="flex items-center gap-2">
                     <TabsList>
                       <TabsTrigger value="preview" className="flex items-center">
-                        <Eye className="h-4 w-4 mr-2" />
+                        <Eye className="h-3 w-3 mr-1" />
                         Preview
                       </TabsTrigger>
                       <TabsTrigger value="code" className="flex items-center">
-                        <Code className="h-4 w-4 mr-2" />
+                        <Code className="h-3 w-3 mr-1" />
                         Code
                       </TabsTrigger>
                     </TabsList>
@@ -372,43 +372,43 @@ export default function ProjectDetail() {
                     {activeTab === 'preview' && (
                       <ToggleGroup type="single" value={viewportSize} onValueChange={(value) => value && setViewportSize(value)}>
                         <ToggleGroupItem value="mobile" aria-label="Mobile view">
-                          <Smartphone className="h-4 w-4" />
+                          <Smartphone className="h-3 w-3" />
                         </ToggleGroupItem>
                         <ToggleGroupItem value="tablet" aria-label="Tablet view">
-                          <Tablet className="h-4 w-4" />
+                          <Tablet className="h-3 w-3" />
                         </ToggleGroupItem>
                         <ToggleGroupItem value="desktop" aria-label="Desktop view">
-                          <Monitor className="h-4 w-4" />
+                          <Monitor className="h-3 w-3" />
                         </ToggleGroupItem>
                       </ToggleGroup>
                     )}
                   </div>
                   
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-1">
                     {activeTab === 'preview' && (
                       <Button 
                         variant="outline" 
-                        size="sm" 
+                        size="xs" 
                         onClick={handleOpenInNewTab}
                       >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Open in New Tab
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        New Tab
                       </Button>
                     )}
                     <Button 
                       variant="outline" 
-                      size="sm" 
+                      size="xs" 
                       onClick={handleCopyCode}
                     >
-                      <Copy className="h-4 w-4 mr-2" />
+                      <Copy className="h-3 w-3 mr-1" />
                       Copy Code
                     </Button>
                     <Button 
                       variant="outline" 
-                      size="sm" 
+                      size="xs" 
                       onClick={handleDownloadCode}
                     >
-                      <Download className="h-4 w-4 mr-2" />
+                      <Download className="h-3 w-3 mr-1" />
                       Download
                     </Button>
                   </div>
@@ -424,20 +424,10 @@ export default function ProjectDetail() {
                         customSetup={{
                           dependencies: getProjectDependencies(projectFiles),
                         }}
-                        options={{
-                          showNavigator: true,
-                          showTabs: false,
-                          showLineNumbers: true,
-                          classes: {
-                            'sp-layout': 'h-full',
-                            'sp-preview': 'h-full',
-                          }
-                        }}
                       >
                         <SandpackLayout className="h-full">
                           <SandpackPreview
                             showRefreshButton
-                            showNavigator
                             className="flex-grow h-full"
                           />
                         </SandpackLayout>
@@ -454,7 +444,7 @@ export default function ProjectDetail() {
                       }}
                     >
                       <SandpackLayout className="h-full">
-                        <SandpackFileExplorer className="min-w-[200px]" />
+                        <SandpackFileExplorer className="min-w-[180px]" />
                         <SandpackCustomCodeEditor onCodeChange={handleCodeChange} />
                       </SandpackLayout>
                     </SandpackProvider>

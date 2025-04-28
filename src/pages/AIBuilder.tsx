@@ -58,43 +58,6 @@ $box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 $transition-duration: 0.15s;
 `;
 
-// Custom code editor component that handles code updates
-const CustomCodeEditor = ({ onCodeChange }: { onCodeChange: (files: any) => void }) => {
-  const { sandpack } = useSandpack();
-  const { code } = useActiveCode();
-  
-  // Update parent component when code changes
-  useEffect(() => {
-    if (!sandpack.sandpackClient) return;
-    
-    const unsubscribeClient = sandpack.sandpackClient.listen((message: any) => {
-      if (message.type === 'file-update') {
-        // Get the current files with their updated content
-        const currentFiles = Object.entries(sandpack.files).reduce((acc, [path, file]) => {
-          return {
-            ...acc,
-            [path]: { code: file.code || '' }
-          };
-        }, {});
-        
-        onCodeChange(currentFiles);
-      }
-    });
-    
-    return () => unsubscribeClient();
-  }, [sandpack, onCodeChange]);
-  
-  return (
-    <div className="flex flex-col h-full">
-      <FileTabs />
-      <SandpackCodeEditor 
-        showLineNumbers={true}
-        readOnly={false}
-      />
-    </div>
-  );
-};
-
 export default function AIBuilder() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCode, setGeneratedCode] = useState('');
@@ -116,7 +79,6 @@ export default function AIBuilder() {
       "typescript": "^5.0.4"
     };
     
-    // Check for common libraries in the code
     const allCode = Object.values(files).map(file => file.code).join(' ');
     
     if (allCode.includes('react-router-dom')) {
@@ -138,23 +100,18 @@ export default function AIBuilder() {
   const fixScssImports = (files: ProjectFiles): ProjectFiles => {
     const updatedFiles = { ...files };
     
-    // Add a global SCSS variables file if it doesn't exist
     if (!Object.keys(updatedFiles).some(path => path.includes('variables.scss'))) {
       updatedFiles['/src/styles/variables.scss'] = { code: defaultScssVariables };
     }
 
-    // Fix imports in all SCSS files
     Object.keys(updatedFiles).forEach(filePath => {
       if (filePath.endsWith('.scss') || filePath.endsWith('.sass')) {
-        // Don't modify the variables file itself
         if (!filePath.includes('variables.scss')) {
           const fileContent = updatedFiles[filePath].code;
           
-          // Check if the file already has the import
           if (!fileContent.includes('@import') || !fileContent.includes('variables.scss')) {
-            // Calculate the correct relative path based on the file location
             const pathSegments = filePath.split('/').filter(Boolean);
-            pathSegments.pop(); // Remove the filename
+            pathSegments.pop();
             
             let relativePath = '';
             for (let i = 0; i < pathSegments.length - 1; i++) {
@@ -163,7 +120,6 @@ export default function AIBuilder() {
               }
             }
             
-            // Add the variables import at the beginning
             updatedFiles[filePath] = { 
               code: `@import '${relativePath}styles/variables.scss';\n\n${fileContent}`
             };
@@ -264,13 +220,11 @@ Do not include any explanations, just the code files. Make sure to implement all
       
       const text = data.candidates[0].content.parts[0].text;
       const parsedFiles = parseProjectFiles(text);
-      // Apply the SCSS variable fix
       const fixedFiles = fixScssImports(parsedFiles);
       
       setProjectFiles(fixedFiles);
       setGeneratedCode(JSON.stringify(fixedFiles, null, 2));
       
-      // Set the active file to App.tsx or the first file if App.tsx doesn't exist
       const fileKeys = Object.keys(fixedFiles);
       const appFile = fileKeys.find(path => path.endsWith('App.tsx')) || fileKeys[0];
       setActiveFile(appFile);
@@ -295,7 +249,6 @@ Do not include any explanations, just the code files. Make sure to implement all
       const filePath = match[1].trim();
       const fileContent = match[2].trim();
       
-      // Format the file path to work with Sandpack's expected structure
       const sandpackPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
       
       files[sandpackPath] = { code: fileContent };
@@ -366,7 +319,6 @@ Do not include any explanations, just the code files. Make sure to implement all
   };
 
   const handleOpenInNewTab = () => {
-    // Create a simple HTML page with sandpack embedded
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
@@ -384,14 +336,12 @@ Do not include any explanations, just the code files. Make sure to implement all
       <body>
         <div id="sandbox-container"></div>
         <script type="module">
-          // This is just a simple preview, your actual app would load here
           const iframe = document.createElement('iframe');
           iframe.style.width = '100%';
           iframe.style.height = '100%';
           iframe.style.border = 'none';
           document.getElementById('sandbox-container').appendChild(iframe);
           
-          // Create a simple preview doc
           const doc = iframe.contentDocument || iframe.contentWindow.document;
           doc.open();
           doc.write('<html><head><title>Preview</title><style>body{margin:0;padding:20px;font-family:sans-serif;}</style></head><body><h1>Preview Mode</h1><p>This is a preview of your project: ${projectName || 'Untitled Project'}</p></body></html>');
@@ -401,7 +351,6 @@ Do not include any explanations, just the code files. Make sure to implement all
       </html>
     `;
 
-    // Create a blob and open it in a new tab
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
@@ -439,10 +388,10 @@ Do not include any explanations, just the code files. Make sure to implement all
         </header>
         
         <main className="flex-1 overflow-hidden grid grid-rows-[auto_1fr]">
-          <div className="p-6 bg-white dark:bg-gray-900 border-b border-border">
+          <div className="p-4 bg-white dark:bg-gray-900 border-b border-border">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-xl font-semibold mb-4 flex items-center">
-                <Sparkles className="h-5 w-5 mr-2 text-blossom-500" />
+              <h2 className="text-lg font-semibold mb-2 flex items-center">
+                <Sparkles className="h-4 w-4 mr-2 text-blossom-500" />
                 Tell us about your website
               </h2>
               <AIPromptInput 
@@ -454,14 +403,14 @@ Do not include any explanations, just the code files. Make sure to implement all
               />
               
               {errorMessage && (
-                <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <p className="text-sm text-red-700 dark:text-red-300">
+                <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-xs text-red-700 dark:text-red-300">
                     <strong>Error:</strong> {errorMessage}
                   </p>
                   <Button 
                     variant="destructive" 
                     size="sm" 
-                    className="mt-2"
+                    className="mt-1"
                     onClick={() => setErrorMessage(null)}
                   >
                     Dismiss
@@ -471,18 +420,18 @@ Do not include any explanations, just the code files. Make sure to implement all
             </div>
           </div>
           
-          <div className="overflow-hidden p-6">
+          <div className="overflow-hidden p-2 flex-grow">
             {Object.keys(projectFiles).length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center max-w-md">
-                  <div className="w-20 h-20 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center mx-auto mb-6">
-                    <Sparkles className="h-8 w-8 text-blossom-500" />
+                  <div className="w-16 h-16 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center mx-auto mb-4">
+                    <Sparkles className="h-6 w-6 text-blossom-500" />
                   </div>
-                  <h3 className="text-2xl font-semibold mb-2">Let's Create Something Amazing</h3>
-                  <p className="text-muted-foreground mb-6">
+                  <h3 className="text-xl font-semibold mb-2">Let's Create Something Amazing</h3>
+                  <p className="text-muted-foreground mb-4 text-sm">
                     Type a description of the website you want to build and our AI will generate it for you.
                   </p>
-                  <ul className="text-left space-y-2 bg-muted p-4 rounded-lg text-sm">
+                  <ul className="text-left space-y-2 bg-muted p-3 rounded-lg text-xs">
                     <li className="flex items-start">
                       <span className="bg-blossom-100 dark:bg-blossom-900/30 p-1 rounded text-blossom-700 dark:text-blossom-300 mr-2">Tip</span>
                       <span>Be specific about your website's purpose, style, and content.</span>
@@ -491,29 +440,25 @@ Do not include any explanations, just the code files. Make sure to implement all
                       <span className="bg-blossom-100 dark:bg-blossom-900/30 p-1 rounded text-blossom-700 dark:text-blossom-300 mr-2">Tip</span>
                       <span>Mention color schemes or specific design elements you'd like to include.</span>
                     </li>
-                    <li className="flex items-start">
-                      <span className="bg-blossom-100 dark:bg-blossom-900/30 p-1 rounded text-blossom-700 dark:text-blossom-300 mr-2">Tip</span>
-                      <span>You can always regenerate if you're not satisfied with the results.</span>
-                    </li>
                   </ul>
                 </div>
               </div>
             ) : (
-              <div className="max-w-full mx-auto h-full flex flex-col">
+              <div className="w-full h-full mx-auto flex flex-col">
                 <Tabs 
                   value={activeTab} 
                   onValueChange={setActiveTab} 
                   className="w-full h-full flex flex-col"
                 >
-                  <div className="flex items-center justify-between w-full mb-4">
-                    <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <div className="flex items-center gap-2">
                       <TabsList>
                         <TabsTrigger value="preview" className="flex items-center">
-                          <Eye className="h-4 w-4 mr-2" />
+                          <Eye className="h-3 w-3 mr-1" />
                           Preview
                         </TabsTrigger>
                         <TabsTrigger value="code" className="flex items-center">
-                          <Code className="h-4 w-4 mr-2" />
+                          <Code className="h-3 w-3 mr-1" />
                           Code
                         </TabsTrigger>
                       </TabsList>
@@ -521,63 +466,63 @@ Do not include any explanations, just the code files. Make sure to implement all
                       {activeTab === 'preview' && (
                         <ToggleGroup type="single" value={viewportSize} onValueChange={(value) => value && setViewportSize(value)}>
                           <ToggleGroupItem value="mobile" aria-label="Mobile view">
-                            <Smartphone className="h-4 w-4" />
+                            <Smartphone className="h-3 w-3" />
                           </ToggleGroupItem>
                           <ToggleGroupItem value="tablet" aria-label="Tablet view">
-                            <Tablet className="h-4 w-4" />
+                            <Tablet className="h-3 w-3" />
                           </ToggleGroupItem>
                           <ToggleGroupItem value="desktop" aria-label="Desktop view">
-                            <Monitor className="h-4 w-4" />
+                            <Monitor className="h-3 w-3" />
                           </ToggleGroupItem>
                         </ToggleGroup>
                       )}
                     </div>
                     
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-1">
                       {activeTab === 'preview' && (
                         <Button 
                           variant="outline" 
-                          size="sm" 
+                          size="xs" 
                           onClick={handleOpenInNewTab}
                         >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open in New Tab
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          New Tab
                         </Button>
                       )}
                       <Button 
                         variant="outline" 
-                        size="sm" 
+                        size="xs" 
                         onClick={handleCopyCode}
                       >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy Code
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy
                       </Button>
                       <Button 
                         variant="outline" 
-                        size="sm" 
+                        size="xs" 
                         onClick={handleDownloadCode}
                       >
-                        <Download className="h-4 w-4 mr-2" />
+                        <Download className="h-3 w-3 mr-1" />
                         Download
                       </Button>
                       <Button 
                         variant="outline" 
-                        size="sm" 
+                        size="xs" 
                         onClick={() => {
                           setProjectFiles({});
                           setGeneratedCode('');
                         }}
                       >
-                        <RefreshCw className="h-4 w-4 mr-2" />
+                        <RefreshCw className="h-3 w-3 mr-1" />
                         Reset
                       </Button>
                       <Button 
                         variant="default"
-                        size="sm"
+                        size="xs"
                         onClick={handleSaveProject}
                       >
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Project
+                        <Save className="h-3 w-3 mr-1" />
+                        Save
                       </Button>
                     </div>
                   </div>
@@ -600,7 +545,6 @@ Do not include any explanations, just the code files. Make sure to implement all
                             <SandpackLayout className="h-full">
                               <SandpackPreview
                                 showRefreshButton
-                                showNavigator
                                 className="flex-grow h-full"
                               />
                             </SandpackLayout>
@@ -618,7 +562,7 @@ Do not include any explanations, just the code files. Make sure to implement all
                         }}
                       >
                         <SandpackLayout className="h-full">
-                          <SandpackFileExplorer />
+                          <SandpackFileExplorer className="min-w-[180px]" />
                           <SandpackCustomCodeEditor onCodeChange={handleCodeChange} />
                         </SandpackLayout>
                       </SandpackProvider>
