@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIPromptInput from '@/components/dashboard/AIPromptInput';
@@ -35,6 +36,8 @@ import {
 } from '@codesandbox/sandpack-react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
+import ProjectTypeSelector from '@/components/dashboard/ProjectTypeSelector';
+import { detectProjectType, getTemplatePrompt, projectTemplates, ProjectTemplate } from '@/utils/projectTemplates';
 
 interface ProjectFile {
   code: string;
@@ -65,6 +68,9 @@ export default function AIBuilder() {
   const [activeFile, setActiveFile] = useState('/src/App.tsx');
   const [viewportSize, setViewportSize] = useState('desktop');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
+  const [detectedType, setDetectedType] = useState<string | null>(null);
   const { createProject } = useProjectStore();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -75,6 +81,12 @@ export default function AIBuilder() {
       "react-dom": "^18.2.0",
       "typescript": "^5.0.4"
     };
+    
+    // Add template-specific dependencies if we have a detected type
+    if (detectedType && projectTemplates[detectedType]) {
+      const templateDependencies = projectTemplates[detectedType].suggestedDependencies;
+      Object.assign(dependencies, templateDependencies);
+    }
     
     const allCode = Object.values(files).map(file => file.code).join(' ');
     
@@ -127,16 +139,32 @@ export default function AIBuilder() {
     return updatedFiles;
   };
   
+  const handleTemplateSelect = (template: ProjectTemplate) => {
+    setSelectedTemplate(template);
+    setDetectedType(template.type);
+    setShowTemplateSelector(false);
+  };
+  
   const handlePromptSubmit = async (prompt: string) => {
     setIsGenerating(true);
     setErrorMessage(null);
+    
     try {
       if (!GEMINI_API_KEY) {
         toast.error("Gemini API key is not configured correctly");
         return;
       }
       
-      setProjectName(extractProjectName(prompt));
+      // Extract project name from prompt
+      const extractedName = extractProjectName(prompt);
+      setProjectName(extractedName);
+      
+      // Detect project type from prompt
+      const type = detectProjectType(prompt);
+      setDetectedType(type);
+      
+      // Get template-specific instructions
+      const templateInstructions = getTemplatePrompt(type);
       
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY, {
         method: 'POST',
@@ -167,6 +195,8 @@ Include the following file structure:
   index.html
 package.json
 vite.config.ts
+
+${templateInstructions}
 
 Important requirements:
 1. Use functional components with TypeScript (React.FC<Props>)
@@ -221,12 +251,13 @@ Do not include any explanations, just the code files. Make sure to implement all
       setProjectFiles(fixedFiles);
       setGeneratedCode(JSON.stringify(fixedFiles, null, 2));
       
-      const fileKeys = Object.keys(fixedFiles);
-      const appFile = fileKeys.find(path => path.endsWith('App.tsx')) || fileKeys[0];
-      setActiveFile(appFile);
+      // Find the most appropriate main file to show first
+      let mainFile = findMainFile(fixedFiles, type);
+      setActiveFile(mainFile);
       
       toast.success("Website generated successfully!");
       setActiveTab('preview');
+      setShowTemplateSelector(false);
     } catch (error) {
       console.error("Error generating website:", error);
       toast.error("Failed to generate website: " + (error instanceof Error ? error.message : "Unknown error"));
@@ -234,6 +265,44 @@ Do not include any explanations, just the code files. Make sure to implement all
     } finally {
       setIsGenerating(false);
     }
+  };
+  
+  // Find the most appropriate main file to show first based on project type
+  const findMainFile = (files: ProjectFiles, type: string | null): string => {
+    const fileKeys = Object.keys(files);
+    
+    if (type) {
+      // Look for type-specific main files first
+      const typeSpecificFiles = fileKeys.filter(path => {
+        const lowercasePath = path.toLowerCase();
+        return lowercasePath.includes(`/${type}`) || 
+               lowercasePath.includes(`${type}.tsx`) ||
+               lowercasePath.includes(`${type}page`) ||
+               lowercasePath.includes(`${type}component`);
+      });
+      
+      if (typeSpecificFiles.length > 0) {
+        return typeSpecificFiles[0];
+      }
+      
+      // Look for expected main files based on template
+      if (projectTemplates[type]) {
+        const templateFiles = projectTemplates[type].fileStructure;
+        for (const expectedPath of templateFiles) {
+          const foundFile = fileKeys.find(path => path === expectedPath);
+          if (foundFile) {
+            return foundFile;
+          }
+        }
+      }
+    }
+    
+    // Fallback to traditional main files
+    const appFile = fileKeys.find(path => path.endsWith('App.tsx'));
+    const indexPage = fileKeys.find(path => path.includes('/pages/') && path.includes('index'));
+    const homePage = fileKeys.find(path => path.includes('/pages/') && (path.includes('Home') || path.includes('home')));
+    
+    return appFile || indexPage || homePage || fileKeys[0];
   };
   
   const parseProjectFiles = (text: string): ProjectFiles => {
@@ -255,9 +324,26 @@ Do not include any explanations, just the code files. Make sure to implement all
   
   const extractProjectName = (prompt: string) => {
     let name = prompt.split('.')[0].split('!')[0].trim();
+    
+    // Try to extract a more meaningful name
+    const typeDetected = detectProjectType(prompt);
+    if (typeDetected) {
+      const words = prompt.split(' ');
+      const typePlusClone = words.findIndex((word, i) => 
+        word.toLowerCase().includes(typeDetected) && 
+        i < words.length - 1 && 
+        words[i + 1].toLowerCase().includes('clone')
+      );
+      
+      if (typePlusClone !== -1) {
+        name = `${typeDetected.charAt(0).toUpperCase() + typeDetected.slice(1)} Clone`;
+      }
+    }
+    
     if (name.length > 50) {
       name = name.substring(0, 47) + '...';
     }
+    
     return name || 'New Project';
   };
   
@@ -294,7 +380,7 @@ Do not include any explanations, just the code files. Make sure to implement all
     try {
       const projectData = {
         title: projectName,
-        description: "Generated with AI Builder",
+        description: `${detectedType ? `${detectedType.charAt(0).toUpperCase() + detectedType.slice(1)} clone ` : ""}Generated with AI Builder`,
         code: JSON.stringify(projectFiles),
         status: 'draft' as ProjectStatus
       };
@@ -370,6 +456,19 @@ Do not include any explanations, just the code files. Make sure to implement all
     toast.error("Error reported. Our AI assistant will help resolve this issue.");
   };
   
+  const handleResetSelection = () => {
+    setSelectedTemplate(null);
+    setShowTemplateSelector(true);
+    setProjectFiles({});
+    setGeneratedCode('');
+  };
+
+  const handleUseTemplatePrompt = () => {
+    if (selectedTemplate) {
+      handlePromptSubmit(selectedTemplate.defaultPrompt);
+    }
+  };
+  
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <div className="hidden md:block md:w-64 h-full">
@@ -380,15 +479,46 @@ Do not include any explanations, just the code files. Make sure to implement all
         <header className="bg-white dark:bg-gray-900 border-b border-border p-4 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">AI Website Builder</h1>
+            {detectedType && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Project type:</span>
+                <span className="bg-blossom-100 dark:bg-blossom-900/30 px-2 py-1 rounded text-xs font-medium text-blossom-700 dark:text-blossom-300 capitalize">
+                  {detectedType}
+                </span>
+              </div>
+            )}
           </div>
         </header>
         
         <main className="flex-1 overflow-hidden grid grid-rows-[auto_1fr]">
           <div className="p-4 bg-white dark:bg-gray-900 border-b border-border">
             <div className="max-w-4xl mx-auto">
+              {showTemplateSelector && (
+                <div className="mb-6">
+                  <ProjectTypeSelector onSelect={handleTemplateSelect} />
+                </div>
+              )}
+              
+              {selectedTemplate && !Object.keys(projectFiles).length && (
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">Selected template: {selectedTemplate.displayName}</h3>
+                    <p className="text-sm text-muted-foreground">{selectedTemplate.description}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={handleResetSelection}>
+                      Change Template
+                    </Button>
+                    <Button variant="default" size="sm" onClick={handleUseTemplatePrompt}>
+                      Use Default Prompt
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               <h2 className="text-lg font-semibold mb-2 flex items-center">
                 <Sparkles className="h-4 w-4 mr-2 text-blossom-500" />
-                Tell us about your website
+                {selectedTemplate ? "Customize your website" : "Tell us about your website"}
               </h2>
               <AIPromptInput 
                 onSubmit={handlePromptSubmit} 
@@ -425,7 +555,9 @@ Do not include any explanations, just the code files. Make sure to implement all
                   </div>
                   <h3 className="text-xl font-semibold mb-2">Let's Create Something Amazing</h3>
                   <p className="text-muted-foreground mb-4 text-sm">
-                    Type a description of the website you want to build and our AI will generate it for you.
+                    {selectedTemplate 
+                      ? "Customize your website by entering a detailed prompt or use the default template prompt."
+                      : "Choose a template or type a description of the website you want to build."}
                   </p>
                   <ul className="text-left space-y-2 bg-muted p-3 rounded-lg text-xs">
                     <li className="flex items-start">
@@ -507,6 +639,11 @@ Do not include any explanations, just the code files. Make sure to implement all
                         onClick={() => {
                           setProjectFiles({});
                           setGeneratedCode('');
+                          if (selectedTemplate) {
+                            setShowTemplateSelector(false);
+                          } else {
+                            setShowTemplateSelector(true);
+                          }
                         }}
                       >
                         <RefreshCw className="h-3 w-3 mr-1" />
