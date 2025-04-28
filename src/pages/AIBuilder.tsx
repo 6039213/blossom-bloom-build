@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIPromptInput from '@/components/dashboard/AIPromptInput';
@@ -34,7 +33,9 @@ import {
   SandpackCodeEditor, 
   SandpackPreview,
   SandpackFileExplorer,
-  useActiveCode
+  useActiveCode,
+  FileTabs,
+  useSandpack
 } from '@codesandbox/sandpack-react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -62,22 +63,28 @@ $transition-duration: 0.15s;
 
 // Custom code editor component that handles code updates
 const CustomCodeEditor = ({ onCodeChange }: { onCodeChange: (files: any) => void }) => {
+  const { sandpack } = useSandpack();
   const { code, updateCode } = useActiveCode();
   
-  const handleCodeChange = (newCode: string) => {
-    updateCode(newCode);
-    // This delay ensures the updates are processed before we get the updated files
-    setTimeout(() => {
-      onCodeChange({});
-    }, 100);
-  };
+  // Use Sandpack's events to listen for code changes
+  useEffect(() => {
+    const unsubscribe = sandpack.listen((message) => {
+      if (message.type === 'state') {
+        onCodeChange(sandpack.getActiveFiles());
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [sandpack, onCodeChange]);
   
   return (
-    <SandpackCodeEditor 
-      showLineNumbers 
-      readOnly={false}
-      onChange={handleCodeChange}
-    />
+    <div className="flex flex-col h-full">
+      <FileTabs />
+      <SandpackCodeEditor 
+        showLineNumbers={true}
+        readOnly={false}
+      />
+    </div>
   );
 };
 
@@ -553,20 +560,6 @@ Do not include any explanations, just the code files. Make sure to implement all
                             }}
                           >
                             <SandpackLayout>
-                              {activeTab === 'code' && <SandpackFileExplorer />}
-                              {activeTab === 'code' && (
-                                <CustomCodeEditor
-                                  onCodeChange={(updatedFiles) => {
-                                    // We'll get the updated files from the provider
-                                    setTimeout(() => {
-                                      // Convert Sandpack's file format to our format
-                                      const updatedProjectFiles = { ...projectFiles };
-                                      setProjectFiles(updatedProjectFiles);
-                                      setGeneratedCode(JSON.stringify(updatedProjectFiles, null, 2));
-                                    }, 200);
-                                  }}
-                                />
-                              )}
                               <SandpackPreview
                                 showRefreshButton
                                 showNavigator
@@ -578,9 +571,29 @@ Do not include any explanations, just the code files. Make sure to implement all
                       </div>
                     </TabsContent>
                     <TabsContent value="code" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
-                      <pre className="h-full w-full p-4 text-sm bg-gray-50 dark:bg-gray-950 overflow-auto">
-                        <code>{generatedCode}</code>
-                      </pre>
+                      <SandpackProvider
+                        template="react-ts"
+                        theme="auto"
+                        files={projectFiles}
+                        customSetup={{
+                          dependencies: getProjectDependencies(projectFiles),
+                        }}
+                      >
+                        <SandpackLayout>
+                          <SandpackFileExplorer />
+                          <CustomCodeEditor
+                            onCodeChange={(updatedFiles) => {
+                              // We'll get the updated files from the provider
+                              setTimeout(() => {
+                                // Convert Sandpack's file format to our format
+                                const updatedProjectFiles = { ...projectFiles };
+                                setProjectFiles(updatedProjectFiles);
+                                setGeneratedCode(JSON.stringify(updatedProjectFiles, null, 2));
+                              }, 200);
+                            }}
+                          />
+                        </SandpackLayout>
+                      </SandpackProvider>
                     </TabsContent>
                   </div>
                 </Tabs>

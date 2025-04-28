@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
@@ -31,7 +30,9 @@ import {
   SandpackCodeEditor, 
   SandpackPreview,
   SandpackFileExplorer,
-  useActiveCode
+  useActiveCode,
+  FileTabs,
+  useSandpack
 } from '@codesandbox/sandpack-react';
 import { 
   AlertDialog,
@@ -69,22 +70,28 @@ $transition-duration: 0.15s;
 
 // Custom code editor component that handles code updates
 const CustomCodeEditor = ({ onCodeChange }: { onCodeChange: (files: any) => void }) => {
+  const { sandpack } = useSandpack();
   const { code, updateCode } = useActiveCode();
   
-  const handleCodeChange = (newCode: string) => {
-    updateCode(newCode);
-    // This delay ensures the updates are processed before we get the updated files
-    setTimeout(() => {
-      onCodeChange({});
-    }, 100);
-  };
+  // Use Sandpack's events to listen for code changes
+  useEffect(() => {
+    const unsubscribe = sandpack.listen((message) => {
+      if (message.type === 'state') {
+        onCodeChange(sandpack.getActiveFiles());
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [sandpack, onCodeChange]);
   
   return (
-    <SandpackCodeEditor 
-      showLineNumbers 
-      readOnly={false}
-      onChange={handleCodeChange}
-    />
+    <div className="flex flex-col h-full">
+      <FileTabs />
+      <SandpackCodeEditor 
+        showLineNumbers={true}
+        readOnly={false}
+      />
+    </div>
   );
 };
 
@@ -109,7 +116,6 @@ export default function ProjectDetail() {
       "typescript": "^5.0.4"
     };
     
-    // Check for common libraries in the code
     const allCode = Object.values(files).map(file => file.code).join(' ');
     
     if (allCode.includes('react-router-dom')) {
@@ -131,23 +137,18 @@ export default function ProjectDetail() {
   const fixScssImports = (files: ProjectFiles): ProjectFiles => {
     const updatedFiles = { ...files };
     
-    // Add a global SCSS variables file if it doesn't exist
     if (!Object.keys(updatedFiles).some(path => path.includes('variables.scss'))) {
       updatedFiles['/src/styles/variables.scss'] = { code: defaultScssVariables };
     }
 
-    // Fix imports in all SCSS files
     Object.keys(updatedFiles).forEach(filePath => {
       if (filePath.endsWith('.scss') || filePath.endsWith('.sass')) {
-        // Don't modify the variables file itself
         if (!filePath.includes('variables.scss')) {
           const fileContent = updatedFiles[filePath].code;
           
-          // Check if the file already has the import
           if (!fileContent.includes('@import') || !fileContent.includes('variables.scss')) {
-            // Calculate the correct relative path based on the file location
             const pathSegments = filePath.split('/').filter(Boolean);
-            pathSegments.pop(); // Remove the filename
+            pathSegments.pop();
             
             let relativePath = '';
             for (let i = 0; i < pathSegments.length - 1; i++) {
@@ -156,7 +157,6 @@ export default function ProjectDetail() {
               }
             }
             
-            // Add the variables import at the beginning
             updatedFiles[filePath] = { 
               code: `@import '${relativePath}styles/variables.scss';\n\n${fileContent}`
             };
@@ -184,11 +184,9 @@ export default function ProjectDetail() {
         
         setProjectData(project);
         
-        // Parse code from string to object
         if (project.code) {
           try {
             const parsedFiles = JSON.parse(project.code);
-            // Apply the SCSS import path fix
             const fixedFiles = fixScssImports(parsedFiles);
             setProjectFiles(fixedFiles);
           } catch (error) {
@@ -258,9 +256,7 @@ export default function ProjectDetail() {
     toast.success("Code downloaded successfully");
   };
 
-  // Function to open preview in a new tab
   const handleOpenInNewTab = () => {
-    // Create a simple HTML page with sandpack embedded
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
@@ -278,14 +274,12 @@ export default function ProjectDetail() {
       <body>
         <div id="sandbox-container"></div>
         <script type="module">
-          // This is just a simple preview, your actual app would load here
           const iframe = document.createElement('iframe');
           iframe.style.width = '100%';
           iframe.style.height = '100%';
           iframe.style.border = 'none';
           document.getElementById('sandbox-container').appendChild(iframe);
           
-          // Create a simple preview doc
           const doc = iframe.contentDocument || iframe.contentWindow.document;
           doc.open();
           doc.write('<html><head><title>Preview</title><style>body{margin:0;padding:20px;font-family:sans-serif;}</style></head><body><h1>Preview Mode</h1><p>This is a preview of your project: ${projectData?.title || 'Untitled Project'}</p></body></html>');
@@ -295,14 +289,12 @@ export default function ProjectDetail() {
       </html>
     `;
 
-    // Create a blob and open it in a new tab
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
     URL.revokeObjectURL(url);
   };
-  
-  // Get viewport size classes for the preview
+
   const getViewportClasses = () => {
     switch(viewportSize) {
       case 'mobile':
@@ -459,19 +451,6 @@ export default function ProjectDetail() {
                         }}
                       >
                         <SandpackLayout>
-                          {activeTab === 'code' && <SandpackFileExplorer />}
-                          {activeTab === 'code' && (
-                            <CustomCodeEditor
-                              onCodeChange={(updatedFiles) => {
-                                // We'll get the updated files from the provider
-                                setTimeout(() => {
-                                  // Convert Sandpack's file format to our format
-                                  const updatedProjectFiles = { ...projectFiles };
-                                  setProjectFiles(updatedProjectFiles);
-                                }, 200);
-                              }}
-                            />
-                          )}
                           <SandpackPreview
                             showRefreshButton
                             showNavigator
@@ -482,9 +461,26 @@ export default function ProjectDetail() {
                     </div>
                   </TabsContent>
                   <TabsContent value="code" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
-                    <pre className="h-full w-full p-4 text-sm bg-gray-50 dark:bg-gray-950 overflow-auto">
-                      <code>{JSON.stringify(projectFiles, null, 2)}</code>
-                    </pre>
+                    <SandpackProvider
+                      template="react-ts"
+                      theme="auto"
+                      files={projectFiles}
+                      customSetup={{
+                        dependencies: getProjectDependencies(projectFiles),
+                      }}
+                    >
+                      <SandpackLayout>
+                        <SandpackFileExplorer />
+                        <CustomCodeEditor
+                          onCodeChange={(updatedFiles) => {
+                            setTimeout(() => {
+                              const updatedProjectFiles = { ...projectFiles };
+                              setProjectFiles(updatedProjectFiles);
+                            }, 200);
+                          }}
+                        />
+                      </SandpackLayout>
+                    </SandpackProvider>
                   </TabsContent>
                 </div>
               </Tabs>
