@@ -4,7 +4,6 @@ import {
   SandpackCodeEditor, 
   FileTabs, 
   useSandpack,
-  SandpackClient
 } from '@codesandbox/sandpack-react';
 
 interface ProjectFile {
@@ -28,7 +27,7 @@ export default function SandpackCustomCodeEditor({ onCodeChange }: CustomCodeEdi
     if (!sandpack.clients || !(sandpack.clients instanceof Array) || sandpack.clients.length === 0) return;
     
     // Use the first client to listen for changes
-    const client: SandpackClient = sandpack.clients[0];
+    const client = sandpack.clients[0];
     
     // Subscribe to file changes
     const unsubscribe = client.listen((message: any) => {
