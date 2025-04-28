@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
@@ -75,7 +76,9 @@ const CustomCodeEditor = ({ onCodeChange }: { onCodeChange: (files: any) => void
   
   // Update parent component when code changes
   useEffect(() => {
-    const unsubscribeClient = sandpack.listen((message: any) => {
+    if (!sandpack.sandpackClient) return;
+    
+    const unsubscribeClient = sandpack.sandpackClient.listen((message: any) => {
       if (message.type === 'file-update') {
         // Get the current files with their updated content
         const currentFiles = Object.entries(sandpack.files).reduce((acc, [path, file]) => {
