@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIPromptInput from '@/components/dashboard/AIPromptInput';
@@ -26,7 +25,7 @@ import {
   Monitor,
   AlertTriangle
 } from 'lucide-react';
-import { useProjectStore } from '@/stores/projectStore';
+import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -92,7 +91,6 @@ export default function AIBuilder() {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  // Scroll to bottom of chat when messages update
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -252,7 +250,6 @@ export default function App() {
     setIsGenerating(true);
     setErrorMessage(null);
     
-    // Add user message to chat
     const userMessageId = uuidv4();
     const newUserMessage: ChatMessage = {
       id: userMessageId,
@@ -263,7 +260,6 @@ export default function App() {
     
     setChatMessages(prev => [...prev, newUserMessage]);
     
-    // Create a placeholder for the AI's streaming response
     const aiMessageId = uuidv4();
     setCurrentMessageId(aiMessageId);
     setStreamingMessage('');
@@ -285,7 +281,6 @@ export default function App() {
         throw new Error("No LLM provider available");
       }
       
-      // Extract basic info from prompt
       const extractedName = extractProjectName(prompt);
       setProjectName(extractedName);
       
@@ -299,7 +294,6 @@ export default function App() {
         initialFiles = createDefaultFilesForTemplate(selectedTemplate.type);
       }
       
-      // Stream the AI response
       let streamedText = '';
       let codeBuffer = '';
       let inCodeBlock = false;
@@ -362,10 +356,8 @@ Do not include any explanations, just the code files. Make sure to implement all
           const processedToken = processToken(token);
           streamedText += processedToken;
           
-          // Update the streaming message content
           setStreamingMessage(streamedText);
           
-          // Update the current message in chat
           setChatMessages(prev => 
             prev.map(msg => 
               msg.id === aiMessageId 
@@ -374,7 +366,6 @@ Do not include any explanations, just the code files. Make sure to implement all
             )
           );
           
-          // Detect file blocks
           if (processedToken.includes("// FILE:")) {
             inCodeBlock = true;
           }
@@ -385,7 +376,6 @@ Do not include any explanations, just the code files. Make sure to implement all
         }
       });
       
-      // AI response is complete, parse files
       let parsedFiles = parseProjectFiles(codeBuffer || streamedText);
       
       if (Object.keys(initialFiles).length > 0) {
@@ -405,7 +395,6 @@ Do not include any explanations, just the code files. Make sure to implement all
       let mainFile = findMainFile(fixedFiles, type);
       setActiveFile(mainFile);
       
-      // Update the final message and mark it as not streaming
       setChatMessages(prev => 
         prev.map(msg => 
           msg.id === aiMessageId 
@@ -422,7 +411,6 @@ Do not include any explanations, just the code files. Make sure to implement all
         )
       );
       
-      // Clear streaming state
       setStreamingMessage('');
       setCurrentMessageId(null);
       
@@ -439,7 +427,6 @@ Do not include any explanations, just the code files. Make sure to implement all
       toast.error("Failed to generate website: " + (error instanceof Error ? error.message : "Unknown error"));
       setErrorMessage(error instanceof Error ? error.message : "Unknown error generating website");
       
-      // Update the message to show error
       setChatMessages(prev => 
         prev.map(msg => 
           msg.id === aiMessageId 
@@ -678,7 +665,6 @@ Do not include any explanations, just the code files. Make sure to implement all
         </header>
         
         <main className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {/* Chat Panel - 1/3 width on large screens */}
           <div className="flex flex-col h-full overflow-hidden border-r border-border lg:col-span-1">
             <div 
               ref={chatContainerRef}
@@ -738,7 +724,6 @@ Do not include any explanations, just the code files. Make sure to implement all
             </div>
           </div>
           
-          {/* Code and Preview Panel - 2/3 width on large screens */}
           <div className="overflow-hidden p-2 h-full border-t md:border-t-0 lg:col-span-2">
             {Object.keys(projectFiles).length === 0 ? (
               <div className="flex items-center justify-center h-full">

@@ -1,5 +1,5 @@
 
-@import './variables.scss';
+@use './variables.scss' as variables;
 
 * {
   margin: 0;
@@ -8,7 +8,7 @@
 }
 
 body {
-  font-family: $font-family-sans;
-  color: $text-color;
-  background-color: $background-color;
+  font-family: variables.$font-family-sans;
+  color: variables.$text-color;
+  background-color: variables.$background-color;
 }
