@@ -20,12 +20,12 @@ export const geminiProvider: LLMProvider = {
         }))
       );
       
-      // Access the stream through the proper property
-      const stream = result.stream;
-      
-      // Process each chunk from the stream
-      for await (const chunk of stream) {
-        opts.onToken(chunk.text());
+      // Process each chunk from the stream directly
+      for await (const chunk of result.stream) {
+        const textContent = chunk.text();
+        if (textContent) {
+          opts.onToken(textContent);
+        }
       }
     } catch (error) {
       console.error("Error streaming from Gemini:", error);
