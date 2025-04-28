@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIPromptInput from '@/components/dashboard/AIPromptInput';
@@ -20,7 +19,7 @@ import {
   RefreshCw,
   Save,
 } from 'lucide-react';
-import { useProjectStore } from '@/stores/projectStore';
+import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,16 +37,13 @@ export default function AIBuilder() {
   const handlePromptSubmit = async (prompt: string) => {
     setIsGenerating(true);
     try {
-      // Check if we have a valid API key
       if (!GEMINI_API_KEY) {
         toast.error("Gemini API key is not configured correctly");
         return;
       }
       
-      // Extract a project name from the prompt
       setProjectName(extractProjectName(prompt));
       
-      // Call the Gemini API with improved instructions for React/TypeScript/SCSS
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY, {
         method: 'POST',
         headers: {
@@ -118,24 +114,17 @@ Do not include any explanations, just the code files.`
         throw new Error('Invalid response from Gemini API');
       }
       
-      // Extract project files from the response
       const text = data.candidates[0].content.parts[0].text;
       const projectFiles = parseProjectFiles(text);
       
-      // For now, we'll still use the HTML preview method
-      // In a full implementation, we would set up Sandpack with the parsed files
       const htmlPreview = generateHtmlPreview(projectFiles);
       
-      // Set the generated code and preview HTML
       setGeneratedCode(JSON.stringify(projectFiles, null, 2));
       setPreviewHtml(htmlPreview);
       
-      // Show success toast
       toast.success("Website generated successfully!");
       
-      // Switch to preview tab
       setActiveTab('preview');
-      
     } catch (error) {
       console.error("Error generating website:", error);
       toast.error("Failed to generate website: " + (error instanceof Error ? error.message : "Unknown error"));
@@ -144,7 +133,6 @@ Do not include any explanations, just the code files.`
     }
   };
   
-  // Parse the text response into a structured project files object
   const parseProjectFiles = (text: string) => {
     const fileRegex = /\/\/ FILE: (.*?)\n([\s\S]*?)(?=\/\/ FILE:|$)/g;
     const files: Record<string, string> = {};
@@ -159,10 +147,7 @@ Do not include any explanations, just the code files.`
     return files;
   };
   
-  // Generate a simple HTML preview from the project files
   const generateHtmlPreview = (files: Record<string, string>) => {
-    // For now, create a basic HTML preview that loads the React app
-    // In a full implementation, this would be replaced by Sandpack
     return `
       <!DOCTYPE html>
       <html lang="en">
@@ -191,9 +176,7 @@ Do not include any explanations, just the code files.`
     `;
   };
   
-  // Extract a reasonable project name from the prompt
   const extractProjectName = (prompt: string) => {
-    // Get the first sentence or up to 50 characters
     let name = prompt.split('.')[0].split('!')[0].trim();
     if (name.length > 50) {
       name = name.substring(0, 47) + '...';
@@ -236,10 +219,9 @@ Do not include any explanations, just the code files.`
         title: projectName,
         description: "Generated with AI Builder",
         code: generatedCode,
-        status: 'draft'
+        status: 'draft' as ProjectStatus
       };
 
-      // Save project to database
       const newProject = await createProject(projectData);
       
       toast.success("Project saved successfully");

@@ -9,7 +9,7 @@ import NewProjectModal from '@/components/dashboard/NewProjectModal';
 import { toast } from 'sonner';
 import { Search, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useProjectStore } from '@/stores/projectStore';
+import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -36,7 +36,7 @@ export default function ProjectsPage() {
     try {
       await createProject({
         ...projectData,
-        status: 'draft',
+        status: 'draft' as ProjectStatus,
         description: projectData.description || ''
       });
       

@@ -15,6 +15,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Loader2, Plus } from 'lucide-react';
+import { ProjectStatus } from '@/stores/projectStore';
 
 interface NewProjectModalProps {
   onCreateProject: (projectData: {

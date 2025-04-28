@@ -51,7 +51,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         .order('updated_at', { ascending: false });
         
       if (error) throw error;
-      set({ projects: projects || [], isLoading: false });
+      
+      // Cast the projects to ensure they match the ProjectStatus type
+      const typedProjects: Project[] = projects?.map(project => ({
+        ...project,
+        status: project.status as ProjectStatus
+      })) || [];
+      
+      set({ projects: typedProjects, isLoading: false });
     } catch (error: any) {
       console.error('Error fetching projects:', error);
       set({ error: error.message, isLoading: false });
@@ -68,7 +75,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         .single();
         
       if (error) throw error;
-      return data;
+      
+      // Cast the project to ensure it matches the ProjectStatus type
+      return data ? {
+        ...data,
+        status: data.status as ProjectStatus
+      } : null;
     } catch (error: any) {
       console.error('Error fetching project:', error);
       set({ error: error.message });
@@ -100,13 +112,19 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         
       if (error) throw error;
       
+      // Cast the project to ensure it matches the ProjectStatus type
+      const typedProject: Project = {
+        ...data,
+        status: data.status as ProjectStatus
+      };
+      
       // Update the local state
       set(state => ({
-        projects: [data, ...state.projects],
+        projects: [typedProject, ...state.projects],
         isLoading: false
       }));
       
-      return data;
+      return typedProject;
     } catch (error: any) {
       console.error('Error creating project:', error);
       set({ error: error.message, isLoading: false });
@@ -131,7 +149,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // Update the local state
       set(state => ({
         projects: state.projects.map(p => 
-          p.id === id ? { ...p, ...updates, updated_at: new Date().toISOString() } : p
+          p.id === id ? { 
+            ...p, 
+            ...updates, 
+            updated_at: new Date().toISOString() 
+          } : p
         ),
         isLoading: false
       }));
