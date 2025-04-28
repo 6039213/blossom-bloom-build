@@ -1,27 +1,26 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 // The client is initialized lazily to ensure we're in a browser context
 let supabaseClient: ReturnType<typeof createClient> | null = null;
 
-export const getSupabaseClient = () => {
-  // We're checking for existence of environmental variables to provide helpful error messages
-  if (!import.meta.env.VITE_SUPABASE_URL) {
-    console.error('VITE_SUPABASE_URL environment variable is not set');
-    throw new Error('Supabase URL not configured');
-  }
+// Default values - replace these with your real Supabase credentials when ready
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 
-  if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
-    console.error('VITE_SUPABASE_ANON_KEY environment variable is not set');
-    throw new Error('Supabase Anon Key not configured');
-  }
-  
+export const getSupabaseClient = () => {
   if (!supabaseClient) {
     try {
       supabaseClient = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
       );
+      
+      // If we're using placeholder credentials, log a warning
+      if (SUPABASE_URL.includes('placeholder')) {
+        console.warn(
+          'Using placeholder Supabase credentials. To use real authentication, please set up your Supabase project and update the environment variables.'
+        );
+      }
     } catch (error) {
       console.error('Failed to create Supabase client:', error);
       throw error;
@@ -31,9 +30,16 @@ export const getSupabaseClient = () => {
   return supabaseClient;
 };
 
-// Typed helper for checking Supabase authentication status
+// Mock authentication for development without actual Supabase credentials
 export async function isLoggedIn() {
   const supabase = getSupabaseClient();
+  
+  // If we're using placeholder credentials, we'll pretend the user is not logged in
+  if (SUPABASE_URL.includes('placeholder')) {
+    return false;
+  }
+  
+  // Otherwise, check with the real Supabase
   const { data, error } = await supabase.auth.getSession();
   return !!data.session && !error;
 }
