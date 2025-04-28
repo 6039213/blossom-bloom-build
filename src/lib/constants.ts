@@ -1,4 +1,3 @@
-
 export const APP_NAME = 'Blossom';
 export const APP_DESCRIPTION = 'Create beautiful websites with AI';
 export const GEMINI_API_KEY = 'AIzaSyAOo3YOsgQE5Qq4APJISQ6tuQvd_dFmVV0'; 
