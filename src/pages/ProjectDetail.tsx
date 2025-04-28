@@ -30,7 +30,8 @@ import {
   SandpackLayout, 
   SandpackCodeEditor, 
   SandpackPreview,
-  SandpackFileExplorer
+  SandpackFileExplorer,
+  useActiveCode
 } from '@codesandbox/sandpack-react';
 import { 
   AlertDialog,
@@ -65,6 +66,27 @@ $border-radius: 0.375rem;
 $box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 $transition-duration: 0.15s;
 `;
+
+// Custom code editor component that handles code updates
+const CustomCodeEditor = ({ onCodeChange }: { onCodeChange: (files: any) => void }) => {
+  const { code, updateCode } = useActiveCode();
+  
+  const handleCodeChange = (newCode: string) => {
+    updateCode(newCode);
+    // This delay ensures the updates are processed before we get the updated files
+    setTimeout(() => {
+      onCodeChange({});
+    }, 100);
+  };
+  
+  return (
+    <SandpackCodeEditor 
+      showLineNumbers 
+      readOnly={false}
+      onChange={handleCodeChange}
+    />
+  );
+};
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -105,8 +127,8 @@ export default function ProjectDetail() {
     return dependencies;
   };
 
-  // Add default SCSS variables to all SCSS files to prevent undefined variable errors
-  const addDefaultScssVariables = (files: ProjectFiles): ProjectFiles => {
+  // Fix SCSS import paths and add default variables
+  const fixScssImports = (files: ProjectFiles): ProjectFiles => {
     const updatedFiles = { ...files };
     
     // Add a global SCSS variables file if it doesn't exist
@@ -114,14 +136,31 @@ export default function ProjectDetail() {
       updatedFiles['/src/styles/variables.scss'] = { code: defaultScssVariables };
     }
 
-    // Add import for variables in all SCSS files
+    // Fix imports in all SCSS files
     Object.keys(updatedFiles).forEach(filePath => {
       if (filePath.endsWith('.scss') || filePath.endsWith('.sass')) {
         // Don't modify the variables file itself
         if (!filePath.includes('variables.scss')) {
-          updatedFiles[filePath] = { 
-            code: `@import '../styles/variables.scss';\n\n${updatedFiles[filePath].code}` 
-          };
+          const fileContent = updatedFiles[filePath].code;
+          
+          // Check if the file already has the import
+          if (!fileContent.includes('@import') || !fileContent.includes('variables.scss')) {
+            // Calculate the correct relative path based on the file location
+            const pathSegments = filePath.split('/').filter(Boolean);
+            pathSegments.pop(); // Remove the filename
+            
+            let relativePath = '';
+            for (let i = 0; i < pathSegments.length - 1; i++) {
+              if (pathSegments[i] !== 'styles') {
+                relativePath += '../';
+              }
+            }
+            
+            // Add the variables import at the beginning
+            updatedFiles[filePath] = { 
+              code: `@import '${relativePath}styles/variables.scss';\n\n${fileContent}`
+            };
+          }
         }
       }
     });
@@ -149,8 +188,8 @@ export default function ProjectDetail() {
         if (project.code) {
           try {
             const parsedFiles = JSON.parse(project.code);
-            // Apply the SCSS variable fix
-            const fixedFiles = addDefaultScssVariables(parsedFiles);
+            // Apply the SCSS import path fix
+            const fixedFiles = fixScssImports(parsedFiles);
             setProjectFiles(fixedFiles);
           } catch (error) {
             console.error("Failed to parse project code:", error);
@@ -420,20 +459,19 @@ export default function ProjectDetail() {
                         }}
                       >
                         <SandpackLayout>
-                          <SandpackFileExplorer />
-                          <SandpackCodeEditor
-                            showLineNumbers
-                            readOnly={false}
-                            onCodeUpdate={(updatedFiles) => {
-                              // Convert Sandpack's file format to our format
-                              const updatedProjectFiles = Object.keys(updatedFiles).reduce((acc, key) => {
-                                acc[key] = { code: updatedFiles[key].code };
-                                return acc;
-                              }, {} as ProjectFiles);
-                              
-                              setProjectFiles(updatedProjectFiles);
-                            }}
-                          />
+                          {activeTab === 'code' && <SandpackFileExplorer />}
+                          {activeTab === 'code' && (
+                            <CustomCodeEditor
+                              onCodeChange={(updatedFiles) => {
+                                // We'll get the updated files from the provider
+                                setTimeout(() => {
+                                  // Convert Sandpack's file format to our format
+                                  const updatedProjectFiles = { ...projectFiles };
+                                  setProjectFiles(updatedProjectFiles);
+                                }, 200);
+                              }}
+                            />
+                          )}
                           <SandpackPreview
                             showRefreshButton
                             showNavigator
