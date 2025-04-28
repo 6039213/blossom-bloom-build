@@ -5,6 +5,14 @@ export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 // Application information
 export const APP_NAME = 'Blossom';
 
+// Import the gemini provider
+import { geminiProvider } from "./providers/gemini";
+
+// Provider configuration
+export const PROVIDERS = { 
+  gemini: geminiProvider 
+};
+
 // Model configurations
 export const MODEL_LIST = [
   {
@@ -16,10 +24,15 @@ export const MODEL_LIST = [
     name: 'gemini-1.5-flash',
     label: 'Gemini 1.5 Flash',
     provider: 'gemini'
+  },
+  {
+    name: 'gemini-2.5-flash-preview',
+    label: 'Gemini 2.5 Flash',
+    provider: 'gemini'
   }
 ];
 
-export const DEFAULT_MODEL = 'gemini-1.5-flash';
+export const DEFAULT_MODEL = 'gemini-2.5-flash-preview';
 
 // System prompt for guidance
 export const SYSTEM_PROMPT = `You are Blossom AI, a sophisticated code assistant.
@@ -27,7 +40,9 @@ Always generate TypeScript React (.tsx) files, follow Tailwind CSS utility class
 When creating components, use functional components with TypeScript and proper imports.
 Respond with minimal prose followed by the code.
 Always define all SCSS variables in a variables.scss file and import it into all other SCSS files using the correct relative path.
-All imports from the src directory MUST use the @/ prefix.`;
+All imports from the src directory MUST use the @/ prefix.
+Always output React components in TypeScript (.tsx) format.
+Never create .js, .jsx or plain HTML files unless explicitly asked.`;
 
 // File extension mapping
 export const FILE_EXTENSION_MAPPING = {
