@@ -29,8 +29,8 @@ export default function AIBuilder() {
   const handlePromptSubmit = async (prompt: string) => {
     setIsGenerating(true);
     try {
-      // Check if we have a valid API key
-      if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
+      // Check if we have a valid API key - fixed the comparison
+      if (!GEMINI_API_KEY) {
         toast.error("Gemini API key is not configured correctly");
         return;
       }
@@ -180,7 +180,7 @@ export default function AIBuilder() {
                 </div>
               </div>
             ) : (
-              <div className="max-w-6xl mx-auto h-full flex flex-col">
+              <div className="max-w-full mx-auto h-full flex flex-col">
                 <Tabs 
                   value={activeTab} 
                   onValueChange={setActiveTab} 
@@ -233,7 +233,7 @@ export default function AIBuilder() {
                           srcDoc={previewHtml}
                           title="Website Preview"
                           className="w-full h-full border-0"
-                          style={{ minHeight: "600px" }}
+                          style={{ minHeight: "800px" }}
                           sandbox="allow-scripts allow-same-origin"
                         />
                       </div>
