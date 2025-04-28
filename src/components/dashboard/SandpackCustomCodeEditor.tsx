@@ -4,7 +4,6 @@ import {
   SandpackCodeEditor, 
   FileTabs, 
   useSandpack,
-  SandpackClient,
 } from '@codesandbox/sandpack-react';
 
 interface ProjectFile {
