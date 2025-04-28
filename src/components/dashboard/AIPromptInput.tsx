@@ -105,7 +105,7 @@ export default function AIPromptInput({
             disabled={isLoading || isProcessing}
           >
             <Save className="mr-2 h-4 w-4" />
-            Save Code
+            Save Project
           </Button>
         )}
       </div>
