@@ -36,7 +36,6 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
 
-// File structure types
 interface ProjectFile {
   code: string;
 }
@@ -45,7 +44,6 @@ interface ProjectFiles {
   [filePath: string]: ProjectFile;
 }
 
-// Default SCSS variable definitions to avoid errors
 const defaultScssVariables = `
 $primary-color: #f59e0b;
 $secondary-color: #3b82f6;
@@ -71,7 +69,6 @@ export default function AIBuilder() {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  // Get default dependencies based on the generated files
   const getProjectDependencies = (files: ProjectFiles) => {
     const dependencies = {
       "react": "^18.2.0",
@@ -96,7 +93,6 @@ export default function AIBuilder() {
     return dependencies;
   };
 
-  // Fix SCSS import paths and add default variables
   const fixScssImports = (files: ProjectFiles): ProjectFiles => {
     const updatedFiles = { ...files };
     
@@ -482,7 +478,7 @@ Do not include any explanations, just the code files. Make sure to implement all
                       {activeTab === 'preview' && (
                         <Button 
                           variant="outline" 
-                          size="xs" 
+                          size="sm" 
                           onClick={handleOpenInNewTab}
                         >
                           <ExternalLink className="h-3 w-3 mr-1" />
@@ -491,7 +487,7 @@ Do not include any explanations, just the code files. Make sure to implement all
                       )}
                       <Button 
                         variant="outline" 
-                        size="xs" 
+                        size="sm" 
                         onClick={handleCopyCode}
                       >
                         <Copy className="h-3 w-3 mr-1" />
@@ -499,7 +495,7 @@ Do not include any explanations, just the code files. Make sure to implement all
                       </Button>
                       <Button 
                         variant="outline" 
-                        size="xs" 
+                        size="sm" 
                         onClick={handleDownloadCode}
                       >
                         <Download className="h-3 w-3 mr-1" />
@@ -507,7 +503,7 @@ Do not include any explanations, just the code files. Make sure to implement all
                       </Button>
                       <Button 
                         variant="outline" 
-                        size="xs" 
+                        size="sm" 
                         onClick={() => {
                           setProjectFiles({});
                           setGeneratedCode('');
@@ -518,7 +514,7 @@ Do not include any explanations, just the code files. Make sure to implement all
                       </Button>
                       <Button 
                         variant="default"
-                        size="xs"
+                        size="sm"
                         onClick={handleSaveProject}
                       >
                         <Save className="h-3 w-3 mr-1" />

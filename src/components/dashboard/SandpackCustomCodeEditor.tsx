@@ -24,9 +24,13 @@ export default function SandpackCustomCodeEditor({ onCodeChange }: CustomCodeEdi
   // Update parent component when code changes
   useEffect(() => {
     // No sandpack.clients means no editor is ready yet
-    if (!sandpack.clients) return;
+    if (!sandpack.clients || sandpack.clients.length === 0) return;
     
-    const unsubscribe = sandpack.listen((message) => {
+    // Use the first client to listen for changes
+    const client = sandpack.clients[0];
+    
+    // Subscribe to file changes
+    const unsubscribe = client.listen((message) => {
       if (message.type === 'file-update') {
         // Get the current files with their updated content
         const currentFiles = Object.entries(sandpack.files).reduce((acc, [path, file]) => {

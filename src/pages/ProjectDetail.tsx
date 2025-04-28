@@ -43,7 +43,6 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
 
-// File structure types
 interface ProjectFile {
   code: string;
 }
@@ -52,7 +51,6 @@ interface ProjectFiles {
   [filePath: string]: ProjectFile;
 }
 
-// Default SCSS variable definitions to avoid errors
 const defaultScssVariables = `
 $primary-color: #f59e0b;
 $secondary-color: #3b82f6;
@@ -79,7 +77,6 @@ export default function ProjectDetail() {
   const [viewportSize, setViewportSize] = useState('desktop');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
-  // Get default dependencies based on the generated files
   const getProjectDependencies = (files: ProjectFiles) => {
     const dependencies = {
       "react": "^18.2.0",
@@ -104,7 +101,6 @@ export default function ProjectDetail() {
     return dependencies;
   };
 
-  // Fix SCSS import paths and add default variables
   const fixScssImports = (files: ProjectFiles): ProjectFiles => {
     const updatedFiles = { ...files };
     
@@ -388,7 +384,7 @@ export default function ProjectDetail() {
                     {activeTab === 'preview' && (
                       <Button 
                         variant="outline" 
-                        size="xs" 
+                        size="sm" 
                         onClick={handleOpenInNewTab}
                       >
                         <ExternalLink className="h-3 w-3 mr-1" />
@@ -397,7 +393,7 @@ export default function ProjectDetail() {
                     )}
                     <Button 
                       variant="outline" 
-                      size="xs" 
+                      size="sm" 
                       onClick={handleCopyCode}
                     >
                       <Copy className="h-3 w-3 mr-1" />
@@ -405,7 +401,7 @@ export default function ProjectDetail() {
                     </Button>
                     <Button 
                       variant="outline" 
-                      size="xs" 
+                      size="sm" 
                       onClick={handleDownloadCode}
                     >
                       <Download className="h-3 w-3 mr-1" />
