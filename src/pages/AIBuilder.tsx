@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIPromptInput from '@/components/dashboard/AIPromptInput';
@@ -23,6 +22,7 @@ import {
   Smartphone,
   Tablet,
   Monitor,
+  AlertTriangle
 } from 'lucide-react';
 import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,7 +37,14 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
 import ProjectTypeSelector from '@/components/dashboard/ProjectTypeSelector';
-import { detectProjectType, getTemplatePrompt, projectTemplates, ProjectTemplate } from '@/utils/projectTemplates';
+import { 
+  detectProjectType, 
+  getTemplatePrompt, 
+  projectTemplates, 
+  ProjectTemplate,
+  createDefaultFilesForTemplate 
+} from '@/utils/projectTemplates';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface ProjectFile {
   code: string;
@@ -82,7 +89,6 @@ export default function AIBuilder() {
       "typescript": "^5.0.4"
     };
     
-    // Add template-specific dependencies if we have a detected type
     if (detectedType && projectTemplates[detectedType]) {
       const templateDependencies = projectTemplates[detectedType].suggestedDependencies;
       Object.assign(dependencies, templateDependencies);
@@ -139,10 +145,90 @@ export default function AIBuilder() {
     return updatedFiles;
   };
   
+  const verifyTemplateFilesExist = (files: ProjectFiles, template: ProjectTemplate | null): boolean => {
+    if (!template) return true;
+    
+    const missingFiles: string[] = [];
+    
+    template.fileStructure.forEach(file => {
+      if (!files[file]) {
+        missingFiles.push(file);
+      }
+    });
+    
+    if (missingFiles.length > 0) {
+      console.warn('Missing required template files:', missingFiles);
+      return false;
+    }
+    
+    return true;
+  };
+  
+  const ensureRequiredFilesExist = (files: ProjectFiles, template: ProjectTemplate | null): ProjectFiles => {
+    if (!template) return files;
+    
+    const updatedFiles = { ...files };
+    
+    template.fileStructure.forEach(file => {
+      if (!updatedFiles[file]) {
+        if (template.boilerplateCode && template.boilerplateCode[file]) {
+          updatedFiles[file] = { code: template.boilerplateCode[file] };
+        } else {
+          const componentName = file.split('/').pop()?.replace('.tsx', '') || 'Component';
+          updatedFiles[file] = { 
+            code: `import React from 'react';
+            
+export default function ${componentName}() {
+  return (
+    <div>
+      <h1>${componentName}</h1>
+      <p>This is the ${componentName} component.</p>
+    </div>
+  );
+}` 
+          };
+        }
+        console.log(`Added missing template file: ${file}`);
+      }
+    });
+    
+    if (!updatedFiles['/src/App.tsx']) {
+      updatedFiles['/src/App.tsx'] = {
+        code: `import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
+export default function App() {
+  return (
+    <Router>
+      <div className="app">
+        <Routes>
+          <Route path="/" element={<div>Home Page</div>} />
+        </Routes>
+      </div>
+    </Router>
+  );
+}`
+      };
+    }
+    
+    return updatedFiles;
+  };
+  
   const handleTemplateSelect = (template: ProjectTemplate) => {
     setSelectedTemplate(template);
     setDetectedType(template.type);
     setShowTemplateSelector(false);
+    
+    const defaultFiles = createDefaultFilesForTemplate(template.type);
+    if (Object.keys(defaultFiles).length > 0) {
+      setProjectFiles(defaultFiles);
+      setGeneratedCode(JSON.stringify(defaultFiles, null, 2));
+      
+      let mainFile = findMainFile(defaultFiles, template.type);
+      setActiveFile(mainFile);
+      
+      toast.success("Template files created! You can customize with AI prompt or edit directly.");
+    }
   };
   
   const handlePromptSubmit = async (prompt: string) => {
@@ -155,16 +241,18 @@ export default function AIBuilder() {
         return;
       }
       
-      // Extract project name from prompt
       const extractedName = extractProjectName(prompt);
       setProjectName(extractedName);
       
-      // Detect project type from prompt
       const type = detectProjectType(prompt);
       setDetectedType(type);
       
-      // Get template-specific instructions
       const templateInstructions = getTemplatePrompt(type);
+      
+      let initialFiles: ProjectFiles = {};
+      if (selectedTemplate) {
+        initialFiles = createDefaultFilesForTemplate(selectedTemplate.type);
+      }
       
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY, {
         method: 'POST',
@@ -212,6 +300,9 @@ Important requirements:
    $text-color: #374151;
    $background-color: #ffffff;
    And import it into all other SCSS files using the CORRECT RELATIVE PATH!
+9. CRITICAL: All imports from the src directory MUST use the @/ prefix.
+   For example: import Component from '@/components/Component';
+10. Make sure App.tsx properly imports ALL page components and sets up routes to them!
 
 Return the complete multi-file project as a single response with clear file path indicators like:
 // FILE: src/App.tsx
@@ -245,17 +336,31 @@ Do not include any explanations, just the code files. Make sure to implement all
       }
       
       const text = data.candidates[0].content.parts[0].text;
-      const parsedFiles = parseProjectFiles(text);
+      let parsedFiles = parseProjectFiles(text);
+      
+      if (Object.keys(initialFiles).length > 0) {
+        parsedFiles = { ...initialFiles, ...parsedFiles };
+      }
+      
+      if (detectedType && projectTemplates[detectedType]) {
+        const template = projectTemplates[detectedType];
+        parsedFiles = ensureRequiredFilesExist(parsedFiles, template);
+      }
+      
       const fixedFiles = fixScssImports(parsedFiles);
       
       setProjectFiles(fixedFiles);
       setGeneratedCode(JSON.stringify(fixedFiles, null, 2));
       
-      // Find the most appropriate main file to show first
       let mainFile = findMainFile(fixedFiles, type);
       setActiveFile(mainFile);
       
-      toast.success("Website generated successfully!");
+      if (selectedTemplate && !verifyTemplateFilesExist(fixedFiles, selectedTemplate)) {
+        toast.warning("Some template files may be missing. Please check your generated code.");
+      } else {
+        toast.success("Website generated successfully!");
+      }
+      
       setActiveTab('preview');
       setShowTemplateSelector(false);
     } catch (error) {
@@ -267,12 +372,10 @@ Do not include any explanations, just the code files. Make sure to implement all
     }
   };
   
-  // Find the most appropriate main file to show first based on project type
   const findMainFile = (files: ProjectFiles, type: string | null): string => {
     const fileKeys = Object.keys(files);
     
     if (type) {
-      // Look for type-specific main files first
       const typeSpecificFiles = fileKeys.filter(path => {
         const lowercasePath = path.toLowerCase();
         return lowercasePath.includes(`/${type}`) || 
@@ -285,7 +388,6 @@ Do not include any explanations, just the code files. Make sure to implement all
         return typeSpecificFiles[0];
       }
       
-      // Look for expected main files based on template
       if (projectTemplates[type]) {
         const templateFiles = projectTemplates[type].fileStructure;
         for (const expectedPath of templateFiles) {
@@ -297,7 +399,6 @@ Do not include any explanations, just the code files. Make sure to implement all
       }
     }
     
-    // Fallback to traditional main files
     const appFile = fileKeys.find(path => path.endsWith('App.tsx'));
     const indexPage = fileKeys.find(path => path.includes('/pages/') && path.includes('index'));
     const homePage = fileKeys.find(path => path.includes('/pages/') && (path.includes('Home') || path.includes('home')));
@@ -325,7 +426,6 @@ Do not include any explanations, just the code files. Make sure to implement all
   const extractProjectName = (prompt: string) => {
     let name = prompt.split('.')[0].split('!')[0].trim();
     
-    // Try to extract a more meaningful name
     const typeDetected = detectProjectType(prompt);
     if (typeDetected) {
       const words = prompt.split(' ');
@@ -520,6 +620,17 @@ Do not include any explanations, just the code files. Make sure to implement all
                 <Sparkles className="h-4 w-4 mr-2 text-blossom-500" />
                 {selectedTemplate ? "Customize your website" : "Tell us about your website"}
               </h2>
+              
+              {selectedTemplate && (
+                <Alert className="mb-4 bg-blue-50 dark:bg-blue-950/20">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Important</AlertTitle>
+                  <AlertDescription>
+                    When using the {selectedTemplate.displayName} template, make sure to reference template files like <code>{selectedTemplate.fileStructure[0]}</code> in your prompt.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <AIPromptInput 
                 onSubmit={handlePromptSubmit} 
                 isProcessing={isGenerating}

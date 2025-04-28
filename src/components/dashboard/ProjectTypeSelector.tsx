@@ -18,15 +18,21 @@ export default function ProjectTypeSelector({ onSelect }: ProjectTypeSelectorPro
     onSelect(projectTemplates[type]);
   };
   
+  // Helper function to get the icon component safely
+  const getIconComponent = (iconName: string) => {
+    if (iconName in LucideIcons) {
+      const IconComponent = LucideIcons[iconName as keyof typeof LucideIcons];
+      return IconComponent;
+    }
+    return LucideIcons.Code;
+  };
+  
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-medium mb-2">Choose a project template</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {Object.entries(projectTemplates).map(([type, template]) => {
-          // Safely get the icon component by checking if it exists in the LucideIcons object
-          const IconComponent = template.icon in LucideIcons 
-            ? LucideIcons[template.icon as keyof typeof LucideIcons] 
-            : LucideIcons.Code;
+          const IconComponent = getIconComponent(template.icon);
           
           return (
             <Card 
@@ -39,7 +45,7 @@ export default function ProjectTypeSelector({ onSelect }: ProjectTypeSelectorPro
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center">
-                  {IconComponent && <IconComponent className="h-5 w-5 text-blossom-500" />}
+                  <IconComponent className="h-5 w-5 text-blossom-500" />
                 </div>
                 <div>
                   <h4 className="font-medium">{template.displayName}</h4>
