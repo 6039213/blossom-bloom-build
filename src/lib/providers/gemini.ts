@@ -13,13 +13,17 @@ export const geminiProvider: LLMProvider = {
     const model = genAI.getGenerativeModel({ model: opts.model || "gemini-2.5-flash-preview" });
     
     try {
-      const stream = await model.generateContentStream(
+      const result = await model.generateContentStream(
         opts.messages.map((m: any) => ({ 
           role: m.role, 
           parts: [{ text: m.content }] 
         }))
       );
       
+      // Access the stream through the proper property
+      const stream = result.stream;
+      
+      // Process each chunk from the stream
       for await (const chunk of stream) {
         opts.onToken(chunk.text());
       }
