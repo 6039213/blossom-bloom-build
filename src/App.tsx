@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +12,9 @@ import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import AIBuilder from "./pages/AIBuilder";
 import PricingPage from "./components/pricing/PricingPage";
+import FeaturesPage from "./pages/FeaturesPage";
+import TemplatesPage from "./pages/TemplatesPage";
+import AboutPage from "./pages/AboutPage";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 
