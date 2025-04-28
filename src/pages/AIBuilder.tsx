@@ -64,17 +64,25 @@ $transition-duration: 0.15s;
 // Custom code editor component that handles code updates
 const CustomCodeEditor = ({ onCodeChange }: { onCodeChange: (files: any) => void }) => {
   const { sandpack } = useSandpack();
-  const { code, updateCode } = useActiveCode();
+  const { code } = useActiveCode();
   
   // Use Sandpack's events to listen for code changes
   useEffect(() => {
-    const unsubscribe = sandpack.listen((message) => {
-      if (message.type === 'state') {
-        onCodeChange(sandpack.getActiveFiles());
+    const unsubscribeClient = sandpack.listen((message: any) => {
+      if (message.type === 'file-update') {
+        // Get the current files with their updated content
+        const currentFiles = Object.entries(sandpack.files).reduce((acc, [path, file]) => {
+          return {
+            ...acc,
+            [path]: { code: file.code || '' }
+          };
+        }, {});
+        
+        onCodeChange(currentFiles);
       }
     });
     
-    return () => unsubscribe();
+    return () => unsubscribeClient();
   }, [sandpack, onCodeChange]);
   
   return (
@@ -583,13 +591,8 @@ Do not include any explanations, just the code files. Make sure to implement all
                           <SandpackFileExplorer />
                           <CustomCodeEditor
                             onCodeChange={(updatedFiles) => {
-                              // We'll get the updated files from the provider
-                              setTimeout(() => {
-                                // Convert Sandpack's file format to our format
-                                const updatedProjectFiles = { ...projectFiles };
-                                setProjectFiles(updatedProjectFiles);
-                                setGeneratedCode(JSON.stringify(updatedProjectFiles, null, 2));
-                              }, 200);
+                              setProjectFiles(updatedFiles);
+                              setGeneratedCode(JSON.stringify(updatedFiles, null, 2));
                             }}
                           />
                         </SandpackLayout>

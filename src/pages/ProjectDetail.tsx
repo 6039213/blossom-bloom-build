@@ -71,17 +71,25 @@ $transition-duration: 0.15s;
 // Custom code editor component that handles code updates
 const CustomCodeEditor = ({ onCodeChange }: { onCodeChange: (files: any) => void }) => {
   const { sandpack } = useSandpack();
-  const { code, updateCode } = useActiveCode();
+  const { code } = useActiveCode();
   
-  // Use Sandpack's events to listen for code changes
+  // Update parent component when code changes
   useEffect(() => {
-    const unsubscribe = sandpack.listen((message) => {
-      if (message.type === 'state') {
-        onCodeChange(sandpack.getActiveFiles());
+    const unsubscribeClient = sandpack.listen((message: any) => {
+      if (message.type === 'file-update') {
+        // Get the current files with their updated content
+        const currentFiles = Object.entries(sandpack.files).reduce((acc, [path, file]) => {
+          return {
+            ...acc,
+            [path]: { code: file.code || '' }
+          };
+        }, {});
+        
+        onCodeChange(currentFiles);
       }
     });
     
-    return () => unsubscribe();
+    return () => unsubscribeClient();
   }, [sandpack, onCodeChange]);
   
   return (
@@ -473,10 +481,7 @@ export default function ProjectDetail() {
                         <SandpackFileExplorer />
                         <CustomCodeEditor
                           onCodeChange={(updatedFiles) => {
-                            setTimeout(() => {
-                              const updatedProjectFiles = { ...projectFiles };
-                              setProjectFiles(updatedProjectFiles);
-                            }, 200);
+                            setProjectFiles(updatedFiles);
                           }}
                         />
                       </SandpackLayout>
