@@ -15,6 +15,10 @@ import PricingPage from "./components/pricing/PricingPage";
 import FeaturesPage from "./pages/FeaturesPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import AboutPage from "./pages/AboutPage";
+import ProjectsPage from "./pages/ProjectsPage";
+import TeamPage from "./pages/TeamPage";
+import SettingsPage from "./pages/SettingsPage";
+import HelpPage from "./pages/HelpPage";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -45,6 +49,10 @@ const App = () => (
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/dashboard/ai-builder" element={<AIBuilder />} />
+                <Route path="/dashboard/projects" element={<ProjectsPage />} />
+                <Route path="/dashboard/team" element={<TeamPage />} />
+                <Route path="/dashboard/settings" element={<SettingsPage />} />
+                <Route path="/dashboard/help" element={<HelpPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>

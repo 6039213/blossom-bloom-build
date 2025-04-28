@@ -10,6 +10,7 @@ import {
   Users, 
   HelpCircle,
   LogOut,
+  Sparkles
 } from 'lucide-react';
 import { APP_NAME } from '@/lib/constants';
 
@@ -37,6 +38,11 @@ export default function DashboardSidebar() {
       name: "Projects",
       href: "/dashboard/projects",
       icon: <FolderOpen className="w-5 h-5" />
+    },
+    {
+      name: "AI Builder",
+      href: "/dashboard/ai-builder",
+      icon: <Sparkles className="w-5 h-5" />
     },
     {
       name: "Team",

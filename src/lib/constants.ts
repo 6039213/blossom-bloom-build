@@ -3,7 +3,7 @@ export const APP_DESCRIPTION = 'Create beautiful websites with AI';
 export const GEMINI_API_KEY = 'AIzaSyAOo3YOsgQE5Qq4APJISQ6tuQvd_dFmVV0'; 
 export const STRIPE_PUBLIC_KEY = 'pk_live_51R2XkQP3GFaeFOE467f1y4JLmp6cXwtrLi8CxrsFirS0zqdCL1H42cNU6UUCvRg5WlI6zVpgjzS2LtJRJRkBx35M004xazkEeo';
 
-// Plans
+// Plans - updated to keep only monthly plans with the correct pricing
 export const PLANS = {
   FREE: {
     name: 'Free',

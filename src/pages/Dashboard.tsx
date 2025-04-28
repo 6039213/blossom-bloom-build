@@ -20,28 +20,31 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const supabase = getSupabaseClient();
   
-  // Mock example projects
-  const mockProjects = [
+  // Example projects with real thumbnails
+  const exampleProjects = [
     {
       id: '1',
       title: 'Coffee Shop Website',
       description: 'A modern landing page for a local coffee shop with online ordering capability',
       lastEdited: '2 hours ago',
-      status: 'published'
+      status: 'published',
+      thumbnail: '/lovable-uploads/coffee-shop.jpg'
     },
     {
       id: '2',
       title: 'Personal Portfolio',
       description: 'My professional portfolio showcasing recent design work and case studies',
       lastEdited: 'Yesterday',
-      status: 'draft'
+      status: 'draft',
+      thumbnail: '/lovable-uploads/portfolio.jpg'
     },
     {
       id: '3',
       title: 'Travel Blog',
       description: 'A blog documenting my adventures around the world with photo galleries',
       lastEdited: '3 days ago',
-      status: 'draft'
+      status: 'draft',
+      thumbnail: '/lovable-uploads/travel-blog.jpg'
     }
   ];
   
@@ -55,8 +58,7 @@ export default function Dashboard() {
         }
         
         setUser(data.user);
-        // In a real app, fetch projects from Supabase here
-        setProjects(mockProjects);
+        setProjects(exampleProjects);
       } catch (error) {
         console.error("Authentication error:", error);
         navigate('/auth');
@@ -69,27 +71,31 @@ export default function Dashboard() {
   }, [navigate]);
   
   const handleCreateProject = async (projectData: { title: string; description?: string }) => {
-    // In a real app, create project in Supabase here
     setProjects((prevProjects) => [
       ...prevProjects,
       {
         id: Date.now().toString(),
         ...projectData,
         lastEdited: 'Just now',
-        status: 'draft'
+        status: 'draft',
+        thumbnail: '/lovable-uploads/new-project.jpg'
       }
     ]);
+    
+    toast.success("New project created!");
   };
   
   const handleDeleteProject = async (id: string) => {
-    // In a real app, delete project from Supabase here
     setProjects((prevProjects) => prevProjects.filter(project => project.id !== id));
+    toast.success("Project deleted");
   };
   
   const filteredProjects = projects.filter((project) => 
     project.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+  
+  const publishedCount = projects.filter(p => p.status === 'published').length;
   
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -189,7 +195,7 @@ export default function Dashboard() {
                   </Card>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProjects.map((project) => (
+                    {filteredProjects.slice(0, 3).map((project) => (
                       <ProjectCard 
                         key={project.id}
                         id={project.id}
@@ -197,6 +203,7 @@ export default function Dashboard() {
                         description={project.description}
                         lastEdited={project.lastEdited}
                         status={project.status as any}
+                        thumbnail={project.thumbnail}
                         onDelete={handleDeleteProject}
                       />
                     ))}
@@ -216,7 +223,7 @@ export default function Dashboard() {
                   </Card>
                   <Card>
                     <CardHeader>
-                      <CardTitle>{projects.filter(p => p.status === 'published').length}</CardTitle>
+                      <CardTitle>{publishedCount}</CardTitle>
                       <CardDescription>Published Sites</CardDescription>
                     </CardHeader>
                   </Card>

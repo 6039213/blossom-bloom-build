@@ -29,254 +29,69 @@ export default function AIBuilder() {
   const handlePromptSubmit = async (prompt: string) => {
     setIsGenerating(true);
     try {
-      // Here you would call the Gemini API
-      // For now, we're just simulating a response
+      // Check if we have a valid API key
+      if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
+        toast.error("Gemini API key is not configured correctly");
+        return;
+      }
       
-      // Simulated API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Call the Gemini API
+      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: `Generate a complete HTML website based on this description: "${prompt}". 
+                  Include all HTML, CSS, and JS in a single file. Make it visually appealing with a modern design.
+                  Make sure the code is fully functional and the website is responsive.`
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 8192,
+          }
+        })
+      });
       
-      // Generate placeholder HTML
-      const mockHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Generated Website</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(135deg, #f1e5c4, #fff9e6);
-      color: #222;
-    }
-    
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
-    
-    header {
-      background: linear-gradient(to right, #d89305, #f9ca54);
-      color: white;
-      padding: 20px 0;
-      box-shadow: 0 2px 10px rgba(216, 147, 5, 0.3);
-    }
-    
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .logo img {
-      width: 40px;
-      height: 40px;
-    }
-    
-    .logo span {
-      font-weight: bold;
-      font-size: 24px;
-    }
-    
-    nav {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    nav ul {
-      display: flex;
-      list-style: none;
-      gap: 20px;
-    }
-    
-    nav a {
-      color: white;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    
-    .hero {
-      padding: 80px 0;
-      text-align: center;
-    }
-    
-    .hero h1 {
-      font-size: 48px;
-      margin-bottom: 20px;
-      background: linear-gradient(135deg, #d89305, #f9ca54);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    
-    .hero p {
-      font-size: 18px;
-      color: #666;
-      max-width: 700px;
-      margin: 0 auto 30px;
-      line-height: 1.6;
-    }
-    
-    .cta {
-      display: inline-block;
-      padding: 12px 24px;
-      background: linear-gradient(to right, #d89305, #f9ca54);
-      color: white;
-      text-decoration: none;
-      border-radius: 30px;
-      font-weight: bold;
-      box-shadow: 0 4px 10px rgba(216, 147, 5, 0.3);
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    
-    .cta:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(216, 147, 5, 0.4);
-    }
-    
-    .features {
-      padding: 60px 0;
-      background: white;
-    }
-    
-    .features h2 {
-      text-align: center;
-      font-size: 32px;
-      margin-bottom: 40px;
-      color: #d89305;
-    }
-    
-    .feature-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 30px;
-    }
-    
-    .feature {
-      padding: 30px;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-      transition: transform 0.2s;
-    }
-    
-    .feature:hover {
-      transform: translateY(-5px);
-    }
-    
-    .feature-icon {
-      width: 50px;
-      height: 50px;
-      background: #fff2d9;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #d89305;
-      margin-bottom: 20px;
-    }
-    
-    .feature h3 {
-      margin-top: 0;
-      color: #222;
-    }
-    
-    .feature p {
-      color: #666;
-      line-height: 1.5;
-    }
-    
-    footer {
-      background: #333;
-      color: white;
-      padding: 40px 0;
-      text-align: center;
-    }
-    
-    footer .container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .social-links {
-      display: flex;
-      gap: 15px;
-    }
-    
-    .social-links a {
-      color: white;
-      text-decoration: none;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="container">
-      <nav>
-        <div class="logo">
-          <img src="https://via.placeholder.com/40" alt="Logo">
-          <span>Gold Blossom</span>
-        </div>
-        <ul>
-          <li><a href="#">Home</a></li>
-          <li><a href="#">Features</a></li>
-          <li><a href="#">Pricing</a></li>
-          <li><a href="#">Contact</a></li>
-        </ul>
-      </nav>
-    </div>
-  </header>
-  
-  <section class="hero">
-    <div class="container">
-      <h1>Transform Your Digital Presence</h1>
-      <p>Create stunning websites effortlessly with our AI-powered platform. Describe what you want, and watch as we bring your vision to life.</p>
-      <a href="#" class="cta">Get Started — It's Free</a>
-    </div>
-  </section>
-  
-  <section class="features">
-    <div class="container">
-      <h2>Amazing Features</h2>
-      <div class="feature-grid">
-        <div class="feature">
-          <div class="feature-icon">✨</div>
-          <h3>AI Generation</h3>
-          <p>Create custom websites by simply describing what you want - no technical skills required.</p>
-        </div>
-        <div class="feature">
-          <div class="feature-icon">🎨</div>
-          <h3>Beautiful Design</h3>
-          <p>Professional designs and templates that adapt perfectly to any device or screen size.</p>
-        </div>
-        <div class="feature">
-          <div class="feature-icon">🚀</div>
-          <h3>Instant Deployment</h3>
-          <p>Publish your website instantly with a single click and share it with the world.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-  
-  <footer>
-    <div class="container">
-      <p>&copy; 2025 Gold Blossom. All rights reserved.</p>
-      <div class="social-links">
-        <a href="#">Twitter</a>
-        <a href="#">Facebook</a>
-        <a href="#">Instagram</a>
-      </div>
-    </div>
-  </footer>
-</body>
-</html>
-      `;
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error.message || 'Error generating website');
+      }
+      
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        throw new Error('Invalid response from Gemini API');
+      }
+      
+      // Extract HTML code from the response
+      const text = data.candidates[0].content.parts[0].text;
+      let htmlCode = text;
+      
+      // Try to extract code from markdown code blocks if present
+      const codeBlockMatch = text.match(/```html\n([\s\S]*?)\n```/);
+      if (codeBlockMatch && codeBlockMatch[1]) {
+        htmlCode = codeBlockMatch[1];
+      } else {
+        // Look for just HTML opening tag
+        const htmlMatch = text.match(/<html[\s\S]*<\/html>/i);
+        if (htmlMatch) {
+          htmlCode = htmlMatch[0];
+        }
+      }
       
       // Set the generated code and preview HTML
-      setGeneratedCode(mockHtml);
-      setPreviewHtml(mockHtml);
+      setGeneratedCode(htmlCode);
+      setPreviewHtml(htmlCode);
       
       // Show success toast
       toast.success("Website generated successfully!");
@@ -286,7 +101,7 @@ export default function AIBuilder() {
       
     } catch (error) {
       console.error("Error generating website:", error);
-      toast.error("Failed to generate website. Please try again.");
+      toast.error("Failed to generate website: " + (error instanceof Error ? error.message : "Unknown error"));
     } finally {
       setIsGenerating(false);
     }
@@ -366,68 +181,70 @@ export default function AIBuilder() {
               </div>
             ) : (
               <div className="max-w-6xl mx-auto h-full flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <Tabs 
-                    value={activeTab} 
-                    onValueChange={setActiveTab} 
-                    className="w-full"
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <TabsList>
-                        <TabsTrigger value="preview" className="flex items-center">
-                          <Eye className="h-4 w-4 mr-2" />
-                          Preview
-                        </TabsTrigger>
-                        <TabsTrigger value="code" className="flex items-center">
-                          <Code className="h-4 w-4 mr-2" />
-                          Code
-                        </TabsTrigger>
-                      </TabsList>
-                      
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={handleCopyCode}
-                        >
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copy Code
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={handleDownloadCode}
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setGeneratedCode('')}
-                        >
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Reset
-                        </Button>
-                      </div>
-                    </div>
+                <Tabs 
+                  value={activeTab} 
+                  onValueChange={setActiveTab} 
+                  className="w-full h-full flex flex-col"
+                >
+                  <div className="flex items-center justify-between w-full mb-4">
+                    <TabsList>
+                      <TabsTrigger value="preview" className="flex items-center">
+                        <Eye className="h-4 w-4 mr-2" />
+                        Preview
+                      </TabsTrigger>
+                      <TabsTrigger value="code" className="flex items-center">
+                        <Code className="h-4 w-4 mr-2" />
+                        Code
+                      </TabsTrigger>
+                    </TabsList>
                     
-                    <div className="flex-1 overflow-hidden border border-border rounded-lg mt-4">
-                      <TabsContent value="preview" className="h-full m-0">
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleCopyCode}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Code
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleDownloadCode}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setGeneratedCode('')}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reset
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 overflow-hidden border border-border rounded-lg">
+                    <TabsContent value="preview" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col">
+                      <div className="h-full w-full overflow-auto">
                         <iframe 
                           srcDoc={previewHtml}
                           title="Website Preview"
                           className="w-full h-full border-0"
+                          style={{ minHeight: "600px" }}
+                          sandbox="allow-scripts allow-same-origin"
                         />
-                      </TabsContent>
-                      <TabsContent value="code" className="h-full m-0 overflow-auto">
-                        <pre className="h-full p-4 text-sm bg-gray-50 dark:bg-gray-950 overflow-auto">
-                          <code>{generatedCode}</code>
-                        </pre>
-                      </TabsContent>
-                    </div>
-                  </Tabs>
-                </div>
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="code" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
+                      <pre className="h-full w-full p-4 text-sm bg-gray-50 dark:bg-gray-950 overflow-auto">
+                        <code>{generatedCode}</code>
+                      </pre>
+                    </TabsContent>
+                  </div>
+                </Tabs>
               </div>
             )}
           </div>

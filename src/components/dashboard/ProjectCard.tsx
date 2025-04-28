@@ -134,7 +134,7 @@ export default function ProjectCard({
         
         {status === 'published' && (
           <Button variant="outline" className="h-9" asChild>
-            <a href={`#preview-${id}`} target="_blank" rel="noopener noreferrer">
+            <a href={`/preview/${id}`} target="_blank" rel="noopener noreferrer">
               <Globe className="h-4 w-4" />
               <span className="sr-only">View live site</span>
             </a>
