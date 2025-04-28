@@ -22,9 +22,8 @@ export default function ProjectTypeSelector({ onSelect }: ProjectTypeSelectorPro
   // Helper function to render the icon component safely
   const renderIcon = (iconName: string) => {
     // Check if the icon exists in LucideIcons
-    if (iconName in LucideIcons && typeof LucideIcons[iconName as keyof typeof LucideIcons] === 'function') {
-      const IconComponent = LucideIcons[iconName as keyof typeof LucideIcons];
-      // Now we safely cast it and use it
+    const IconComponent = (LucideIcons as any)[iconName];
+    if (IconComponent && typeof IconComponent === 'function') {
       return <IconComponent className="h-5 w-5 text-blossom-500" />;
     }
     // Default to Code icon if not found
