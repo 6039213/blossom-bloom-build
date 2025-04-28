@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Send, RefreshCw, Sparkles, Save, XCircle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { GEMINI_API_KEY } from '@/lib/constants';
+import { GEMINI_API_KEY, MODEL_LIST, DEFAULT_MODEL } from '@/lib/constants';
+import AIModelSelector from './AIModelSelector';
 
 interface AIPromptInputProps {
-  onSubmit: (prompt: string) => void;
+  onSubmit: (prompt: string, model?: string) => void;
   onSaveCode?: () => void;
   isProcessing?: boolean;
   showSaveButton?: boolean;
@@ -24,6 +25,7 @@ export default function AIPromptInput({
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [charCount, setCharCount] = useState(0);
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -36,6 +38,10 @@ export default function AIPromptInput({
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
+  };
+  
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,17 +59,11 @@ export default function AIPromptInput({
     
     setIsLoading(true);
     try {
-      // Call the onSubmit function with the prompt
-      await onSubmit(prompt);
+      // Call the onSubmit function with the prompt and selected model
+      await onSubmit(prompt, selectedModel);
       
-      // Clear the prompt input after successful submission
-      setPrompt('');
-      setCharCount(0);
-      
-      // Reset textarea height
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-      }
+      // Don't clear the prompt input after successful submission
+      // to maintain context for the user
     } catch (error) {
       console.error("Error processing prompt:", error);
       toast.error("Failed to process your request. Please try again.");
@@ -94,6 +94,11 @@ export default function AIPromptInput({
   
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-sm font-medium">What would you like to build?</h3>
+        <AIModelSelector selectedModel={selectedModel} onSelectModel={handleModelChange} />
+      </div>
+      
       <div className="relative">
         <Textarea
           ref={textareaRef}

@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       setIsLoading(false);
     }).catch(error => {
-      console.warn('Auth session check failed:', error);
+      console.error('Auth session check failed:', error);
       toast.error('Authentication error: Could not retrieve session');
       setIsLoading(false);
     });
