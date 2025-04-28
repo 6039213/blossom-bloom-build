@@ -4,6 +4,7 @@ import {
   SandpackCodeEditor, 
   FileTabs, 
   useSandpack,
+  SandpackClient,
 } from '@codesandbox/sandpack-react';
 
 interface ProjectFile {
@@ -22,6 +23,7 @@ export default function SandpackCustomCodeEditor({ onCodeChange }: CustomCodeEdi
   const { sandpack } = useSandpack();
   
   useEffect(() => {
+    // Check if clients array exists and has at least one client
     if (!sandpack.clients || sandpack.clients.length === 0) return;
     
     const client = sandpack.clients[0];
