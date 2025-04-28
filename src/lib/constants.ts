@@ -2,6 +2,9 @@
 // API Keys
 export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
+// Application information
+export const APP_NAME = 'Blossom';
+
 // Model configurations
 export const MODEL_LIST = [
   {
@@ -40,3 +43,44 @@ export const PROJECT_TYPES = [
   'blog',
   'portfolio'
 ];
+
+// Pricing plans configuration
+export const PLANS = {
+  FREE: {
+    name: 'Free',
+    price: 0,
+    features: [
+      'Up to 3 projects',
+      'Basic templates',
+      'Community support',
+      'Standard AI responses',
+      'Export as HTML/CSS/JS'
+    ]
+  },
+  STANDARD: {
+    name: 'Standard',
+    price: 19,
+    features: [
+      'Unlimited projects',
+      'All templates',
+      'Priority support',
+      'Advanced AI capabilities',
+      'Custom domain hosting',
+      'No Blossom branding',
+      'Export source code'
+    ]
+  },
+  PREMIUM: {
+    name: 'Premium',
+    price: 49,
+    features: [
+      'Everything in Standard',
+      'Team collaboration',
+      'API access',
+      'Custom templates',
+      'SSO Authentication',
+      'Analytics dashboard',
+      'Dedicated support'
+    ]
+  }
+};
