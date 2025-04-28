@@ -29,8 +29,7 @@ import {
   SandpackLayout, 
   SandpackCodeEditor, 
   SandpackPreview,
-  SandpackFileExplorer,
-  SandpackFiles,
+  SandpackFileExplorer
 } from '@codesandbox/sandpack-react';
 
 // File structure types
@@ -46,7 +45,6 @@ export default function AIBuilder() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCode, setGeneratedCode] = useState('');
   const [projectFiles, setProjectFiles] = useState<ProjectFiles>({});
-  const [sandpackFiles, setSandpackFiles] = useState<SandpackFiles>({});
   const [activeTab, setActiveTab] = useState('preview');
   const [projectName, setProjectName] = useState('');
   const [activeFile, setActiveFile] = useState('/src/App.tsx');
@@ -56,7 +54,7 @@ export default function AIBuilder() {
   
   // Get default dependencies based on the generated files
   const getProjectDependencies = (files: ProjectFiles) => {
-    const dependencies: Record<string, string> = {
+    const dependencies = {
       "react": "^18.2.0",
       "react-dom": "^18.2.0",
       "typescript": "^5.0.4"
@@ -129,21 +127,6 @@ Important requirements:
 6. Make it visually appealing with a modern design
 7. Make sure the code is fully functional and the website is responsive
 
-IMPORTANT: Define all SCSS variables in each file or create a global variables file at /src/styles/variables.scss with the following content:
-
-// Define common variables
-$primary-color: #8b5cf6;
-$secondary-color: #6366f1;
-$accent-color: #ec4899;
-$text-dark: #1f2937;
-$text-light: #f9fafb;
-$background-light: #ffffff;
-$background-dark: #111827;
-$border-radius: 8px;
-$box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-
-Then make sure to import these variables in every SCSS file using: @import '../styles/variables.scss';
-
 Return the complete multi-file project as a single response with clear file path indicators like:
 // FILE: src/App.tsx
 // code here...
@@ -178,34 +161,8 @@ Do not include any explanations, just the code files. Make sure to implement all
       const text = data.candidates[0].content.parts[0].text;
       const parsedFiles = parseProjectFiles(text);
       
-      // Add default SCSS variables file if not included
-      if (!Object.keys(parsedFiles).some(path => path.includes('variables.scss'))) {
-        parsedFiles['/src/styles/variables.scss'] = {
-          code: `// Define common variables
-$primary-color: #8b5cf6;
-$secondary-color: #6366f1;
-$accent-color: #ec4899;
-$text-dark: #1f2937;
-$text-light: #f9fafb;
-$background-light: #ffffff;
-$background-dark: #111827;
-$border-radius: 8px;
-$box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);`
-        };
-      }
-      
       setProjectFiles(parsedFiles);
       setGeneratedCode(JSON.stringify(parsedFiles, null, 2));
-      
-      // Convert ProjectFiles to SandpackFiles format
-      const convertedFiles: SandpackFiles = {};
-      Object.entries(parsedFiles).forEach(([path, file]) => {
-        convertedFiles[path] = { 
-          code: (file as ProjectFile).code,
-          active: path === activeFile 
-        };
-      });
-      setSandpackFiles(convertedFiles);
       
       // Set the active file to App.tsx or the first file if App.tsx doesn't exist
       const fileKeys = Object.keys(parsedFiles);
@@ -394,7 +351,6 @@ $box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.0
                         onClick={() => {
                           setProjectFiles({});
                           setGeneratedCode('');
-                          setSandpackFiles({});
                         }}
                       >
                         <RefreshCw className="h-4 w-4 mr-2" />
@@ -414,11 +370,11 @@ $box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.0
                   <div className="flex-1 overflow-hidden border border-border rounded-lg">
                     <TabsContent value="preview" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col">
                       <div className="h-full w-full overflow-auto">
-                        {Object.keys(sandpackFiles).length > 0 && (
+                        {Object.keys(projectFiles).length > 0 && (
                           <SandpackProvider
                             template="react-ts"
                             theme="auto"
-                            files={sandpackFiles}
+                            files={projectFiles}
                             customSetup={{
                               dependencies: getProjectDependencies(projectFiles),
                             }}

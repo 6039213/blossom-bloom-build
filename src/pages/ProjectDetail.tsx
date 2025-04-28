@@ -26,8 +26,7 @@ import {
   SandpackLayout, 
   SandpackCodeEditor, 
   SandpackPreview,
-  SandpackFileExplorer,
-  SandpackFiles,
+  SandpackFileExplorer
 } from '@codesandbox/sandpack-react';
 import { 
   AlertDialog,
@@ -57,7 +56,6 @@ export default function ProjectDetail() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [projectFiles, setProjectFiles] = useState<ProjectFiles>({});
-  const [sandpackFiles, setSandpackFiles] = useState<SandpackFiles>({});
   const [projectData, setProjectData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('preview');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -109,16 +107,6 @@ export default function ProjectDetail() {
           try {
             const parsedFiles = JSON.parse(project.code);
             setProjectFiles(parsedFiles);
-            
-            // Convert ProjectFiles to SandpackFiles format
-            const convertedFiles: SandpackFiles = {};
-            Object.entries(parsedFiles).forEach(([path, file]) => {
-              convertedFiles[path] = { 
-                code: (file as ProjectFile).code,
-                active: true 
-              };
-            });
-            setSandpackFiles(convertedFiles);
           } catch (error) {
             console.error("Failed to parse project code:", error);
             toast.error("Failed to load project code");
@@ -183,17 +171,6 @@ export default function ProjectDetail() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success("Code downloaded successfully");
-  };
-
-  // Handle sandpack file changes
-  const handleFileChange = (newFiles: Record<string, { code: string }>) => {
-    // Convert Sandpack's file format to our format
-    const updatedProjectFiles: ProjectFiles = {};
-    Object.entries(newFiles).forEach(([path, content]) => {
-      updatedProjectFiles[path] = { code: content.code };
-    });
-    
-    setProjectFiles(updatedProjectFiles);
   };
   
   if (isLoading) {
@@ -305,28 +282,35 @@ export default function ProjectDetail() {
                 <div className="flex-1 overflow-hidden border border-border rounded-lg">
                   <TabsContent value="preview" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col">
                     <div className="h-full w-full overflow-auto">
-                      {Object.keys(sandpackFiles).length > 0 && (
-                        <SandpackProvider
-                          template="react-ts"
-                          theme="auto"
-                          files={sandpackFiles}
-                          customSetup={{
-                            dependencies: getProjectDependencies(projectFiles),
-                          }}
-                        >
-                          <SandpackLayout>
-                            <SandpackFileExplorer />
-                            <SandpackCodeEditor
-                              showLineNumbers
-                              readOnly={false}
-                            />
-                            <SandpackPreview
-                              showRefreshButton
-                              showNavigator
-                            />
-                          </SandpackLayout>
-                        </SandpackProvider>
-                      )}
+                      <SandpackProvider
+                        template="react-ts"
+                        theme="auto"
+                        files={projectFiles}
+                        customSetup={{
+                          dependencies: getProjectDependencies(projectFiles),
+                        }}
+                      >
+                        <SandpackLayout>
+                          <SandpackFileExplorer />
+                          <SandpackCodeEditor
+                            showLineNumbers
+                            readOnly={false}
+                            onCodeUpdate={(updatedFiles) => {
+                              // Convert Sandpack's file format to our format
+                              const updatedProjectFiles = Object.keys(updatedFiles).reduce((acc, key) => {
+                                acc[key] = { code: updatedFiles[key].code };
+                                return acc;
+                              }, {} as ProjectFiles);
+                              
+                              setProjectFiles(updatedProjectFiles);
+                            }}
+                          />
+                          <SandpackPreview
+                            showRefreshButton
+                            showNavigator
+                          />
+                        </SandpackLayout>
+                      </SandpackProvider>
                     </div>
                   </TabsContent>
                   <TabsContent value="code" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
