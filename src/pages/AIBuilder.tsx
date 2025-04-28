@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIPromptInput from '@/components/dashboard/AIPromptInput';
 import { Button } from '@/components/ui/button';
@@ -23,16 +24,59 @@ import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { 
+  SandpackProvider, 
+  SandpackLayout, 
+  SandpackCodeEditor, 
+  SandpackPreview,
+  SandpackFileExplorer
+} from '@codesandbox/sandpack-react';
+
+// File structure types
+interface ProjectFile {
+  code: string;
+}
+
+interface ProjectFiles {
+  [filePath: string]: ProjectFile;
+}
 
 export default function AIBuilder() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCode, setGeneratedCode] = useState('');
-  const [previewHtml, setPreviewHtml] = useState('');
+  const [projectFiles, setProjectFiles] = useState<ProjectFiles>({});
   const [activeTab, setActiveTab] = useState('preview');
   const [projectName, setProjectName] = useState('');
+  const [activeFile, setActiveFile] = useState('/src/App.tsx');
   const { createProject } = useProjectStore();
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  // Get default dependencies based on the generated files
+  const getProjectDependencies = (files: ProjectFiles) => {
+    const dependencies = {
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0",
+      "typescript": "^5.0.4"
+    };
+    
+    // Check for common libraries in the code
+    const allCode = Object.values(files).map(file => file.code).join(' ');
+    
+    if (allCode.includes('react-router-dom')) {
+      dependencies["react-router-dom"] = "^6.15.0";
+    }
+    
+    if (allCode.includes('.scss')) {
+      dependencies["sass"] = "^1.64.2";
+    }
+    
+    if (allCode.includes('axios')) {
+      dependencies["axios"] = "^1.4.0";
+    }
+    
+    return dependencies;
+  };
   
   const handlePromptSubmit = async (prompt: string) => {
     setIsGenerating(true);
@@ -90,7 +134,7 @@ Return the complete multi-file project as a single response with clear file path
 // FILE: src/components/Header.tsx
 // code here...
 
-Do not include any explanations, just the code files.`
+Do not include any explanations, just the code files. Make sure to implement all necessary features for a production-ready application.`
                 }
               ]
             }
@@ -115,15 +159,17 @@ Do not include any explanations, just the code files.`
       }
       
       const text = data.candidates[0].content.parts[0].text;
-      const projectFiles = parseProjectFiles(text);
+      const parsedFiles = parseProjectFiles(text);
       
-      const htmlPreview = generateHtmlPreview(projectFiles);
+      setProjectFiles(parsedFiles);
+      setGeneratedCode(JSON.stringify(parsedFiles, null, 2));
       
-      setGeneratedCode(JSON.stringify(projectFiles, null, 2));
-      setPreviewHtml(htmlPreview);
+      // Set the active file to App.tsx or the first file if App.tsx doesn't exist
+      const fileKeys = Object.keys(parsedFiles);
+      const appFile = fileKeys.find(path => path.endsWith('App.tsx')) || fileKeys[0];
+      setActiveFile(appFile);
       
       toast.success("Website generated successfully!");
-      
       setActiveTab('preview');
     } catch (error) {
       console.error("Error generating website:", error);
@@ -133,47 +179,22 @@ Do not include any explanations, just the code files.`
     }
   };
   
-  const parseProjectFiles = (text: string) => {
+  const parseProjectFiles = (text: string): ProjectFiles => {
     const fileRegex = /\/\/ FILE: (.*?)\n([\s\S]*?)(?=\/\/ FILE:|$)/g;
-    const files: Record<string, string> = {};
+    const files: ProjectFiles = {};
     let match;
     
     while ((match = fileRegex.exec(text)) !== null) {
       const filePath = match[1].trim();
       const fileContent = match[2].trim();
-      files[filePath] = fileContent;
+      
+      // Format the file path to work with Sandpack's expected structure
+      const sandpackPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+      
+      files[sandpackPath] = { code: fileContent };
     }
     
     return files;
-  };
-  
-  const generateHtmlPreview = (files: Record<string, string>) => {
-    return `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>React App Preview</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          .preview-note { background: #f0f0f0; padding: 20px; border-radius: 8px; text-align: center; }
-        </style>
-      </head>
-      <body>
-        <div id="root">
-          <div class="preview-note">
-            <h2>React TypeScript Project Generated</h2>
-            <p>This is a placeholder preview. In the full implementation, this would be replaced by a Sandpack preview that loads all generated files.</p>
-            <p>The project contains ${Object.keys(files).length} files including:</p>
-            <ul style="text-align: left; max-width: 500px; margin: 0 auto;">
-              ${Object.keys(files).map(file => `<li>${file}</li>`).join('')}
-            </ul>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
   };
   
   const extractProjectName = (prompt: string) => {
@@ -209,7 +230,7 @@ Do not include any explanations, just the code files.`
       return;
     }
 
-    if (!generatedCode) {
+    if (Object.keys(projectFiles).length === 0) {
       toast.error("No project to save");
       return;
     }
@@ -218,7 +239,7 @@ Do not include any explanations, just the code files.`
       const projectData = {
         title: projectName,
         description: "Generated with AI Builder",
-        code: generatedCode,
+        code: JSON.stringify(projectFiles),
         status: 'draft' as ProjectStatus
       };
 
@@ -256,13 +277,13 @@ Do not include any explanations, just the code files.`
                 onSubmit={handlePromptSubmit} 
                 isProcessing={isGenerating}
                 onSaveCode={handleSaveProject}
-                showSaveButton={!!generatedCode}
+                showSaveButton={Object.keys(projectFiles).length > 0}
               />
             </div>
           </div>
           
           <div className="overflow-hidden p-6">
-            {!generatedCode ? (
+            {Object.keys(projectFiles).length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center max-w-md">
                   <div className="w-20 h-20 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center mx-auto mb-6">
@@ -327,7 +348,10 @@ Do not include any explanations, just the code files.`
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => setGeneratedCode('')}
+                        onClick={() => {
+                          setProjectFiles({});
+                          setGeneratedCode('');
+                        }}
                       >
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Reset
@@ -346,13 +370,28 @@ Do not include any explanations, just the code files.`
                   <div className="flex-1 overflow-hidden border border-border rounded-lg">
                     <TabsContent value="preview" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col">
                       <div className="h-full w-full overflow-auto">
-                        <iframe 
-                          srcDoc={previewHtml}
-                          title="Website Preview"
-                          className="w-full h-full border-0"
-                          style={{ minHeight: "800px" }}
-                          sandbox="allow-scripts allow-same-origin"
-                        />
+                        {Object.keys(projectFiles).length > 0 && (
+                          <SandpackProvider
+                            template="react-ts"
+                            theme="auto"
+                            files={projectFiles}
+                            customSetup={{
+                              dependencies: getProjectDependencies(projectFiles),
+                            }}
+                          >
+                            <SandpackLayout>
+                              <SandpackFileExplorer />
+                              <SandpackCodeEditor
+                                showLineNumbers
+                                readOnly={false}
+                              />
+                              <SandpackPreview
+                                showRefreshButton
+                                showNavigator
+                              />
+                            </SandpackLayout>
+                          </SandpackProvider>
+                        )}
                       </div>
                     </TabsContent>
                     <TabsContent value="code" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">

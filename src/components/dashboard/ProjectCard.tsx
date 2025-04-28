@@ -1,153 +1,178 @@
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   MoreHorizontal,
-  Edit,
-  Copy,
-  Trash,
-  Globe,
-  Code
-} from 'lucide-react';
+  Pencil,
+  Eye,
+  Trash2,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ProjectCardProps {
   id: string;
   title: string;
-  description?: string;
+  description: string;
+  lastEdited: string;
+  status: 'draft' | 'published' | 'archived';
   thumbnail?: string;
-  lastEdited?: string;
-  status?: 'published' | 'draft' | 'archived';
-  onDelete?: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 export default function ProjectCard({
   id,
   title,
-  description = "No description",
+  description,
+  lastEdited,
+  status,
   thumbnail = "/placeholder.svg",
-  lastEdited = "Never edited",
-  status = "draft",
-  onDelete
+  onDelete,
 }: ProjectCardProps) {
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const navigate = useNavigate();
   
-  const handleDeleteClick = async () => {
-    if (!onDelete) return;
-    
-    setIsDeleting(true);
-    try {
-      await onDelete(id);
-      toast.success("Project deleted");
-    } catch (error) {
-      toast.error("Failed to delete project");
-      console.error(error);
-    } finally {
-      setIsDeleting(false);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'published':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'draft':
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
+      case 'archived':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400';
     }
   };
   
-  const handleCopyClick = () => {
-    toast.success("Project duplicated");
-  };
-  
-  const statusColors = {
-    published: "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400",
-    draft: "bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400",
-    archived: "bg-gray-100 dark:bg-gray-900/20 text-gray-700 dark:text-gray-400"
-  };
-  
-  const statusLabels = {
-    published: "Published",
-    draft: "Draft",
-    archived: "Archived"
+  const handleDelete = () => {
+    onDelete(id);
+    setIsDeleteDialogOpen(false);
   };
   
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-md">
-      <div className="relative">
-        <div className="aspect-video bg-gray-100 dark:bg-gray-800 overflow-hidden">
-          <img 
-            src={thumbnail} 
-            alt={title} 
-            className="w-full h-full object-cover"
-          />
-        </div>
-        
-        <div className="absolute top-2 right-2 flex items-center gap-2">
-          <span className={`px-2 py-1 rounded-md text-xs font-medium ${statusColors[status]}`}>
-            {statusLabels[status]}
-          </span>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="secondary" size="icon" className="h-8 w-8 bg-white/90 dark:bg-gray-900/90">
-                <MoreHorizontal className="h-4 w-4" />
-                <span className="sr-only">More options</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={handleCopyClick}>
-                <Copy className="mr-2 h-4 w-4" />
-                Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={handleDeleteClick}
-                disabled={isDeleting}
-                className="text-red-600 focus:text-red-600"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                {isDeleting ? "Deleting..." : "Delete"}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-      
-      <CardContent className="p-4">
-        <h3 className="font-semibold text-lg truncate">{title}</h3>
-        <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{description}</p>
-        <p className="text-xs text-muted-foreground mt-2">Last edited: {lastEdited}</p>
-      </CardContent>
-      
-      <CardFooter className="p-4 pt-0 flex gap-2">
-        <Button 
-          variant="default"
-          className="flex-1 h-9 bg-blossom-500 hover:bg-blossom-600 text-white" 
-          asChild
+    <>
+      <Card className="flex flex-col overflow-hidden h-full">
+        <div className="relative w-full h-36 overflow-hidden bg-muted cursor-pointer" 
+          onClick={() => navigate(`/dashboard/projects/${id}`)}
         >
-          <Link to={`/dashboard/editor/${id}`}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
-          </Link>
-        </Button>
+          <img
+            src={thumbnail}
+            alt={title}
+            className="w-full h-full object-cover transition-transform hover:scale-105"
+          />
+          <div className="absolute top-2 right-2">
+            <Badge className={`${getStatusColor(status)}`}>
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </Badge>
+          </div>
+        </div>
         
-        {status === 'published' && (
-          <Button variant="outline" className="h-9" asChild>
-            <a href={`/preview/${id}`} target="_blank" rel="noopener noreferrer">
-              <Globe className="h-4 w-4" />
-              <span className="sr-only">View live site</span>
-            </a>
+        <CardContent className="flex-grow flex flex-col p-4">
+          <div className="flex items-start justify-between">
+            <h3 
+              className="text-lg font-semibold mb-2 cursor-pointer hover:text-primary line-clamp-2" 
+              onClick={() => navigate(`/dashboard/projects/${id}`)}
+            >
+              {title}
+            </h3>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate(`/dashboard/projects/${id}`)}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  View
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate(`/dashboard/projects/${id}`)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          
+          <p className="text-muted-foreground text-sm mb-3 line-clamp-3">
+            {description || "No description provided"}
+          </p>
+          
+          <div className="mt-auto text-xs text-muted-foreground">
+            Last edited: {lastEdited}
+          </div>
+        </CardContent>
+        
+        <CardFooter className="p-4 pt-0 flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => navigate(`/dashboard/projects/${id}`)}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View
           </Button>
-        )}
-        
-        <Button variant="outline" className="h-9" asChild>
-          <Link to={`/dashboard/code/${id}`}>
-            <Code className="h-4 w-4" />
-            <span className="sr-only">View code</span>
-          </Link>
-        </Button>
-      </CardFooter>
-    </Card>
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => navigate(`/dashboard/projects/${id}`)}
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        </CardFooter>
+      </Card>
+      
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the project
+              and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

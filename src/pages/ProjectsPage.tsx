@@ -34,13 +34,16 @@ export default function ProjectsPage() {
   
   const handleCreateProject = async (projectData: { title: string; description?: string }) => {
     try {
-      await createProject({
+      const newProject = await createProject({
         ...projectData,
         status: 'draft' as ProjectStatus,
         description: projectData.description || ''
       });
       
       toast.success("New project created!");
+      
+      // Navigate to the AI builder to generate content for the new project
+      navigate(`/dashboard/projects/${newProject.id}`);
     } catch (error) {
       console.error("Error creating project:", error);
       toast.error("Failed to create project");
@@ -128,7 +131,7 @@ export default function ProjectsPage() {
                   key={project.id}
                   id={project.id}
                   title={project.title}
-                  description={project.description}
+                  description={project.description || ''}
                   lastEdited={new Date(project.updated_at).toLocaleString()}
                   status={project.status as any}
                   thumbnail={project.thumbnail || '/placeholder.svg'}
