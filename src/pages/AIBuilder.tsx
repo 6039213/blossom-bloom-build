@@ -372,61 +372,61 @@ export default function AIBuilder() {
                     onValueChange={setActiveTab} 
                     className="w-full"
                   >
-                    <TabsList>
-                      <TabsTrigger value="preview" className="flex items-center">
-                        <Eye className="h-4 w-4 mr-2" />
-                        Preview
-                      </TabsTrigger>
-                      <TabsTrigger value="code" className="flex items-center">
-                        <Code className="h-4 w-4 mr-2" />
-                        Code
-                      </TabsTrigger>
-                    </TabsList>
+                    <div className="flex items-center justify-between w-full">
+                      <TabsList>
+                        <TabsTrigger value="preview" className="flex items-center">
+                          <Eye className="h-4 w-4 mr-2" />
+                          Preview
+                        </TabsTrigger>
+                        <TabsTrigger value="code" className="flex items-center">
+                          <Code className="h-4 w-4 mr-2" />
+                          Code
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleCopyCode}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy Code
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleDownloadCode}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setGeneratedCode('')}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Reset
+                        </Button>
+                      </div>
+                    </div>
                     
-                    <div className="flex-1" />
-                    
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleCopyCode}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy Code
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleDownloadCode}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setGeneratedCode('')}
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Reset
-                      </Button>
+                    <div className="flex-1 overflow-hidden border border-border rounded-lg mt-4">
+                      <TabsContent value="preview" className="h-full m-0">
+                        <iframe 
+                          srcDoc={previewHtml}
+                          title="Website Preview"
+                          className="w-full h-full border-0"
+                        />
+                      </TabsContent>
+                      <TabsContent value="code" className="h-full m-0 overflow-auto">
+                        <pre className="h-full p-4 text-sm bg-gray-50 dark:bg-gray-950 overflow-auto">
+                          <code>{generatedCode}</code>
+                        </pre>
+                      </TabsContent>
                     </div>
                   </Tabs>
-                </div>
-                
-                <div className="flex-1 overflow-hidden border border-border rounded-lg">
-                  <TabsContent value="preview" className="h-full m-0">
-                    <iframe 
-                      srcDoc={previewHtml}
-                      title="Website Preview"
-                      className="w-full h-full border-0"
-                    />
-                  </TabsContent>
-                  <TabsContent value="code" className="h-full m-0 overflow-auto">
-                    <pre className="h-full p-4 text-sm bg-gray-50 dark:bg-gray-950 overflow-auto">
-                      <code>{generatedCode}</code>
-                    </pre>
-                  </TabsContent>
                 </div>
               </div>
             )}
