@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { projectTemplates, ProjectTemplate } from '@/utils/projectTemplates';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Code } from 'lucide-react';
 
 interface ProjectTypeSelectorProps {
   onSelect: (template: ProjectTemplate) => void;
@@ -20,11 +21,11 @@ export default function ProjectTypeSelector({ onSelect }: ProjectTypeSelectorPro
   
   // Helper function to get the icon component safely
   const getIconComponent = (iconName: string) => {
-    if (iconName in LucideIcons) {
-      const IconComponent = LucideIcons[iconName as keyof typeof LucideIcons];
-      return IconComponent;
+    // Check if the icon name exists in the LucideIcons object
+    if (iconName in LucideIcons && typeof LucideIcons[iconName as keyof typeof LucideIcons] === 'function') {
+      return LucideIcons[iconName as keyof typeof LucideIcons];
     }
-    return LucideIcons.Code;
+    return Code; // Default to Code icon if not found
   };
   
   return (

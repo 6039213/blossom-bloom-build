@@ -1,4 +1,3 @@
-
 export interface ProjectTemplate {
   type: string;
   displayName: string;
@@ -375,6 +374,9 @@ export default function App() {
   return (
     <Router>
       <div className="app">
+        <header className="app-header">
+          <h1>Blossom-AI.dev</h1>
+        </header>
         <Routes>
 ${routes}        </Routes>
       </div>
