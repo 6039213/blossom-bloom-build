@@ -22,8 +22,8 @@ export default function SandpackCustomCodeEditor({ onCodeChange }: CustomCodeEdi
   const { sandpack } = useSandpack();
   
   useEffect(() => {
-    // Check if clients array exists and has at least one client
-    if (!sandpack.clients || sandpack.clients.length === 0) return;
+    // Check if clients property exists and is an array with at least one client
+    if (!sandpack.clients || !Array.isArray(sandpack.clients) || sandpack.clients.length === 0) return;
     
     // Access the first client
     const client = sandpack.clients[0];
