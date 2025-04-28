@@ -48,7 +48,6 @@ export default function NewProjectModal({ onCreateProject }: NewProjectModalProp
       setTitle('');
       setDescription('');
       setIsOpen(false);
-      toast.success("Project created successfully");
     } catch (error) {
       console.error("Error creating project:", error);
       toast.error("Failed to create project. Please try again.");

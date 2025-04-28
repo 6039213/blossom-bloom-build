@@ -7,79 +7,53 @@ import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import ProjectCard from '@/components/dashboard/ProjectCard';
 import NewProjectModal from '@/components/dashboard/NewProjectModal';
 import { toast } from 'sonner';
-import { getSupabaseClient } from '@/lib/supabase-client';
 import { Search, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { useProjectStore } from '@/stores/projectStore';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function ProjectsPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [projects, setProjects] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const supabase = getSupabaseClient();
-
+  const { isLoading, projects, fetchProjects, deleteProject, createProject } = useProjectStore();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const navigate = useNavigate();
+  
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setIsLoading(true);
-        // In a real app, fetch projects from Supabase here
-        // For now, we'll use the mock data
-        setProjects([
-          {
-            id: '1',
-            title: 'Coffee Shop Website',
-            description: 'A modern landing page for a local coffee shop with online ordering capability',
-            lastEdited: '2 hours ago',
-            status: 'published',
-            thumbnail: '/lovable-uploads/coffee-shop.jpg'
-          },
-          {
-            id: '2',
-            title: 'Personal Portfolio',
-            description: 'My professional portfolio showcasing recent design work and case studies',
-            lastEdited: 'Yesterday',
-            status: 'draft',
-            thumbnail: '/lovable-uploads/portfolio.jpg'
-          },
-          {
-            id: '3',
-            title: 'Travel Blog',
-            description: 'A blog documenting my adventures around the world with photo galleries',
-            lastEdited: '3 days ago',
-            status: 'draft',
-            thumbnail: '/lovable-uploads/travel-blog.jpg'
-          }
-        ]);
-      } catch (error) {
-        console.error("Error fetching projects:", error);
-        toast.error("Failed to load projects");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    // Redirect to auth if not logged in
+    if (!user && !isAuthLoading) {
+      navigate('/auth');
+      return;
+    }
     
-    fetchProjects();
-  }, []);
+    // Fetch projects if user is logged in
+    if (user) {
+      fetchProjects();
+    }
+  }, [user, isAuthLoading, navigate, fetchProjects]);
   
   const handleCreateProject = async (projectData: { title: string; description?: string }) => {
-    // In a real app, create project in Supabase here
-    setProjects((prevProjects) => [
-      ...prevProjects,
-      {
-        id: Date.now().toString(),
+    try {
+      await createProject({
         ...projectData,
-        lastEdited: 'Just now',
         status: 'draft',
-        thumbnail: '/placeholder.svg'
-      }
-    ]);
-    
-    toast.success("New project created!");
+        description: projectData.description || ''
+      });
+      
+      toast.success("New project created!");
+    } catch (error) {
+      console.error("Error creating project:", error);
+      toast.error("Failed to create project");
+    }
   };
   
   const handleDeleteProject = async (id: string) => {
-    // In a real app, delete project from Supabase here
-    setProjects((prevProjects) => prevProjects.filter(project => project.id !== id));
-    toast.success("Project deleted");
+    try {
+      await deleteProject(id);
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      toast.error("Failed to delete project");
+    }
   };
   
   const filteredProjects = projects.filter((project) => 
@@ -155,9 +129,9 @@ export default function ProjectsPage() {
                   id={project.id}
                   title={project.title}
                   description={project.description}
-                  lastEdited={project.lastEdited}
+                  lastEdited={new Date(project.updated_at).toLocaleString()}
                   status={project.status as any}
-                  thumbnail={project.thumbnail}
+                  thumbnail={project.thumbnail || '/placeholder.svg'}
                   onDelete={handleDeleteProject}
                 />
               ))}
