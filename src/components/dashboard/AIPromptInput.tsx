@@ -1,5 +1,5 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Send, RefreshCw, Sparkles, Save, XCircle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,6 +27,7 @@ export default function AIPromptInput({
   const [charCount, setCharCount] = useState(0);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   
   const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -76,6 +77,21 @@ export default function AIPromptInput({
       setIsLoading(false);
     }
   };
+
+  // Handle Ctrl+Enter to submit form
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (formRef.current) {
+          e.preventDefault();
+          formRef.current.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
   
   const handleClear = () => {
     setPrompt('');
@@ -93,7 +109,7 @@ export default function AIPromptInput({
   };
   
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-sm font-medium">What would you like to build?</h3>
         <AIModelSelector selectedModel={selectedModel} onSelectModel={handleModelChange} />

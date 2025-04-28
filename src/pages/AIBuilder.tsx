@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIPromptInput from '@/components/dashboard/AIPromptInput';
+import AIResponseDisplay, { ChatMessage } from '@/components/dashboard/AIResponseDisplay';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { GEMINI_API_KEY } from '@/lib/constants';
+import { PROVIDERS, MODEL_LIST, DEFAULT_MODEL } from '@/lib/constants';
 import {
   Tabs,
   TabsContent,
@@ -24,8 +26,7 @@ import {
   Monitor,
   AlertTriangle
 } from 'lucide-react';
-import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
-import { supabase } from '@/integrations/supabase/client';
+import { useProjectStore } from '@/stores/projectStore';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -38,13 +39,17 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
 import ProjectTypeSelector from '@/components/dashboard/ProjectTypeSelector';
 import { 
-  detectProjectType, 
+  detectProjectType,
   getTemplatePrompt, 
   projectTemplates, 
   ProjectTemplate,
   createDefaultFilesForTemplate 
 } from '@/utils/projectTemplates';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import CodePreviewTabs from '@/components/dashboard/CodePreviewTabs';
+import CodeActionButtons from '@/components/dashboard/CodeActionButtons';
+import { v4 as uuidv4 } from 'uuid';
+import { processToken } from '@/utils/fileHelpers';
 
 interface ProjectFile {
   code: string;
@@ -78,9 +83,21 @@ export default function AIBuilder() {
   const [showTemplateSelector, setShowTemplateSelector] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
   const [detectedType, setDetectedType] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [streamingMessage, setStreamingMessage] = useState<string>('');
+  const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  
   const { createProject } = useProjectStore();
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  // Scroll to bottom of chat when messages update
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
   
   const getProjectDependencies = (files: ProjectFiles) => {
     const dependencies = {
@@ -231,16 +248,44 @@ export default function App() {
     }
   };
   
-  const handlePromptSubmit = async (prompt: string) => {
+  const handlePromptSubmit = async (prompt: string, model: string = DEFAULT_MODEL) => {
     setIsGenerating(true);
     setErrorMessage(null);
     
+    // Add user message to chat
+    const userMessageId = uuidv4();
+    const newUserMessage: ChatMessage = {
+      id: userMessageId,
+      role: 'user',
+      content: prompt,
+      createdAt: new Date(),
+    };
+    
+    setChatMessages(prev => [...prev, newUserMessage]);
+    
+    // Create a placeholder for the AI's streaming response
+    const aiMessageId = uuidv4();
+    setCurrentMessageId(aiMessageId);
+    setStreamingMessage('');
+    
+    setChatMessages(prev => [
+      ...prev,
+      {
+        id: aiMessageId,
+        role: 'assistant',
+        content: '',
+        createdAt: new Date(),
+        isStreaming: true
+      }
+    ]);
+    
     try {
-      if (!GEMINI_API_KEY) {
-        toast.error("Gemini API key is not configured correctly");
-        return;
+      const provider = PROVIDERS.gemini;
+      if (!provider) {
+        throw new Error("No LLM provider available");
       }
       
+      // Extract basic info from prompt
       const extractedName = extractProjectName(prompt);
       setProjectName(extractedName);
       
@@ -254,18 +299,16 @@ export default function App() {
         initialFiles = createDefaultFilesForTemplate(selectedTemplate.type);
       }
       
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  text: `Generate a complete React website based on this description: "${prompt}". 
+      // Stream the AI response
+      let streamedText = '';
+      let codeBuffer = '';
+      let inCodeBlock = false;
+      
+      await provider.stream({
+        messages: [
+          {
+            role: 'user',
+            content: `Generate a complete React website based on this description: "${prompt}". 
 
 This MUST be a modern React 18+ application with TypeScript (.tsx files) and SCSS modules for styling.
 Include the following file structure:
@@ -312,31 +355,38 @@ Return the complete multi-file project as a single response with clear file path
 // code here...
 
 Do not include any explanations, just the code files. Make sure to implement all necessary features for a production-ready application.`
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 8192,
           }
-        })
+        ],
+        model,
+        onToken: (token) => {
+          const processedToken = processToken(token);
+          streamedText += processedToken;
+          
+          // Update the streaming message content
+          setStreamingMessage(streamedText);
+          
+          // Update the current message in chat
+          setChatMessages(prev => 
+            prev.map(msg => 
+              msg.id === aiMessageId 
+                ? { ...msg, content: streamedText, isStreaming: true } 
+                : msg
+            )
+          );
+          
+          // Detect file blocks
+          if (processedToken.includes("// FILE:")) {
+            inCodeBlock = true;
+          }
+          
+          if (inCodeBlock) {
+            codeBuffer += processedToken;
+          }
+        }
       });
       
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error.message || 'Error generating website');
-      }
-      
-      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-        throw new Error('Invalid response from Gemini API');
-      }
-      
-      const text = data.candidates[0].content.parts[0].text;
-      let parsedFiles = parseProjectFiles(text);
+      // AI response is complete, parse files
+      let parsedFiles = parseProjectFiles(codeBuffer || streamedText);
       
       if (Object.keys(initialFiles).length > 0) {
         parsedFiles = { ...initialFiles, ...parsedFiles };
@@ -355,6 +405,27 @@ Do not include any explanations, just the code files. Make sure to implement all
       let mainFile = findMainFile(fixedFiles, type);
       setActiveFile(mainFile);
       
+      // Update the final message and mark it as not streaming
+      setChatMessages(prev => 
+        prev.map(msg => 
+          msg.id === aiMessageId 
+            ? { 
+                ...msg, 
+                content: streamedText, 
+                isStreaming: false,
+                codeFiles: Object.keys(parsedFiles).map(path => ({
+                  path,
+                  content: parsedFiles[path].code.substring(0, 40) + '...'
+                }))
+              } 
+            : msg
+        )
+      );
+      
+      // Clear streaming state
+      setStreamingMessage('');
+      setCurrentMessageId(null);
+      
       if (selectedTemplate && !verifyTemplateFilesExist(fixedFiles, selectedTemplate)) {
         toast.warning("Some template files may be missing. Please check your generated code.");
       } else {
@@ -367,6 +438,22 @@ Do not include any explanations, just the code files. Make sure to implement all
       console.error("Error generating website:", error);
       toast.error("Failed to generate website: " + (error instanceof Error ? error.message : "Unknown error"));
       setErrorMessage(error instanceof Error ? error.message : "Unknown error generating website");
+      
+      // Update the message to show error
+      setChatMessages(prev => 
+        prev.map(msg => 
+          msg.id === aiMessageId 
+            ? { 
+                ...msg, 
+                content: `Error generating website: ${error instanceof Error ? error.message : "Unknown error"}`,
+                isStreaming: false 
+              } 
+            : msg
+        )
+      );
+      
+      setStreamingMessage('');
+      setCurrentMessageId(null);
     } finally {
       setIsGenerating(false);
     }
@@ -590,9 +677,18 @@ Do not include any explanations, just the code files. Make sure to implement all
           </div>
         </header>
         
-        <main className="flex-1 overflow-hidden grid grid-rows-[auto_1fr]">
-          <div className="p-4 bg-white dark:bg-gray-900 border-b border-border">
-            <div className="max-w-4xl mx-auto">
+        <main className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {/* Chat Panel - 1/3 width on large screens */}
+          <div className="flex flex-col h-full overflow-hidden border-r border-border lg:col-span-1">
+            <div 
+              ref={chatContainerRef}
+              className="flex-1 overflow-y-auto" 
+              style={{ scrollBehavior: 'smooth' }}
+            >
+              <AIResponseDisplay messages={chatMessages} isLoading={false} />
+            </div>
+            
+            <div className="p-4 border-t border-border">
               {showTemplateSelector && (
                 <div className="mb-6">
                   <ProjectTypeSelector onSelect={handleTemplateSelect} />
@@ -614,21 +710,6 @@ Do not include any explanations, just the code files. Make sure to implement all
                     </Button>
                   </div>
                 </div>
-              )}
-              
-              <h2 className="text-lg font-semibold mb-2 flex items-center">
-                <Sparkles className="h-4 w-4 mr-2 text-blossom-500" />
-                {selectedTemplate ? "Customize your website" : "Tell us about your website"}
-              </h2>
-              
-              {selectedTemplate && (
-                <Alert className="mb-4 bg-blue-50 dark:bg-blue-950/20">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Important</AlertTitle>
-                  <AlertDescription>
-                    When using the {selectedTemplate.displayName} template, make sure to reference template files like <code>{selectedTemplate.fileStructure[0]}</code> in your prompt.
-                  </AlertDescription>
-                </Alert>
               )}
               
               <AIPromptInput 
@@ -657,7 +738,8 @@ Do not include any explanations, just the code files. Make sure to implement all
             </div>
           </div>
           
-          <div className="overflow-hidden p-2 flex-grow">
+          {/* Code and Preview Panel - 2/3 width on large screens */}
+          <div className="overflow-hidden p-2 h-full border-t md:border-t-0 lg:col-span-2">
             {Object.keys(projectFiles).length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center max-w-md">
@@ -690,85 +772,30 @@ Do not include any explanations, just the code files. Make sure to implement all
                   className="w-full h-full flex flex-col"
                 >
                   <div className="flex items-center justify-between w-full mb-2">
-                    <div className="flex items-center gap-2">
-                      <TabsList>
-                        <TabsTrigger value="preview" className="flex items-center">
-                          <Eye className="h-3 w-3 mr-1" />
-                          Preview
-                        </TabsTrigger>
-                        <TabsTrigger value="code" className="flex items-center">
-                          <Code className="h-3 w-3 mr-1" />
-                          Code
-                        </TabsTrigger>
-                      </TabsList>
-                      
-                      {activeTab === 'preview' && (
-                        <ToggleGroup type="single" value={viewportSize} onValueChange={(value) => value && setViewportSize(value)}>
-                          <ToggleGroupItem value="mobile" aria-label="Mobile view">
-                            <Smartphone className="h-3 w-3" />
-                          </ToggleGroupItem>
-                          <ToggleGroupItem value="tablet" aria-label="Tablet view">
-                            <Tablet className="h-3 w-3" />
-                          </ToggleGroupItem>
-                          <ToggleGroupItem value="desktop" aria-label="Desktop view">
-                            <Monitor className="h-3 w-3" />
-                          </ToggleGroupItem>
-                        </ToggleGroup>
-                      )}
-                    </div>
+                    <CodePreviewTabs 
+                      activeTab={activeTab}
+                      viewportSize={viewportSize}
+                      onTabChange={setActiveTab}
+                      onViewportChange={setViewportSize}
+                    />
                     
-                    <div className="flex space-x-1">
-                      {activeTab === 'preview' && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={handleOpenInNewTab}
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          New Tab
-                        </Button>
-                      )}
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleCopyCode}
-                      >
-                        <Copy className="h-3 w-3 mr-1" />
-                        Copy
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleDownloadCode}
-                      >
-                        <Download className="h-3 w-3 mr-1" />
-                        Download
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => {
-                          setProjectFiles({});
-                          setGeneratedCode('');
-                          if (selectedTemplate) {
-                            setShowTemplateSelector(false);
-                          } else {
-                            setShowTemplateSelector(true);
-                          }
-                        }}
-                      >
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                        Reset
-                      </Button>
-                      <Button 
-                        variant="default"
-                        size="sm"
-                        onClick={handleSaveProject}
-                      >
-                        <Save className="h-3 w-3 mr-1" />
-                        Save
-                      </Button>
-                    </div>
+                    <CodeActionButtons
+                      onCopy={handleCopyCode}
+                      onDownload={handleDownloadCode}
+                      onReset={() => {
+                        setProjectFiles({});
+                        setGeneratedCode('');
+                        if (selectedTemplate) {
+                          setShowTemplateSelector(false);
+                        } else {
+                          setShowTemplateSelector(true);
+                        }
+                      }}
+                      onSave={handleSaveProject}
+                      onOpenInNewTab={handleOpenInNewTab}
+                      showExternalLink={activeTab === 'preview'}
+                      hasGeneratedCode={Object.keys(projectFiles).length > 0}
+                    />
                   </div>
                   
                   <div className="flex-1 overflow-hidden border border-border rounded-lg">
