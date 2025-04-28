@@ -1,5 +1,6 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Layout from "@/components/Layout";
 import Index from "@/pages/Index";
 import AboutPage from "@/pages/AboutPage";
 import FeaturesPage from "@/pages/FeaturesPage";
@@ -25,23 +26,25 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <OnboardingProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/features" element={<FeaturesPage />} />
-            <Route path="/pricing" element={<PricingPage />} />
-            <Route path="/team" element={<TeamPage />} />
-            <Route path="/templates" element={<TemplatesPage />} />
-            <Route path="/help" element={<HelpPage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/projects" element={<ProjectsPage />} />
-            <Route path="/dashboard/projects/:id" element={<ProjectDetail />} />
-            <Route path="/dashboard/ai-builder" element={<AIBuilder />} />
-            <Route path="/dashboard/settings" element={<SettingsPage />} />
-            <Route path="/404" element={<NotFound />} />
-            <Route path="*" element={<Navigate to="/404" replace />} />
-          </Routes>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/features" element={<FeaturesPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/team" element={<TeamPage />} />
+              <Route path="/templates" element={<TemplatesPage />} />
+              <Route path="/help" element={<HelpPage />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard/projects" element={<ProjectsPage />} />
+              <Route path="/dashboard/projects/:id" element={<ProjectDetail />} />
+              <Route path="/dashboard/ai-builder" element={<AIBuilder />} />
+              <Route path="/dashboard/settings" element={<SettingsPage />} />
+              <Route path="/404" element={<NotFound />} />
+              <Route path="*" element={<Navigate to="/404" replace />} />
+            </Routes>
+          </Layout>
           <Toaster />
           <SonnerToaster position="top-right" closeButton />
         </OnboardingProvider>
