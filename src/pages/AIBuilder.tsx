@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIPromptInput from '@/components/dashboard/AIPromptInput';
@@ -31,14 +30,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   SandpackProvider, 
   SandpackLayout, 
-  SandpackCodeEditor, 
   SandpackPreview,
-  SandpackFileExplorer,
-  useActiveCode,
-  FileTabs,
-  useSandpack
+  SandpackFileExplorer
 } from '@codesandbox/sandpack-react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
 
 // File structure types
 interface ProjectFile {
@@ -107,6 +103,7 @@ export default function AIBuilder() {
   const [projectName, setProjectName] = useState('');
   const [activeFile, setActiveFile] = useState('/src/App.tsx');
   const [viewportSize, setViewportSize] = useState('desktop');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { createProject } = useProjectStore();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -180,6 +177,7 @@ export default function AIBuilder() {
   
   const handlePromptSubmit = async (prompt: string) => {
     setIsGenerating(true);
+    setErrorMessage(null);
     try {
       if (!GEMINI_API_KEY) {
         toast.error("Gemini API key is not configured correctly");
@@ -282,6 +280,7 @@ Do not include any explanations, just the code files. Make sure to implement all
     } catch (error) {
       console.error("Error generating website:", error);
       toast.error("Failed to generate website: " + (error instanceof Error ? error.message : "Unknown error"));
+      setErrorMessage(error instanceof Error ? error.message : "Unknown error generating website");
     } finally {
       setIsGenerating(false);
     }
@@ -361,7 +360,11 @@ Do not include any explanations, just the code files. Make sure to implement all
     }
   };
 
-  // Function to open preview in a new tab
+  const handleCodeChange = (updatedFiles: ProjectFiles) => {
+    setProjectFiles(updatedFiles);
+    setGeneratedCode(JSON.stringify(updatedFiles, null, 2));
+  };
+
   const handleOpenInNewTab = () => {
     // Create a simple HTML page with sandpack embedded
     const htmlContent = `
@@ -405,7 +408,6 @@ Do not include any explanations, just the code files. Make sure to implement all
     URL.revokeObjectURL(url);
   };
   
-  // Get viewport size classes for the preview
   const getViewportClasses = () => {
     switch(viewportSize) {
       case 'mobile':
@@ -416,6 +418,11 @@ Do not include any explanations, just the code files. Make sure to implement all
       default:
         return 'w-full';
     }
+  };
+  
+  const handleReportError = (error: Error) => {
+    setErrorMessage(error.message);
+    toast.error("Error reported. Our AI assistant will help resolve this issue.");
   };
   
   return (
@@ -433,7 +440,7 @@ Do not include any explanations, just the code files. Make sure to implement all
         
         <main className="flex-1 overflow-hidden grid grid-rows-[auto_1fr]">
           <div className="p-6 bg-white dark:bg-gray-900 border-b border-border">
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               <h2 className="text-xl font-semibold mb-4 flex items-center">
                 <Sparkles className="h-5 w-5 mr-2 text-blossom-500" />
                 Tell us about your website
@@ -443,7 +450,24 @@ Do not include any explanations, just the code files. Make sure to implement all
                 isProcessing={isGenerating}
                 onSaveCode={handleSaveProject}
                 showSaveButton={Object.keys(projectFiles).length > 0}
+                onReportError={handleReportError}
               />
+              
+              {errorMessage && (
+                <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    <strong>Error:</strong> {errorMessage}
+                  </p>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="mt-2"
+                    onClick={() => setErrorMessage(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
           
@@ -569,12 +593,15 @@ Do not include any explanations, just the code files. Make sure to implement all
                             customSetup={{
                               dependencies: getProjectDependencies(projectFiles),
                             }}
+                            options={{
+                              visibleFiles: [activeFile],
+                            }}
                           >
-                            <SandpackLayout>
+                            <SandpackLayout className="h-full">
                               <SandpackPreview
                                 showRefreshButton
                                 showNavigator
-                                className="flex-grow"
+                                className="flex-grow h-full"
                               />
                             </SandpackLayout>
                           </SandpackProvider>
@@ -590,14 +617,9 @@ Do not include any explanations, just the code files. Make sure to implement all
                           dependencies: getProjectDependencies(projectFiles),
                         }}
                       >
-                        <SandpackLayout>
+                        <SandpackLayout className="h-full">
                           <SandpackFileExplorer />
-                          <CustomCodeEditor
-                            onCodeChange={(updatedFiles) => {
-                              setProjectFiles(updatedFiles);
-                              setGeneratedCode(JSON.stringify(updatedFiles, null, 2));
-                            }}
-                          />
+                          <SandpackCustomCodeEditor onCodeChange={handleCodeChange} />
                         </SandpackLayout>
                       </SandpackProvider>
                     </TabsContent>

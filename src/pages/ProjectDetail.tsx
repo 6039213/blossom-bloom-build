@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
@@ -28,12 +27,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   SandpackProvider, 
   SandpackLayout, 
-  SandpackCodeEditor, 
   SandpackPreview,
   SandpackFileExplorer,
-  useActiveCode,
-  FileTabs,
-  useSandpack
 } from '@codesandbox/sandpack-react';
 import { 
   AlertDialog,
@@ -46,6 +41,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
 
 // File structure types
 interface ProjectFile {
@@ -69,43 +65,6 @@ $box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 $transition-duration: 0.15s;
 `;
 
-// Custom code editor component that handles code updates
-const CustomCodeEditor = ({ onCodeChange }: { onCodeChange: (files: any) => void }) => {
-  const { sandpack } = useSandpack();
-  const { code } = useActiveCode();
-  
-  // Update parent component when code changes
-  useEffect(() => {
-    if (!sandpack.sandpackClient) return;
-    
-    const unsubscribeClient = sandpack.sandpackClient.listen((message: any) => {
-      if (message.type === 'file-update') {
-        // Get the current files with their updated content
-        const currentFiles = Object.entries(sandpack.files).reduce((acc, [path, file]) => {
-          return {
-            ...acc,
-            [path]: { code: file.code || '' }
-          };
-        }, {});
-        
-        onCodeChange(currentFiles);
-      }
-    });
-    
-    return () => unsubscribeClient();
-  }, [sandpack, onCodeChange]);
-  
-  return (
-    <div className="flex flex-col h-full">
-      <FileTabs />
-      <SandpackCodeEditor 
-        showLineNumbers={true}
-        readOnly={false}
-      />
-    </div>
-  );
-};
-
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -118,6 +77,7 @@ export default function ProjectDetail() {
   const [activeTab, setActiveTab] = useState('preview');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewportSize, setViewportSize] = useState('desktop');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Get default dependencies based on the generated files
   const getProjectDependencies = (files: ProjectFiles) => {
@@ -247,6 +207,10 @@ export default function ProjectDetail() {
       console.error("Error deleting project:", error);
       toast.error("Failed to delete project");
     }
+  };
+
+  const handleCodeChange = (updatedFiles: ProjectFiles) => {
+    setProjectFiles(updatedFiles);
   };
   
   const handleCopyCode = () => {
@@ -460,12 +424,21 @@ export default function ProjectDetail() {
                         customSetup={{
                           dependencies: getProjectDependencies(projectFiles),
                         }}
+                        options={{
+                          showNavigator: true,
+                          showTabs: false,
+                          showLineNumbers: true,
+                          classes: {
+                            'sp-layout': 'h-full',
+                            'sp-preview': 'h-full',
+                          }
+                        }}
                       >
-                        <SandpackLayout>
+                        <SandpackLayout className="h-full">
                           <SandpackPreview
                             showRefreshButton
                             showNavigator
-                            className="flex-grow"
+                            className="flex-grow h-full"
                           />
                         </SandpackLayout>
                       </SandpackProvider>
@@ -480,13 +453,9 @@ export default function ProjectDetail() {
                         dependencies: getProjectDependencies(projectFiles),
                       }}
                     >
-                      <SandpackLayout>
-                        <SandpackFileExplorer />
-                        <CustomCodeEditor
-                          onCodeChange={(updatedFiles) => {
-                            setProjectFiles(updatedFiles);
-                          }}
-                        />
+                      <SandpackLayout className="h-full">
+                        <SandpackFileExplorer className="min-w-[200px]" />
+                        <SandpackCustomCodeEditor onCodeChange={handleCodeChange} />
                       </SandpackLayout>
                     </SandpackProvider>
                   </TabsContent>
