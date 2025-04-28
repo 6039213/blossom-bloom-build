@@ -25,6 +25,7 @@ export default function SandpackCustomCodeEditor({ onCodeChange }: CustomCodeEdi
     // Check if clients array exists and has at least one client
     if (!sandpack.clients || sandpack.clients.length === 0) return;
     
+    // Access the first client
     const client = sandpack.clients[0];
     
     const unsubscribe = client.listen((message: any) => {
