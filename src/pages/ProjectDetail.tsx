@@ -18,6 +18,10 @@ import {
   ArrowLeft,
   Save,
   Trash2,
+  ExternalLink,
+  Smartphone,
+  Tablet,
+  Monitor,
 } from 'lucide-react';
 import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,6 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 // File structure types
 interface ProjectFile {
@@ -47,6 +52,19 @@ interface ProjectFile {
 interface ProjectFiles {
   [filePath: string]: ProjectFile;
 }
+
+// Default SCSS variable definitions to avoid errors
+const defaultScssVariables = `
+$primary-color: #f59e0b;
+$secondary-color: #3b82f6;
+$text-color: #374151;
+$background-color: #ffffff;
+$accent-color: #10b981;
+$font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+$border-radius: 0.375rem;
+$box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+$transition-duration: 0.15s;
+`;
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -59,6 +77,7 @@ export default function ProjectDetail() {
   const [projectData, setProjectData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('preview');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [viewportSize, setViewportSize] = useState('desktop');
   
   // Get default dependencies based on the generated files
   const getProjectDependencies = (files: ProjectFiles) => {
@@ -85,6 +104,30 @@ export default function ProjectDetail() {
     
     return dependencies;
   };
+
+  // Add default SCSS variables to all SCSS files to prevent undefined variable errors
+  const addDefaultScssVariables = (files: ProjectFiles): ProjectFiles => {
+    const updatedFiles = { ...files };
+    
+    // Add a global SCSS variables file if it doesn't exist
+    if (!Object.keys(updatedFiles).some(path => path.includes('variables.scss'))) {
+      updatedFiles['/src/styles/variables.scss'] = { code: defaultScssVariables };
+    }
+
+    // Add import for variables in all SCSS files
+    Object.keys(updatedFiles).forEach(filePath => {
+      if (filePath.endsWith('.scss') || filePath.endsWith('.sass')) {
+        // Don't modify the variables file itself
+        if (!filePath.includes('variables.scss')) {
+          updatedFiles[filePath] = { 
+            code: `@import '../styles/variables.scss';\n\n${updatedFiles[filePath].code}` 
+          };
+        }
+      }
+    });
+    
+    return updatedFiles;
+  };
   
   useEffect(() => {
     const loadProject = async () => {
@@ -106,7 +149,9 @@ export default function ProjectDetail() {
         if (project.code) {
           try {
             const parsedFiles = JSON.parse(project.code);
-            setProjectFiles(parsedFiles);
+            // Apply the SCSS variable fix
+            const fixedFiles = addDefaultScssVariables(parsedFiles);
+            setProjectFiles(fixedFiles);
           } catch (error) {
             console.error("Failed to parse project code:", error);
             toast.error("Failed to load project code");
@@ -133,6 +178,7 @@ export default function ProjectDetail() {
     try {
       await updateProject(projectData.id, {
         code: JSON.stringify(projectFiles),
+        status: projectData.status as ProjectStatus,
       });
       
       toast.success("Project saved successfully");
@@ -171,6 +217,63 @@ export default function ProjectDetail() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success("Code downloaded successfully");
+  };
+
+  // Function to open preview in a new tab
+  const handleOpenInNewTab = () => {
+    // Create a simple HTML page with sandpack embedded
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${projectData?.title || 'Project Preview'}</title>
+        <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+        <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+        <style>
+          body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
+          iframe { width: 100%; height: 100%; border: none; }
+        </style>
+      </head>
+      <body>
+        <div id="sandbox-container"></div>
+        <script type="module">
+          // This is just a simple preview, your actual app would load here
+          const iframe = document.createElement('iframe');
+          iframe.style.width = '100%';
+          iframe.style.height = '100%';
+          iframe.style.border = 'none';
+          document.getElementById('sandbox-container').appendChild(iframe);
+          
+          // Create a simple preview doc
+          const doc = iframe.contentDocument || iframe.contentWindow.document;
+          doc.open();
+          doc.write('<html><head><title>Preview</title><style>body{margin:0;padding:20px;font-family:sans-serif;}</style></head><body><h1>Preview Mode</h1><p>This is a preview of your project: ${projectData?.title || 'Untitled Project'}</p></body></html>');
+          doc.close();
+        </script>
+      </body>
+      </html>
+    `;
+
+    // Create a blob and open it in a new tab
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    URL.revokeObjectURL(url);
+  };
+  
+  // Get viewport size classes for the preview
+  const getViewportClasses = () => {
+    switch(viewportSize) {
+      case 'mobile':
+        return 'w-[320px] mx-auto border border-border rounded-lg shadow-lg';
+      case 'tablet':
+        return 'w-[768px] mx-auto border border-border rounded-lg shadow-lg';
+      case 'desktop':
+      default:
+        return 'w-full';
+    }
   };
   
   if (isLoading) {
@@ -248,18 +351,44 @@ export default function ProjectDetail() {
                 className="w-full h-full flex flex-col"
               >
                 <div className="flex items-center justify-between w-full mb-4">
-                  <TabsList>
-                    <TabsTrigger value="preview" className="flex items-center">
-                      <Eye className="h-4 w-4 mr-2" />
-                      Preview
-                    </TabsTrigger>
-                    <TabsTrigger value="code" className="flex items-center">
-                      <Code className="h-4 w-4 mr-2" />
-                      Code
-                    </TabsTrigger>
-                  </TabsList>
+                  <div className="flex items-center gap-4">
+                    <TabsList>
+                      <TabsTrigger value="preview" className="flex items-center">
+                        <Eye className="h-4 w-4 mr-2" />
+                        Preview
+                      </TabsTrigger>
+                      <TabsTrigger value="code" className="flex items-center">
+                        <Code className="h-4 w-4 mr-2" />
+                        Code
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    {activeTab === 'preview' && (
+                      <ToggleGroup type="single" value={viewportSize} onValueChange={(value) => value && setViewportSize(value)}>
+                        <ToggleGroupItem value="mobile" aria-label="Mobile view">
+                          <Smartphone className="h-4 w-4" />
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="tablet" aria-label="Tablet view">
+                          <Tablet className="h-4 w-4" />
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="desktop" aria-label="Desktop view">
+                          <Monitor className="h-4 w-4" />
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                    )}
+                  </div>
                   
                   <div className="flex space-x-2">
+                    {activeTab === 'preview' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleOpenInNewTab}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Open in New Tab
+                      </Button>
+                    )}
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -281,7 +410,7 @@ export default function ProjectDetail() {
                 
                 <div className="flex-1 overflow-hidden border border-border rounded-lg">
                   <TabsContent value="preview" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col">
-                    <div className="h-full w-full overflow-auto">
+                    <div className={`h-full overflow-auto transition-all duration-300 ${getViewportClasses()}`}>
                       <SandpackProvider
                         template="react-ts"
                         theme="auto"
@@ -308,6 +437,7 @@ export default function ProjectDetail() {
                           <SandpackPreview
                             showRefreshButton
                             showNavigator
+                            className="flex-grow"
                           />
                         </SandpackLayout>
                       </SandpackProvider>
