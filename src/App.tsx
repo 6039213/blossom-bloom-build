@@ -1,59 +1,56 @@
 
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import HeroSection from './components/HeroSection';
-import FeaturesSection from './components/FeaturesSection';
-import HowItWorks from './components/HowItWorks';
-import TestimonialSection from './components/TestimonialSection';
-import CTASection from './components/CTASection';
-import Footer from './components/layout/Footer';
-import MainNavbar from './components/layout/MainNavbar';
-import PricingPage from './components/pricing/PricingPage';
-import { AuthProvider } from './contexts/AuthContext';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Layout from "@/components/Layout";
+import Index from "@/pages/Index";
+import AboutPage from "@/pages/AboutPage";
+import FeaturesPage from "@/pages/FeaturesPage";
+import PricingPage from "@/components/pricing/PricingPage";
+import AuthPage from "@/pages/AuthPage";
+import Dashboard from "@/pages/Dashboard";
+import ProjectsPage from "@/pages/ProjectsPage";
+import SettingsPage from "@/pages/SettingsPage";
+import AIBuilder from "@/pages/AIBuilder";
+import ProjectDetail from "@/pages/ProjectDetail";
+import NotFound from "@/pages/NotFound";
+import TeamPage from "@/pages/TeamPage";
+import TemplatesPage from "@/pages/TemplatesPage";
+import HelpPage from "@/pages/HelpPage";
+import { OnboardingProvider } from "@/contexts/OnboardingContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
+import "./App.css";
 
-// Import the page components
-import Index from './pages/Index';
-import FeaturesPage from './pages/FeaturesPage';
-import AboutPage from './pages/AboutPage';
-import TemplatesPage from './pages/TemplatesPage';
-import ProjectsPage from './pages/ProjectsPage';
-import TeamPage from './pages/TeamPage';
-import NotFound from './pages/NotFound';
-import Dashboard from './pages/Dashboard';
-import BoltBuilder from './pages/BoltBuilder';
-import AuthPage from './pages/AuthPage';
-import ProjectDetail from './pages/ProjectDetail';
-import SettingsPage from './pages/SettingsPage';
-import HelpPage from './pages/HelpPage';
-
-export default function App() {
+function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Main public routes */}
-          <Route path="/" element={<Index />} />
-          <Route path="/features" element={<FeaturesPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/templates" element={<TemplatesPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          
-          {/* Auth routes */}
-          <Route path="/auth" element={<AuthPage />} />
-          
-          {/* Dashboard routes */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/projects" element={<ProjectsPage />} />
-          <Route path="/dashboard/projects/:projectId" element={<ProjectDetail />} />
-          <Route path="/dashboard/ai-builder" element={<BoltBuilder />} />
-          <Route path="/dashboard/team" element={<TeamPage />} />
-          <Route path="/dashboard/settings" element={<SettingsPage />} />
-          <Route path="/dashboard/help" element={<HelpPage />} />
-          
-          {/* Catch-all route for 404 errors */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <OnboardingProvider>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/features" element={<FeaturesPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/team" element={<TeamPage />} />
+              <Route path="/templates" element={<TemplatesPage />} />
+              <Route path="/help" element={<HelpPage />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard/projects" element={<ProjectsPage />} />
+              <Route path="/dashboard/projects/:id" element={<ProjectDetail />} />
+              <Route path="/dashboard/ai-builder" element={<AIBuilder />} />
+              <Route path="/dashboard/settings" element={<SettingsPage />} />
+              <Route path="/404" element={<NotFound />} />
+              <Route path="*" element={<Navigate to="/404" replace />} />
+            </Routes>
+          </Layout>
+          <Toaster />
+          <SonnerToaster position="top-right" closeButton />
+        </OnboardingProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
+
+export default App;

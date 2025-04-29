@@ -1,144 +1,194 @@
 
-import { create } from "zustand";
+import { create } from 'zustand';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export type ProjectStatus = 'draft' | 'published' | 'archived';
 
 export interface Project {
   id: string;
   title: string;
-  description?: string;
+  description: string;
   status: ProjectStatus;
   code?: string;
   thumbnail?: string;
   created_at: string;
   updated_at: string;
+  user_id: string;
 }
 
-type Template = { 
-  slug: string; 
-  name: string; 
-  html: string 
-};
+export interface NewProject {
+  title: string;
+  description: string;
+  code?: string;
+  status: ProjectStatus;
+  thumbnail?: string;
+}
 
 interface ProjectStore {
-  previewHtml: string;
-  templates: Template[];
   projects: Project[];
   isLoading: boolean;
-  setPreviewHtml: (html: string) => void;
-  openProject: (slug: string) => void;
-  
-  // Project management functions
+  error: string | null;
   fetchProjects: () => Promise<void>;
-  getProject: (id: string) => Promise<Project | undefined>;
-  createProject: (project: Omit<Project, 'id' | 'created_at' | 'updated_at'>) => Promise<Project>;
-  updateProject: (id: string, updates: Partial<Project>) => Promise<Project>;
+  getProject: (id: string) => Promise<Project | null>;
+  createProject: (project: NewProject) => Promise<Project>;
+  updateProject: (id: string, updates: Partial<NewProject>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
+  setError: (error: string | null) => void;
 }
 
 export const useProjectStore = create<ProjectStore>((set, get) => ({
-  previewHtml: "",
-  templates: [
-    { slug: "portfolio", name: "Portfolio", html: "<h1 class='text-4xl'>Portfolio starter</h1>" },
-    { slug: "saas", name: "SaaS Landing", html: "<h1 class='text-4xl'>SaaS starter</h1>" }
-  ],
   projects: [],
   isLoading: false,
+  error: null,
   
-  setPreviewHtml: (html: string) => set({ previewHtml: html }),
-  
-  openProject: (slug: string) =>
-    set(state => ({ 
-      previewHtml: state.templates.find(t => t.slug === slug)?.html || "" 
-    })),
-    
-  // Mock implementations for project management functions
   fetchProjects: async () => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     try {
-      // In a real app, this would be an API call
-      // Simulating a delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const { data: projects, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('updated_at', { ascending: false });
+        
+      if (error) throw error;
       
-      // Mock project data
-      const mockProjects: Project[] = [
-        {
-          id: '1',
-          title: 'Portfolio Website',
-          description: 'My professional portfolio site',
-          status: 'published',
-          thumbnail: '/placeholder.svg',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: '2',
-          title: 'SaaS Landing Page',
-          description: 'Landing page for my new SaaS product',
-          status: 'draft',
-          thumbnail: '/placeholder.svg',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ];
+      // Cast the projects to ensure they match the ProjectStatus type
+      const typedProjects: Project[] = projects?.map(project => ({
+        ...project,
+        status: project.status as ProjectStatus
+      })) || [];
       
-      set({ projects: mockProjects });
-    } catch (error) {
+      set({ projects: typedProjects, isLoading: false });
+    } catch (error: any) {
       console.error('Error fetching projects:', error);
-    } finally {
-      set({ isLoading: false });
+      set({ error: error.message, isLoading: false });
+      toast.error('Failed to fetch projects');
     }
   },
   
   getProject: async (id: string) => {
-    const { projects } = get();
-    return projects.find(project => project.id === id);
-  },
-  
-  createProject: async (projectData) => {
-    const newProject: Project = {
-      id: Math.random().toString(36).substring(2, 9), // Generate a random ID
-      ...projectData,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    set(state => ({ 
-      projects: [...state.projects, newProject] 
-    }));
-    
-    return newProject;
-  },
-  
-  updateProject: async (id: string, updates: Partial<Project>) => {
-    let updatedProject: Project | undefined;
-    
-    set(state => {
-      const updatedProjects = state.projects.map(project => {
-        if (project.id === id) {
-          updatedProject = {
-            ...project,
-            ...updates,
-            updated_at: new Date().toISOString()
-          };
-          return updatedProject;
-        }
-        return project;
-      });
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', id)
+        .single();
+        
+      if (error) throw error;
       
-      return { projects: updatedProjects };
-    });
-    
-    if (!updatedProject) {
-      throw new Error(`Project with id ${id} not found`);
+      // Cast the project to ensure it matches the ProjectStatus type
+      return data ? {
+        ...data,
+        status: data.status as ProjectStatus
+      } : null;
+    } catch (error: any) {
+      console.error('Error fetching project:', error);
+      set({ error: error.message });
+      toast.error('Failed to fetch project');
+      return null;
     }
-    
-    return updatedProject;
+  },
+  
+  createProject: async (project: NewProject) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('You must be logged in to create a project');
+      }
+      
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          ...project,
+          user_id: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Cast the project to ensure it matches the ProjectStatus type
+      const typedProject: Project = {
+        ...data,
+        status: data.status as ProjectStatus
+      };
+      
+      // Update the local state
+      set(state => ({
+        projects: [typedProject, ...state.projects],
+        isLoading: false
+      }));
+      
+      return typedProject;
+    } catch (error: any) {
+      console.error('Error creating project:', error);
+      set({ error: error.message, isLoading: false });
+      toast.error('Failed to create project');
+      throw error;
+    }
+  },
+  
+  updateProject: async (id: string, updates: Partial<NewProject>) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      // Update the local state
+      set(state => ({
+        projects: state.projects.map(p => 
+          p.id === id ? { 
+            ...p, 
+            ...updates, 
+            updated_at: new Date().toISOString() 
+          } : p
+        ),
+        isLoading: false
+      }));
+      
+      toast.success('Project updated');
+    } catch (error: any) {
+      console.error('Error updating project:', error);
+      set({ error: error.message, isLoading: false });
+      toast.error('Failed to update project');
+    }
   },
   
   deleteProject: async (id: string) => {
-    set(state => ({
-      projects: state.projects.filter(project => project.id !== id)
-    }));
-  }
+    set({ isLoading: true, error: null });
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      // Update the local state
+      set(state => ({
+        projects: state.projects.filter(p => p.id !== id),
+        isLoading: false
+      }));
+      
+      toast.success('Project deleted');
+    } catch (error: any) {
+      console.error('Error deleting project:', error);
+      set({ error: error.message, isLoading: false });
+      toast.error('Failed to delete project');
+    }
+  },
+  
+  setError: (error) => set({ error }),
 }));
