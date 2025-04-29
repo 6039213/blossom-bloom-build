@@ -24,6 +24,7 @@ import { useProjectStore } from '@/stores/projectStore';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
+import { simulateTyping } from '@/utils/typingAnimation';
 
 // File system types
 interface SimulatedFile {
@@ -488,31 +489,33 @@ export default function ${componentName}() {
                 </Tabs>
               </div>
               <div className="flex-1 overflow-auto">
-                <TabsContent value="editor" className="m-0 p-0 h-full">
-                  {selectedFile ? (
-                    <pre className={`h-full m-0 p-4 font-mono text-sm overflow-auto ${getSyntaxHighlightClass(selectedFile.type)}`}>
-                      <code>{typingContent || selectedFile.content}</code>
-                    </pre>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                      No file selected
-                    </div>
-                  )}
-                </TabsContent>
-                <TabsContent value="preview" className="m-0 p-0 h-full">
-                  {previewHtml ? (
-                    <iframe 
-                      srcDoc={previewHtml}
-                      title="Preview" 
-                      className="w-full h-full border-0"
-                      sandbox="allow-scripts"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                      No preview available
-                    </div>
-                  )}
-                </TabsContent>
+                <Tabs value={activeTab} className="h-full">
+                  <TabsContent value="editor" className="m-0 p-0 h-full">
+                    {selectedFile ? (
+                      <pre className={`h-full m-0 p-4 font-mono text-sm overflow-auto ${getSyntaxHighlightClass(selectedFile.type)}`}>
+                        <code>{typingContent || selectedFile.content}</code>
+                      </pre>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        No file selected
+                      </div>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="preview" className="m-0 p-0 h-full">
+                    {previewHtml ? (
+                      <iframe 
+                        srcDoc={previewHtml}
+                        title="Preview" 
+                        className="w-full h-full border-0"
+                        sandbox="allow-scripts"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        No preview available
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </div>
             </div>
             
