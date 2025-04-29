@@ -46,10 +46,9 @@ export interface DiffResult {
 }
 
 // Extension of ChatMessage for internal use
-export interface InternalChatMessage {
+export interface InternalChatMessage extends ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   id: string;
-  createdAt?: Date;
+  createdAt: Date;
 }
-

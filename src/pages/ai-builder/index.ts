@@ -8,6 +8,9 @@ import * as Types from '@/components/dashboard/ai-builder/types';
 import * as Utils from '@/components/dashboard/ai-builder/utils';
 import WebContainerService from '@/components/dashboard/ai-builder/WebContainerService';
 
+// Re-export the InternalChatMessage interface directly
+export type { InternalChatMessage } from '@/components/dashboard/ai-builder/types';
+
 export {
   CodeGenerator,
   CodePreview,
