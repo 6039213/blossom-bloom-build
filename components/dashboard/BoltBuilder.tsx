@@ -82,6 +82,8 @@ export function BoltBuilder() {
     } catch (error) {
       console.error("Error generating code:", error);
       toast.error("Failed to generate code. Please try again.");
+    } finally {
+      setIsGenerating(false);
     }
   };
   
