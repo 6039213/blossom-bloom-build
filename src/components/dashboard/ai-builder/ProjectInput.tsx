@@ -19,6 +19,8 @@ interface ProjectInputProps {
   onSaveCode: () => void;
   showSaveButton: boolean;
   onReportError: (error: Error) => void;
+  onSnapshot: () => void;
+  onRevert: () => void;
 }
 
 export default function ProjectInput({
@@ -33,7 +35,9 @@ export default function ProjectInput({
   isGenerating,
   onSaveCode,
   showSaveButton,
-  onReportError
+  onReportError,
+  onSnapshot,
+  onRevert
 }: ProjectInputProps) {
   return (
     <div className="p-4 border-t border-border">
@@ -70,6 +74,18 @@ export default function ProjectInput({
       
       {errorMessage && (
         <ErrorMessage errorMessage={errorMessage} onDismiss={onDismissError} />
+      )}
+      
+      {/* Added Snapshot and Revert buttons if needed */}
+      {showSaveButton && (
+        <div className="mt-2 flex gap-2">
+          <Button variant="outline" size="sm" onClick={onSnapshot}>
+            Create Snapshot
+          </Button>
+          <Button variant="outline" size="sm" onClick={onRevert}>
+            Revert to Snapshot
+          </Button>
+        </div>
       )}
     </div>
   );

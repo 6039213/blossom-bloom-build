@@ -23,6 +23,12 @@ export default function WebContainerService({ onTerminalData, onReady }: WebCont
         applyDiff: async (diff: string) => {
           console.log('Applying diff:', diff);
           // Mock implementation
+          if (onTerminalData) {
+            onTerminalData('> Applying changes...\n');
+            setTimeout(() => {
+              onTerminalData('> Changes applied successfully.\n');
+            }, 500);
+          }
           return Promise.resolve();
         },
         
@@ -30,13 +36,13 @@ export default function WebContainerService({ onTerminalData, onReady }: WebCont
           console.log('Installing and restarting for changed files:', filesChanged);
           // Mock implementation
           if (onTerminalData) {
-            onTerminalData('Installing dependencies...\n');
+            onTerminalData('> Installing dependencies...\n');
             setTimeout(() => {
-              onTerminalData('Dependencies installed successfully.\n');
-              onTerminalData('Restarting development server...\n');
+              onTerminalData('> Dependencies installed successfully.\n');
+              onTerminalData('> Restarting development server...\n');
             }, 1000);
             setTimeout(() => {
-              onTerminalData('Server restarted successfully!\n');
+              onTerminalData('> Server restarted successfully!\n');
               onTerminalData('✓ Ready on http://localhost:3000\n');
             }, 2000);
           }
@@ -46,28 +52,48 @@ export default function WebContainerService({ onTerminalData, onReady }: WebCont
         snapshot: async () => {
           console.log('Creating snapshot');
           // Mock implementation
+          if (onTerminalData) {
+            onTerminalData('> Creating snapshot of current state...\n');
+            setTimeout(() => {
+              onTerminalData('> Snapshot created successfully.\n');
+            }, 500);
+          }
           return Promise.resolve();
         },
         
         revert: async () => {
           console.log('Reverting to snapshot');
           // Mock implementation
+          if (onTerminalData) {
+            onTerminalData('> Reverting to previous snapshot...\n');
+            setTimeout(() => {
+              onTerminalData('> Successfully reverted to previous snapshot.\n');
+              onTerminalData('> Restarting development server...\n');
+            }, 500);
+            setTimeout(() => {
+              onTerminalData('> Server restarted successfully!\n');
+              onTerminalData('✓ Ready on http://localhost:3000\n');
+            }, 1500);
+          }
           return Promise.resolve();
         },
         
         packZip: async () => {
           console.log('Packing ZIP');
           // Mock implementation - return an empty blob
+          if (onTerminalData) {
+            onTerminalData('> Creating ZIP archive of project...\n');
+            setTimeout(() => {
+              onTerminalData('> ZIP archive created successfully.\n');
+            }, 1000);
+          }
           return new Blob(['mock data'], { type: 'application/zip' });
         },
         
         onTerminalData: (callback: (data: string) => void) => {
           // Mock implementation
-          const interval = setInterval(() => {
-            callback('Terminal data: ' + new Date().toISOString() + '\n');
-          }, 5000);
-          
-          return () => clearInterval(interval);
+          // Return a function to unsubscribe from terminal data
+          return () => { /* Clean up code here */ };
         }
       };
       

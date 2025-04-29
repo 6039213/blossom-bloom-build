@@ -44,3 +44,12 @@ export interface DiffResult {
   changes: FileChange[];
   requiresInstall: boolean;
 }
+
+// Extension of ChatMessage for internal use
+export interface InternalChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  id: string;
+  createdAt?: Date;
+}
+

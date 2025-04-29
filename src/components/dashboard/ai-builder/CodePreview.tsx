@@ -22,6 +22,7 @@ interface CodePreviewProps {
   onReset: () => void;
   onSave: () => void;
   onOpenInNewTab: () => void;
+  terminalOutput?: string;
 }
 
 export default function CodePreview({
@@ -37,7 +38,8 @@ export default function CodePreview({
   onDownload,
   onReset,
   onSave,
-  onOpenInNewTab
+  onOpenInNewTab,
+  terminalOutput
 }: CodePreviewProps) {
   const getViewportClasses = () => {
     switch(viewportSize) {
@@ -117,6 +119,19 @@ export default function CodePreview({
               </SandpackLayout>
             </SandpackProvider>
           </TabsContent>
+          
+          {/* Terminal Output Section */}
+          {terminalOutput && activeTab === 'code' && (
+            <div className="p-2 bg-gray-900 text-gray-300 font-mono text-xs">
+              <div className="mb-2 text-gray-500 flex items-center">
+                <span>Terminal Output</span>
+                <div className="flex-1 ml-2 border-t border-gray-700" />
+              </div>
+              <pre className="whitespace-pre-wrap max-h-40 overflow-y-auto">
+                {terminalOutput}
+              </pre>
+            </div>
+          )}
         </div>
       </Tabs>
     </div>

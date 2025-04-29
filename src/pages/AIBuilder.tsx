@@ -14,7 +14,8 @@ import {
   ErrorMessage,
   ProjectInput,
   WebContainerService,
-  Types
+  Types,
+  InternalChatMessage
 } from './ai-builder';
 import { findMainFile } from '@/components/dashboard/ai-builder/utils';
 import { geminiProvider } from '@/lib/providers/gemini';
@@ -72,11 +73,16 @@ export default function AIBuilder() {
     const messageId = uuidv4();
     setCurrentMessageId(messageId);
     
+    // Create new chat messages with createdAt property
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: prompt,
+      id: uuidv4(),
+      createdAt: new Date()
+    };
+    
     // Add user message to chat
-    setChatMessages(prev => [
-      ...prev,
-      { role: 'user', content: prompt, id: uuidv4() }
-    ]);
+    setChatMessages(prev => [...prev, userMessage]);
     
     // Reset streaming message
     setStreamingMessage('');
@@ -106,12 +112,16 @@ export default function AIBuilder() {
         },
       });
       
+      // Create assistant message with createdAt property
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: streamingMessage,
+        id: messageId,
+        createdAt: new Date()
+      };
+      
       // Add AI response to chat
-      setChatMessages(prev => [
-        ...prev,
-        { role: 'user', content: prompt, id: uuidv4() },
-        { role: 'assistant', content: streamingMessage, id: messageId }
-      ]);
+      setChatMessages(prev => [...prev, assistantMessage]);
       
       // Parse code blocks from response
       const parsedFiles = parseCodeBlocks(streamingMessage);
