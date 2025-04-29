@@ -31,7 +31,7 @@ export async function* geminiStream(
   };
   
   // Create the stream - fixed format to match API
-  // Using the proper format for GenerateContentRequest
+  // Using the proper format for GenerateContentRequest with role
   const result = await model.generateContentStream({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig
