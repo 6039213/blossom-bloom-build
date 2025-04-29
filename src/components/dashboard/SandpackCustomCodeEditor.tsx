@@ -21,19 +21,15 @@ interface CustomCodeEditorProps {
 export default function SandpackCustomCodeEditor({ onCodeChange }: CustomCodeEditorProps) {
   const { sandpack } = useSandpack();
   
-  // Update parent component when code changes
   useEffect(() => {
-    // No sandpack.clients means no editor is ready yet
-    if (!sandpack.clients || !(sandpack.clients instanceof Array) || sandpack.clients.length === 0) return;
+    // Check if clients property exists and is an array with at least one client
+    if (!sandpack.clients || !Array.isArray(sandpack.clients) || sandpack.clients.length === 0) return;
     
-    // Use the first client to listen for changes
+    // Access the first client
     const client = sandpack.clients[0];
     
-    // Subscribe to file changes
     const unsubscribe = client.listen((message: any) => {
-      // Check if the message is a file update by checking its type property
       if (message.type === "fs/update") {
-        // Get the current files with their updated content
         const currentFiles = Object.entries(sandpack.files).reduce((acc, [path, file]) => {
           return {
             ...acc,
@@ -51,12 +47,17 @@ export default function SandpackCustomCodeEditor({ onCodeChange }: CustomCodeEdi
   }, [sandpack, onCodeChange]);
   
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       <FileTabs />
-      <SandpackCodeEditor 
-        showLineNumbers={true}
-        readOnly={false}
-      />
+      <div className="flex-1 overflow-auto">
+        <SandpackCodeEditor 
+          showLineNumbers={true}
+          showTabs={false}
+          readOnly={false}
+          wrapContent
+          className="h-full"
+        />
+      </div>
     </div>
   );
 }
