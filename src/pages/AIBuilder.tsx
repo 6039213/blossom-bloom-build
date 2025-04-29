@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIPromptInput from '@/components/dashboard/AIPromptInput';
@@ -5,6 +6,7 @@ import AIResponseDisplay, { ChatMessage } from '@/components/dashboard/AIRespons
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { MODEL_LIST, DEFAULT_MODEL } from '@/lib/constants';
+import { geminiProvider } from '@/lib/providers/gemini';
 import {
   Tabs,
   TabsContent,
