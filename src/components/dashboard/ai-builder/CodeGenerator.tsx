@@ -130,22 +130,27 @@ export default function CodeGenerator({
       };
       
       // Process the gemini stream with WebContainer integration
-      for await (const chunk of geminiStream(prompt, addToken)) {
-        if (chunk.diff) {
-          try {
-            await applyDiff(chunk.diff);
-          } catch (error) {
-            console.error("Error applying diff:", error);
+      try {
+        for await (const chunk of geminiStream(prompt, addToken)) {
+          if (chunk.diff) {
+            try {
+              await applyDiff(chunk.diff);
+            } catch (error) {
+              console.error("Error applying diff:", error);
+            }
+          }
+          
+          if (chunk.done && chunk.filesChanged && chunk.filesChanged.length > 0) {
+            try {
+              await installAndRestartIfNeeded(chunk.filesChanged);
+            } catch (error) {
+              console.error("Error installing dependencies:", error);
+            }
           }
         }
-        
-        if (chunk.done && chunk.filesChanged && chunk.filesChanged.length > 0) {
-          try {
-            await installAndRestartIfNeeded(chunk.filesChanged);
-          } catch (error) {
-            console.error("Error installing dependencies:", error);
-          }
-        }
+      } catch (error) {
+        console.error("Error processing gemini stream:", error);
+        throw error;
       }
       
       // Use the existing parseProjectFiles function to extract files from the AI response

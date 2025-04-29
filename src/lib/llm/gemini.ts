@@ -22,16 +22,25 @@ export async function* geminiStream(
   // Get the model - specifically use gemini-2.5-flash-preview
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview' });
   
-  // Generate content stream
-  const stream = await model.generateContentStream([
-    { role: 'user', parts: [{ text: prompt }] }
-  ]);
+  // Generate content stream - using the correct format for content generation
+  const generationConfig = {
+    temperature: 0.7,
+    topP: 1,
+    topK: 40,
+    maxOutputTokens: 2048,
+  };
+  
+  // Create the stream - fixed format to match API
+  const result = await model.generateContentStream({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig
+  });
   
   let diff = '';
   const filesChanged: string[] = [];
   
   // Process each chunk from the stream
-  for await (const chunk of stream) {
+  for await (const chunk of result.stream) {
     const text = chunk.text();
     onToken(text);
     diff += text;
