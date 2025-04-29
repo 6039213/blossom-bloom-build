@@ -45,10 +45,16 @@ export interface DiffResult {
   requiresInstall: boolean;
 }
 
-// Extension of ChatMessage for internal use
-export interface InternalChatMessage extends ChatMessage {
+// Instead of extending ChatMessage, create a separate interface
+// that includes all the properties we need
+export interface InternalChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   id: string;
   createdAt: Date;
+  isStreaming?: boolean;
+  codeFiles?: {
+    path: string;
+    content: string;
+  }[];
 }
