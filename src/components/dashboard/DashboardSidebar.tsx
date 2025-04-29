@@ -18,17 +18,32 @@ import {
 import { APP_NAME } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
+// Shared context for sidebar state
+import { create } from 'zustand';
+
+interface SidebarStore {
+  isExpanded: boolean;
+  setExpanded: (expanded: boolean) => void;
+  toggleExpanded: () => void;
+}
+
+export const useSidebarStore = create<SidebarStore>((set) => ({
+  isExpanded: false,
+  setExpanded: (expanded) => set({ isExpanded: expanded }),
+  toggleExpanded: () => set((state) => ({ isExpanded: !state.isExpanded })),
+}));
+
 export default function DashboardSidebar() {
   const location = useLocation();
   const supabase = getSupabaseClient();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const { isExpanded, toggleExpanded, setExpanded } = useSidebarStore();
   const [isHovering, setIsHovering] = useState(false);
   
   // Automatically collapse on mobile screens
   useEffect(() => {
     const checkScreenSize = () => {
       if (window.innerWidth < 768) {
-        setIsExpanded(false);
+        setExpanded(false);
       }
     };
     
@@ -40,7 +55,7 @@ export default function DashboardSidebar() {
     
     // Remove event listener on cleanup
     return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
+  }, [setExpanded]);
   
   const handleSignOut = async () => {
     try {
@@ -134,7 +149,7 @@ export default function DashboardSidebar() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={toggleExpanded}
           className={cn("flex-shrink-0", !showExpanded && "hidden")}
         >
           {isExpanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}

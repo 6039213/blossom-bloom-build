@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { projectTemplates, ProjectTemplate } from '@/utils/projectTemplates';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,35 +23,31 @@ export default function ProjectTypeSelector({ onSelect }: ProjectTypeSelectorPro
     // Check if the icon exists in LucideIcons
     const IconComponent = (LucideIcons as any)[iconName];
     if (IconComponent && typeof IconComponent === 'function') {
-      return <IconComponent className="h-5 w-5 text-blossom-500" />;
+      return <IconComponent className="h-4 w-4 text-blossom-500" />;
     }
     // Default to Code icon if not found
-    return <Code className="h-5 w-5 text-blossom-500" />;
+    return <Code className="h-4 w-4 text-blossom-500" />;
   };
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <h3 className="text-lg font-medium mb-2">Choose a project template</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
         {Object.entries(projectTemplates).map(([type, template]) => (
-          <Card 
+          <Button 
             key={type}
+            variant={selectedType === type ? "default" : "outline"}
             className={cn(
-              "p-4 cursor-pointer hover:border-blossom-400 transition-all",
-              selectedType === type ? "border-2 border-blossom-500 bg-blossom-50 dark:bg-blossom-950/20" : ""
+              "h-auto py-2 justify-start flex-col items-center gap-1 w-full",
+              selectedType === type ? "bg-blossom-500 hover:bg-blossom-600 text-white" : "hover:bg-blossom-50 hover:text-blossom-600"
             )}
             onClick={() => handleSelect(type)}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center">
-                {renderIcon(template.icon)}
-              </div>
-              <div>
-                <h4 className="font-medium">{template.displayName}</h4>
-                <p className="text-xs text-muted-foreground">{template.description}</p>
-              </div>
+            <div className="w-8 h-8 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center">
+              {renderIcon(template.icon)}
             </div>
-          </Card>
+            <span className="text-xs font-medium">{template.displayName}</span>
+          </Button>
         ))}
       </div>
     </div>

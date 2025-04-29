@@ -14,13 +14,14 @@ interface ProjectInputProps {
   onUseTemplatePrompt: () => void;
   errorMessage: string | null;
   onDismissError: () => void;
-  onPromptSubmit: (prompt: string, model?: string) => void;
+  onPromptSubmit: (prompt: string) => void;
   isGenerating: boolean;
   onSaveCode: () => void;
   showSaveButton: boolean;
   onReportError: (error: Error) => void;
   onSnapshot: () => void;
   onRevert: () => void;
+  onFileUpload?: (file: File) => Promise<string>;
 }
 
 export default function ProjectInput({
@@ -37,12 +38,13 @@ export default function ProjectInput({
   showSaveButton,
   onReportError,
   onSnapshot,
-  onRevert
+  onRevert,
+  onFileUpload
 }: ProjectInputProps) {
   return (
     <div className="p-4 border-t border-border">
       {showTemplateSelector && (
-        <div className="mb-6">
+        <div className="mb-4">
           <ProjectTypeSelector onSelect={onTemplateSelect} />
         </div>
       )}
@@ -70,22 +72,11 @@ export default function ProjectInput({
         onSaveCode={onSaveCode}
         showSaveButton={showSaveButton}
         onReportError={onReportError}
+        onFileUpload={onFileUpload}
       />
       
       {errorMessage && (
         <ErrorMessage errorMessage={errorMessage} onDismiss={onDismissError} />
-      )}
-      
-      {/* Added Snapshot and Revert buttons if needed */}
-      {showSaveButton && (
-        <div className="mt-2 flex gap-2">
-          <Button variant="outline" size="sm" onClick={onSnapshot}>
-            Create Snapshot
-          </Button>
-          <Button variant="outline" size="sm" onClick={onRevert}>
-            Revert to Snapshot
-          </Button>
-        </div>
       )}
     </div>
   );

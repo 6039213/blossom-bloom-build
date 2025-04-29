@@ -1,18 +1,18 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Send, RefreshCw, Sparkles, Save, XCircle } from 'lucide-react';
+import { Loader2, Send, RefreshCw, Sparkles, Save, XCircle, Upload } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { GEMINI_API_KEY, MODEL_LIST, DEFAULT_MODEL } from '@/lib/constants';
-import AIModelSelector from './AIModelSelector';
+import { GEMINI_API_KEY } from '@/lib/constants';
 
 interface AIPromptInputProps {
-  onSubmit: (prompt: string, model?: string) => void;
+  onSubmit: (prompt: string) => void;
   onSaveCode?: () => void;
   isProcessing?: boolean;
   showSaveButton?: boolean;
   onReportError?: (error: Error) => void;
+  onFileUpload?: (file: File) => Promise<string>;
 }
 
 export default function AIPromptInput({
@@ -20,14 +20,15 @@ export default function AIPromptInput({
   onSaveCode,
   isProcessing = false,
   showSaveButton = false,
-  onReportError
+  onReportError,
+  onFileUpload
 }: AIPromptInputProps) {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [charCount, setCharCount] = useState(0);
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -39,10 +40,6 @@ export default function AIPromptInput({
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
-  };
-  
-  const handleModelChange = (model: string) => {
-    setSelectedModel(model);
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,8 +57,8 @@ export default function AIPromptInput({
     
     setIsLoading(true);
     try {
-      // Call the onSubmit function with the prompt and selected model
-      await onSubmit(prompt, selectedModel);
+      // Call the onSubmit function with the prompt
+      await onSubmit(prompt);
       
       // Don't clear the prompt input after successful submission
       // to maintain context for the user
@@ -100,6 +97,34 @@ export default function AIPromptInput({
       textareaRef.current.style.height = 'auto';
     }
   };
+
+  const handleFileUpload = async () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0 && onFileUpload) {
+      try {
+        const fileUrl = await onFileUpload(files[0]);
+        // Insert the file URL at cursor position or append to the end
+        if (textareaRef.current) {
+          const cursorPos = textareaRef.current.selectionStart;
+          const textBefore = prompt.substring(0, cursorPos);
+          const textAfter = prompt.substring(cursorPos);
+          const newText = `${textBefore}[File: ${fileUrl}]${textAfter}`;
+          setPrompt(newText);
+          setCharCount(newText.length);
+        }
+        toast.success("File uploaded successfully!");
+      } catch (error) {
+        toast.error("Failed to upload file");
+        console.error(error);
+      }
+    }
+  };
   
   // Character count color based on length
   const getCharCountColor = () => {
@@ -112,7 +137,12 @@ export default function AIPromptInput({
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-sm font-medium">What would you like to build?</h3>
-        <AIModelSelector selectedModel={selectedModel} onSelectModel={handleModelChange} />
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Sparkles className="h-4 w-4 text-blossom-500" />
+            <span className="text-xs font-medium">Using Gemini 2.5 Flash</span>
+          </div>
+        </div>
       </div>
       
       <div className="relative">
@@ -161,19 +191,23 @@ export default function AIPromptInput({
           <XCircle className="h-4 w-4 mr-2" />
           Clear
         </Button>
-        
-        {showSaveButton && onSaveCode && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onSaveCode}
-            disabled={isLoading || isProcessing}
-            className="flex-grow md:flex-grow-0 md:ml-auto"
-          >
-            <Save className="mr-2 h-4 w-4" />
-            Save Project
-          </Button>
-        )}
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleFileUpload}
+          disabled={isLoading || isProcessing || !onFileUpload}
+          className="flex-grow-0"
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          Upload File
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            onChange={handleFileChange}
+          />
+        </Button>
       </div>
     </form>
   );

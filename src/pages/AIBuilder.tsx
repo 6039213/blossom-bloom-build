@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -15,10 +16,22 @@ import {
   ProjectInput,
   WebContainerService,
   Types,
-  InternalChatMessage
 } from './ai-builder';
 import { findMainFile } from '@/components/dashboard/ai-builder/utils';
 import { geminiProvider } from '@/lib/providers/gemini';
+
+// Add InternalChatMessage interface
+interface InternalChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  id: string;
+  createdAt: Date;
+  isStreaming?: boolean;
+  codeFiles?: {
+    path: string;
+    content: string;
+  }[];
+}
 
 export default function AIBuilder() {
   // State variables
@@ -38,9 +51,13 @@ export default function AIBuilder() {
   const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
   const [terminalOutput, setTerminalOutput] = useState<string>('');
   const [webContainerInstance, setWebContainerInstance] = useState<Types.WebContainerInstance | null>(null);
+  const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
+  const [lastSnapshotTime, setLastSnapshotTime] = useState<Date | null>(null);
 
   // Refs
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSnapshotTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Hooks
   const { createProject } = useProjectStore();
@@ -64,6 +81,48 @@ export default function AIBuilder() {
     setWebContainerInstance(instance);
     toast.success("AI Builder is ready");
   }, []);
+
+  // Auto save functionality
+  useEffect(() => {
+    if (Object.keys(projectFiles).length > 0 && user) {
+      // Clear any existing timer
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+      
+      // Set new timer for auto save (every 5 minutes)
+      autoSaveTimerRef.current = setTimeout(() => {
+        handleSaveProject(true);
+      }, 5 * 60 * 1000); // 5 minutes
+    }
+    
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [projectFiles, user]);
+
+  // Auto snapshot functionality
+  useEffect(() => {
+    if (webContainerInstance && Object.keys(projectFiles).length > 0) {
+      // Clear any existing timer
+      if (autoSnapshotTimerRef.current) {
+        clearTimeout(autoSnapshotTimerRef.current);
+      }
+      
+      // Set new timer for auto snapshot (every 10 minutes)
+      autoSnapshotTimerRef.current = setTimeout(() => {
+        handleSnapshot(true);
+      }, 10 * 60 * 1000); // 10 minutes
+    }
+    
+    return () => {
+      if (autoSnapshotTimerRef.current) {
+        clearTimeout(autoSnapshotTimerRef.current);
+      }
+    };
+  }, [projectFiles, webContainerInstance]);
   
   // Handle prompt submission
   const handlePromptSubmit = useCallback(async (prompt: string) => {
@@ -255,15 +314,19 @@ export default function AIBuilder() {
     }
   };
 
-  const handleSaveProject = async () => {
+  const handleSaveProject = async (isAutoSave = false) => {
     if (!user) {
-      toast.error("You must be logged in to save a project");
-      navigate('/auth');
+      if (!isAutoSave) {
+        toast.error("You must be logged in to save a project");
+        navigate('/auth');
+      }
       return;
     }
 
     if (Object.keys(projectFiles).length === 0) {
-      toast.error("No project to save");
+      if (!isAutoSave) {
+        toast.error("No project to save");
+      }
       return;
     }
 
@@ -276,12 +339,19 @@ export default function AIBuilder() {
       };
 
       const newProject = await createProject(projectData);
+      setLastSaveTime(new Date());
       
-      toast.success("Project saved successfully");
-      navigate(`/dashboard/projects/${newProject.id}`);
+      if (!isAutoSave) {
+        toast.success("Project saved successfully");
+        navigate(`/dashboard/projects/${newProject.id}`);
+      } else {
+        toast.success("Project auto-saved");
+      }
     } catch (error) {
       console.error("Error saving project:", error);
-      toast.error("Failed to save project");
+      if (!isAutoSave) {
+        toast.error("Failed to save project");
+      }
     }
   };
 
@@ -348,13 +418,22 @@ export default function AIBuilder() {
     }
   };
 
-  const handleSnapshot = () => {
+  const handleSnapshot = (isAutoSnapshot = false) => {
     if (webContainerInstance) {
       webContainerInstance.snapshot()
-        .then(() => toast.success("Snapshot created successfully"))
+        .then(() => {
+          setLastSnapshotTime(new Date());
+          if (!isAutoSnapshot) {
+            toast.success("Snapshot created successfully");
+          } else {
+            toast.success("Auto-snapshot created");
+          }
+        })
         .catch(error => {
           console.error("Failed to create snapshot:", error);
-          setErrorMessage("Failed to create snapshot");
+          if (!isAutoSnapshot) {
+            setErrorMessage("Failed to create snapshot");
+          }
         });
     }
   };
@@ -368,6 +447,22 @@ export default function AIBuilder() {
           setErrorMessage("Failed to revert to snapshot");
         });
     }
+  };
+
+  // File upload handler
+  const handleFileUpload = async (file: File): Promise<string> => {
+    // In a real implementation, this would upload to a storage service
+    // For demo, we'll just return a mock URL
+    return new Promise((resolve, reject) => {
+      try {
+        // Create a blob URL for the file
+        const url = URL.createObjectURL(file);
+        // In a real app, you'd upload to storage and get a permanent URL
+        resolve(`${file.name} (local preview)`);
+      } catch (error) {
+        reject(error);
+      }
+    });
   };
   
   return (
@@ -429,7 +524,20 @@ export default function AIBuilder() {
               onReportError={handleReportError}
               onSnapshot={handleSnapshot}
               onRevert={handleRevert}
+              onFileUpload={handleFileUpload}
             />
+
+            {/* Auto-save and Auto-snapshot info */}
+            {(lastSaveTime || lastSnapshotTime) && (
+              <div className="p-2 text-xs text-muted-foreground border-t border-border">
+                {lastSaveTime && (
+                  <p>Last auto-save: {lastSaveTime.toLocaleTimeString()}</p>
+                )}
+                {lastSnapshotTime && (
+                  <p>Last auto-snapshot: {lastSnapshotTime.toLocaleTimeString()}</p>
+                )}
+              </div>
+            )}
           </div>
           
           <div className="overflow-hidden p-2 h-full border-t md:border-t-0 lg:col-span-3">
