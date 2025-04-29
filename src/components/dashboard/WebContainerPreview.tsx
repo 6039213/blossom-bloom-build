@@ -18,16 +18,66 @@ export default function WebContainerPreview({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [serverUrl, setServerUrl] = useState('');
   
   useEffect(() => {
-    // This would be where you initialize the WebContainer
-    // For now, we'll just simulate loading
+    // This simulates connecting to the WebContainer server URL
+    // In a real implementation, this would come from the WebContainer instance
     const timer = setTimeout(() => {
       setIsLoading(false);
+      setServerUrl('about:blank'); // This would be a real URL in production
     }, 1500);
     
     return () => clearTimeout(timer);
   }, []);
+  
+  // Effect to update the iframe content when files change
+  useEffect(() => {
+    if (iframeRef.current && !isLoading && Object.keys(files).length > 0) {
+      try {
+        // Create a simple HTML preview using the files
+        const mainHtml = generatePreviewHTML(files);
+        
+        // Set the content of the iframe
+        const iframeDoc = iframeRef.current.contentDocument;
+        if (iframeDoc) {
+          iframeDoc.open();
+          iframeDoc.write(mainHtml);
+          iframeDoc.close();
+        }
+      } catch (err) {
+        console.error("Error updating preview:", err);
+        setError("Failed to generate preview");
+      }
+    }
+  }, [files, isLoading]);
+  
+  // Helper function to generate preview HTML
+  const generatePreviewHTML = (files: Record<string, { code: string }>) => {
+    // Find the main HTML file or create a basic one
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Web Preview</title>
+        <style>
+          body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; }
+          .container { max-width: 1200px; margin: 0 auto; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Preview</h1>
+          <p>Website preview is ready. In a real implementation, this would be rendered by the WebContainer.</p>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    return htmlContent;
+  };
   
   const getViewportClasses = () => {
     switch(viewportSize) {

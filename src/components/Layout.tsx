@@ -14,9 +14,11 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="flex flex-col min-h-screen">
       <MainNavbar />
-      <SidebarInset className="flex-1 transition-all duration-200">
-        {children}
-      </SidebarInset>
+      <div className="flex flex-1">
+        <SidebarInset className="flex-1 transition-all duration-200">
+          {children}
+        </SidebarInset>
+      </div>
       <Footer />
     </div>
   );

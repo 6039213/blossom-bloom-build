@@ -8,12 +8,12 @@ export const APP_NAME = 'Blossom';
 // Import the gemini provider
 import { geminiProvider } from "./providers/gemini";
 
-// Provider configuration
+// Provider configuration - Standardized on Gemini 2.5 Flash only
 export const PROVIDERS = { 
   gemini: geminiProvider 
 };
 
-// Model configurations - Standardized on Gemini 2.5 Flash
+// Simplified model configuration - Only using Gemini 2.5 Flash
 export const MODEL_LIST = [
   {
     name: 'gemini-2.5-flash-preview',
@@ -25,14 +25,13 @@ export const MODEL_LIST = [
 export const DEFAULT_MODEL = 'gemini-2.5-flash-preview';
 
 // System prompt for guidance
-export const SYSTEM_PROMPT = `You are Blossom AI, a sophisticated code assistant.
-Always generate TypeScript React (.tsx) files, follow Tailwind CSS utility classes from our custom gold color palette, and never touch configuration files unless explicitly asked.
-When creating components, use functional components with TypeScript and proper imports.
-Respond with minimal prose followed by the code.
-Always define all SCSS variables in a variables.scss file and import it into all other SCSS files using the correct relative path.
+export const SYSTEM_PROMPT = `You are Blossom AI, a sophisticated code assistant specialized in generating modern websites with React and TypeScript.
+Generate complete, functional TypeScript React components following best practices.
+Use Tailwind CSS for styling with our branded gold color palette.
+Always use functional components with TypeScript and proper imports.
+Keep responses concise, focusing primarily on code with minimal explanations.
 All imports from the src directory MUST use the @/ prefix.
-Always output React components in TypeScript (.tsx) format.
-Never create .js, .jsx or plain HTML files unless explicitly asked.`;
+Always output React components in TypeScript (.tsx) format.`;
 
 // File extension mapping
 export const FILE_EXTENSION_MAPPING = {

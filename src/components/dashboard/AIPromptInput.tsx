@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Send, XCircle, Upload } from 'lucide-react';
+import { Loader2, Send, XCircle, Upload, ImagePlus } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { GEMINI_API_KEY } from '@/lib/constants';
@@ -27,6 +27,7 @@ export default function AIPromptInput({
   const [isLoading, setIsLoading] = useState(false);
   const [charCount, setCharCount] = useState(0);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,8 +47,8 @@ export default function AIPromptInput({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!prompt.trim()) {
-      toast.error("Please enter a prompt");
+    if (!prompt.trim() && uploadedFiles.length === 0) {
+      toast.error("Please enter a prompt or upload files");
       return;
     }
     
@@ -66,6 +67,13 @@ export default function AIPromptInput({
       
       // Call the onSubmit function with the enhanced prompt
       await onSubmit(fullPrompt);
+      
+      // Only clear prompt after successful submission
+      setPrompt('');
+      setCharCount(0);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
       
       // Clear uploaded files after submission
       setUploadedFiles([]);
@@ -116,31 +124,49 @@ export default function AIPromptInput({
     const files = e.target.files;
     if (files && files.length > 0 && onFileUpload) {
       try {
-        const promises = Array.from(files).map(async (file) => {
+        setUploadProgress(0);
+        
+        const promises = Array.from(files).map(async (file, index) => {
+          // Update progress as each file is processed
+          const fileProgress = await simulateProgress(index, files.length);
+          setUploadProgress(fileProgress);
+          
           const fileUrl = await onFileUpload(file);
-          return fileUrl;
+          return { name: file.name, url: fileUrl };
         });
         
         const results = await Promise.all(promises);
-        setUploadedFiles(prev => [...prev, ...results]);
+        setUploadProgress(null);
         
-        // Insert file info at cursor position or append to the end
-        const filesList = results.map(url => `[File: ${url}]`).join(", ");
-        if (textareaRef.current) {
-          const cursorPos = textareaRef.current.selectionStart;
-          const textBefore = prompt.substring(0, cursorPos);
-          const textAfter = prompt.substring(cursorPos);
-          const newText = `${textBefore}${filesList}${textAfter}`;
-          setPrompt(newText);
-          setCharCount(newText.length);
+        // Add file references to uploaded files
+        setUploadedFiles(prev => [
+          ...prev, 
+          ...results.map(r => `${r.name} (${r.url})`)
+        ]);
+        
+        // Clear the file input to allow selecting the same files again
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
         }
         
         toast.success(`${files.length} file(s) uploaded successfully!`);
       } catch (error) {
+        setUploadProgress(null);
         toast.error("Failed to upload file");
         console.error(error);
       }
     }
+  };
+  
+  // Helper function to simulate upload progress
+  const simulateProgress = (index: number, total: number): Promise<number> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Calculate progress percentage (0-100)
+        const progress = Math.round(((index + 1) / total) * 100);
+        resolve(progress);
+      }, 300); // Simulate network delay
+    });
   };
   
   // Character count color based on length
@@ -176,12 +202,32 @@ export default function AIPromptInput({
         
         {/* Display uploaded files */}
         {uploadedFiles.length > 0 && (
-          <div className="mt-2 text-xs flex flex-wrap gap-1">
+          <div className="mt-2 flex flex-wrap gap-2">
             {uploadedFiles.map((file, index) => (
-              <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-full bg-blossom-100 text-blossom-800">
-                {file}
-              </span>
+              <div key={index} className="flex items-center px-2 py-1 rounded-full bg-blossom-100 text-blossom-800 text-xs">
+                <ImagePlus className="h-3 w-3 mr-1" />
+                <span className="truncate max-w-[150px]">{file}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+                  }}
+                  className="ml-1 text-blossom-500 hover:text-blossom-700"
+                >
+                  <XCircle className="h-3 w-3" />
+                </button>
+              </div>
             ))}
+          </div>
+        )}
+        
+        {/* Upload progress */}
+        {uploadProgress !== null && (
+          <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
+            <div 
+              className="bg-blossom-500 h-1.5 rounded-full transition-all duration-300" 
+              style={{ width: `${uploadProgress}%` }}
+            />
           </div>
         )}
       </div>
@@ -190,7 +236,7 @@ export default function AIPromptInput({
         <Button
           type="submit"
           className="bg-blossom-500 hover:bg-blossom-600 text-white flex-grow md:flex-grow-0 md:min-w-[180px]"
-          disabled={isLoading || isProcessing || !prompt.trim()}
+          disabled={isLoading || isProcessing || (!prompt.trim() && uploadedFiles.length === 0)}
         >
           {isLoading || isProcessing ? (
             <>
@@ -230,9 +276,25 @@ export default function AIPromptInput({
             ref={fileInputRef} 
             className="hidden" 
             multiple
+            accept="image/*,.pdf,.doc,.docx,.txt,.csv,.md"
             onChange={handleFileChange}
           />
         </Button>
+        
+        {showSaveButton && onSaveCode && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onSaveCode}
+            className="ml-auto"
+          >
+            Save Project
+          </Button>
+        )}
+      </div>
+      
+      <div className="text-xs text-muted-foreground">
+        Tip: Use Ctrl+Enter to submit. Upload images and documents to include them in your prompt.
       </div>
     </form>
   );
