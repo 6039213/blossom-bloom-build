@@ -1,6 +1,13 @@
 
-import { getServerUrl } from '@/lib/builder/webcontainer';
+import { useProjectStore } from '@/stores/project';
 
 export const WebContainerPreview = () => {
-  return <iframe src={getServerUrl()} className="h-full w-full border-0" />;
+  const { previewHtml } = useProjectStore();
+  return (
+    <iframe
+      srcDoc={previewHtml}
+      className="h-full w-full border-0"
+      sandbox="allow-scripts allow-same-origin"
+    />
+  );
 };
