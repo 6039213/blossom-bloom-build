@@ -10,9 +10,6 @@ interface WebContainerPreviewProps {
   viewportSize: string;
 }
 
-// This is a placeholder component for now.
-// In a production implementation, you would integrate with @webcontainer/api
-// as mentioned in the Dutch guide
 export default function WebContainerPreview({ 
   files, 
   dependencies,
@@ -35,9 +32,9 @@ export default function WebContainerPreview({
   const getViewportClasses = () => {
     switch(viewportSize) {
       case 'mobile':
-        return 'w-[320px] mx-auto border border-border rounded-lg shadow-lg';
+        return 'w-full max-w-[320px] mx-auto border border-border rounded-lg shadow-lg';
       case 'tablet':
-        return 'w-[768px] mx-auto border border-border rounded-lg shadow-lg';
+        return 'w-full max-w-[768px] mx-auto border border-border rounded-lg shadow-lg';
       case 'desktop':
       default:
         return 'w-full';

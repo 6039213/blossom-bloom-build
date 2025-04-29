@@ -8,9 +8,9 @@ const genAI = new GoogleGenerativeAI(apiKey);
 
 export const geminiProvider: LLMProvider = {
   name: "gemini",
-  models: ["gemini-2.5-flash-preview", "gemini-pro", "gemini-1.5-flash"],
+  models: ["gemini-2.5-flash-preview"], // Only use the flash preview model
   async stream(opts: any) {
-    const model = genAI.getGenerativeModel({ model: opts.model || "gemini-2.5-flash-preview" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview" });
     
     try {
       const result = await model.generateContentStream(

@@ -4,7 +4,7 @@ import AIPromptInput from '@/components/dashboard/AIPromptInput';
 import AIResponseDisplay, { ChatMessage } from '@/components/dashboard/AIResponseDisplay';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { PROVIDERS, MODEL_LIST, DEFAULT_MODEL } from '@/lib/constants';
+import { MODEL_LIST, DEFAULT_MODEL } from '@/lib/constants';
 import {
   Tabs,
   TabsContent,
@@ -246,7 +246,7 @@ export default function App() {
     }
   };
   
-  const handlePromptSubmit = async (prompt: string, model: string = DEFAULT_MODEL) => {
+  const handlePromptSubmit = async (prompt: string, model: string = "gemini-2.5-flash-preview") => {
     setIsGenerating(true);
     setErrorMessage(null);
     
@@ -276,7 +276,7 @@ export default function App() {
     ]);
     
     try {
-      const provider = PROVIDERS.gemini;
+      const provider = { name: "gemini", stream: geminiProvider.stream };
       if (!provider) {
         throw new Error("No LLM provider available");
       }
@@ -351,7 +351,7 @@ Return the complete multi-file project as a single response with clear file path
 Do not include any explanations, just the code files. Make sure to implement all necessary features for a production-ready application.`
           }
         ],
-        model,
+        model: "gemini-2.5-flash-preview",
         onToken: (token) => {
           const processedToken = processToken(token);
           streamedText += processedToken;
@@ -645,7 +645,7 @@ Do not include any explanations, just the code files. Make sure to implement all
   
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <div className="hidden md:block md:w-64 h-full">
+      <div className="h-full">
         <DashboardSidebar />
       </div>
       
@@ -664,8 +664,8 @@ Do not include any explanations, just the code files. Make sure to implement all
           </div>
         </header>
         
-        <main className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          <div className="flex flex-col h-full overflow-hidden border-r border-border lg:col-span-1">
+        <main className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5">
+          <div className="flex flex-col h-full overflow-hidden border-r border-border lg:col-span-2">
             <div 
               ref={chatContainerRef}
               className="flex-1 overflow-y-auto" 
@@ -724,7 +724,7 @@ Do not include any explanations, just the code files. Make sure to implement all
             </div>
           </div>
           
-          <div className="overflow-hidden p-2 h-full border-t md:border-t-0 lg:col-span-2">
+          <div className="overflow-hidden p-2 h-full border-t md:border-t-0 lg:col-span-3">
             {Object.keys(projectFiles).length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center max-w-md">
