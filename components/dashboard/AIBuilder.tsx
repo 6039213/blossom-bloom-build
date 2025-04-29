@@ -1,70 +1,148 @@
 
-import { useState, useRef, ChangeEvent, FormEvent } from 'react';
-import { useChatStore } from '@/stores/chat';
-import { useProjectStore } from '@/stores/project';
-import { useUserStore } from '@/stores/user';
+import { useState, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { WebContainerPreview } from '@/components/dashboard/WebContainerPreview';
 import { FileTree } from '@/components/dashboard/FileTree';
 import { CodeEditor } from '@/components/dashboard/CodeEditor';
-import { AIPromptInput } from '@/components/dashboard/AIPromptInput';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2 } from 'lucide-react';
+import { useProjectStore } from '@/stores/project';
 
 export function AIBuilder() {
   const { toast } = useToast();
-  const { addMessage, messages, setMessages } = useChatStore();
-  const { setPreviewHtml, previewHtml } = useProjectStore();
-  const { user } = useUserStore();
+  const { setPreviewHtml } = useProjectStore();
+  
+  // State management
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState('preview');
+  const [activeTab, setActiveTab] = useState('code');
   const [generatedFiles, setGeneratedFiles] = useState<{[key: string]: {code: string, displayed: string}}>({}); 
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [isTypingEffect, setIsTypingEffect] = useState(false);
-  const [typingSpeed, setTypingSpeed] = useState(10); // characters per tick
+  const [typingSpeed, setTypingSpeed] = useState(15); // characters per tick
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      setFile(event.target.files[0]);
+  // Generation logic
+  const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a prompt first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    setActiveTab('code');
+
+    try {
+      // Call the API to generate content based on the prompt
+      const response = await fetch("/api/generate", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ prompt }) 
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const generatedContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      if (!generatedContent) {
+        throw new Error("No content generated");
+      }
+
+      // Extract component name from prompt or use default
+      const componentName = extractComponentName(prompt);
+      
+      // Simulate file generation
+      await simulateFileGeneration(componentName, generatedContent);
+
+    } catch (error: any) {
+      console.error('Error generating content:', error);
+      toast({
+        title: "Error",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  const simulateFileGeneration = async (htmlContent: string) => {
-    // Parse the HTML to extract potential component structure
-    const componentName = prompt.includes('component') 
-      ? prompt.split(' ').find(word => word.match(/[A-Z][a-z]+/)) || 'Component' 
-      : 'Page';
+  // Extract a component name from the prompt
+  const extractComponentName = (prompt: string): string => {
+    // Look for patterns like "create X component" or similar
+    const matches = prompt.match(/create\s+(?:a|an)?\s+([a-zA-Z0-9]+)\s+(?:component|page|element|card|button)/i);
+    if (matches && matches[1]) {
+      // Capitalize the first letter
+      return matches[1].charAt(0).toUpperCase() + matches[1].slice(1);
+    }
+    return "Component";
+  };
+
+  // Simulate file generation with typing effect
+  const simulateFileGeneration = async (componentName: string, content: string) => {
+    // Parse the content to extract potential code blocks
+    const cssContent = extractCssFromContent(content);
+    const jsxContent = extractJsxFromContent(content);
     
-    // Create a simple component structure
+    // Create files
     const files: {[key: string]: {code: string, displayed: string}} = {
       [`${componentName}.tsx`]: {
-        code: `import React from 'react';\nimport styles from './${componentName}.module.css';\n\nexport const ${componentName} = () => {\n  return (\n    <div className={styles.container}>\n      ${htmlContent}\n    </div>\n  );\n};\n\nexport default ${componentName};`,
+        code: jsxContent || `import React from 'react';\nimport './${componentName}.css';\n\nexport const ${componentName} = () => {\n  return (\n    <div className="${componentName.toLowerCase()}-container">\n      <h2>${componentName}</h2>\n      <p>This is a ${componentName.toLowerCase()} component</p>\n    </div>\n  );\n};\n\nexport default ${componentName};`,
         displayed: ''
       },
-      [`${componentName}.module.css`]: {
-        code: `.container {\n  display: flex;\n  flex-direction: column;\n  padding: 1rem;\n  border-radius: 0.5rem;\n  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);\n}\n`,
+      [`${componentName}.css`]: {
+        code: cssContent || `.${componentName.toLowerCase()}-container {\n  display: flex;\n  flex-direction: column;\n  padding: 1rem;\n  border-radius: 0.5rem;\n  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);\n}\n`,
         displayed: ''
       }
     };
 
-    // Set the generated files
+    // Set the generated files and active file
     setGeneratedFiles(files);
     setActiveFile(`${componentName}.tsx`);
 
-    // Simulate typing effect for the active file
+    // Simulate typing effect for the first file
     await simulateTypingEffect(`${componentName}.tsx`, files[`${componentName}.tsx`].code);
     
-    // After typing effect, set the preview HTML
-    const combinedHTML = `
-      <style>${files[`${componentName}.module.css`].code}</style>
-      <div class="container">${htmlContent}</div>
+    // Generate preview HTML
+    const previewHTML = `
+      <style>${files[`${componentName}.css`].code}</style>
+      <div id="root"></div>
+      <script>
+        // Simple React-like rendering for preview
+        const container = document.getElementById('root');
+        container.innerHTML = \`<div class="${componentName.toLowerCase()}-container">
+          <h2>${componentName}</h2>
+          <p>This is a ${componentName.toLowerCase()} component</p>
+        </div>\`;
+      </script>
     `;
-    setPreviewHtml(combinedHTML);
+    
+    setPreviewHtml(previewHTML);
+    
+    // Show preview tab after typing effect is complete
+    setActiveTab('preview');
   };
 
+  // Extract CSS content from generated text
+  const extractCssFromContent = (content: string): string => {
+    const cssRegex = /```css\n([\s\S]*?)```/;
+    const match = content.match(cssRegex);
+    return match ? match[1] : '';
+  };
+
+  // Extract JSX/TSX content from generated text
+  const extractJsxFromContent = (content: string): string => {
+    const jsxRegex = /```(?:jsx|tsx)\n([\s\S]*?)```/;
+    const match = content.match(jsxRegex);
+    return match ? match[1] : '';
+  };
+
+  // Simulate typing effect for code
   const simulateTypingEffect = async (fileName: string, code: string) => {
     setIsTypingEffect(true);
     let displayedCode = '';
@@ -94,7 +172,7 @@ export function AIBuilder() {
       }));
       
       // Wait a small amount of time before typing the next chunk
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 30));
     }
     
     // Make sure we display the complete code at the end
@@ -109,52 +187,7 @@ export function AIBuilder() {
     setIsTypingEffect(false);
   };
 
-  const handlePromptSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!prompt.trim() && !file) return;
-
-    addMessage({ role: 'user', content: prompt });
-    setPrompt('');
-    setIsGenerating(true);
-    setActiveTab('code');
-
-    try {
-      const r = await fetch("/api/generate", { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ prompt }) 
-      });
-      
-      if (!r.ok) {
-        throw new Error(`HTTP error! Status: ${r.status}`);
-      }
-      
-      const j = await r.json();
-      const html = j?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      
-      if (!html) {
-        throw new Error("No content generated");
-      }
-      
-      // Simulate file generation and typing effect
-      await simulateFileGeneration(html);
-      
-      addMessage({ 
-        role: 'assistant', 
-        content: `I've created the ${activeFile} based on your prompt. You can view the code and preview.`
-      });
-    } catch (error: any) {
-      console.error('Error generating content:', error);
-      toast({
-        title: "Error",
-        description: error.message || "An unexpected error occurred.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
+  // Handle file selection from the file tree
   const handleFileClick = (fileName: string) => {
     setActiveFile(fileName);
     if (generatedFiles[fileName]) {
@@ -164,14 +197,35 @@ export function AIBuilder() {
 
   return (
     <div className="flex flex-col h-full p-4 space-y-4">
-      <div className="flex-1 overflow-y-auto space-y-4">
-        {messages.map((message, index) => (
-          <div key={index} className={`p-2 rounded-md ${message.role === 'user' ? 'bg-blossom-100 ml-auto' : 'bg-gray-100 mr-auto'}`}>
-            <p>{message.content}</p>
-          </div>
-        ))}
+      {/* Prompt input area */}
+      <div className="p-4 border border-blossom-200 rounded-lg bg-white shadow-sm">
+        <h2 className="text-lg font-semibold mb-3 text-blossom-800">What would you like to build?</h2>
+        <div className="flex items-start space-x-2">
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Describe the component you want to create... (e.g., 'Create a responsive card component with an image, title, and button')"
+            className="flex-1 min-h-[80px] p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blossom-500"
+            disabled={isGenerating}
+          />
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating || !prompt.trim()}
+            className="px-4 py-2 bg-blossom-500 text-white rounded-md hover:bg-blossom-600 focus:outline-none focus:ring-2 focus:ring-blossom-500 focus:ring-offset-2 disabled:opacity-50"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="inline-block w-4 h-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              'Generate'
+            )}
+          </button>
+        </div>
       </div>
 
+      {/* Main content area */}
       <div className="flex flex-1 space-x-4 overflow-hidden">
         {/* File tree panel */}
         <div className="w-64 border-r border-gray-200 overflow-y-auto">
@@ -182,10 +236,10 @@ export function AIBuilder() {
           />
         </div>
 
-        {/* Main content area */}
+        {/* Code editor and preview area */}
         <div className="flex-1 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList>
+            <TabsList className="mb-2">
               <TabsTrigger value="code">Code</TabsTrigger>
               <TabsTrigger value="preview">Preview</TabsTrigger>
             </TabsList>
@@ -214,25 +268,6 @@ export function AIBuilder() {
           </Tabs>
         </div>
       </div>
-
-      <form onSubmit={handlePromptSubmit} className="flex items-center space-x-2">
-        <AIPromptInput 
-          handleSubmit={handlePromptSubmit}
-          prompt={prompt}
-          setPrompt={setPrompt}
-        />
-        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="btn-secondary"
-        >
-          Upload File
-        </button>
-        <button type="submit" className="btn-primary" disabled={isGenerating}>
-          {isGenerating ? 'Generating...' : 'Generate'}
-        </button>
-      </form>
     </div>
   );
 }
