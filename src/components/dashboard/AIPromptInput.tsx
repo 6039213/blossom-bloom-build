@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Send, RefreshCw, Sparkles, Save, XCircle, Upload } from 'lucide-react';
+import { Loader2, Send, XCircle, Upload } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { GEMINI_API_KEY } from '@/lib/constants';
@@ -26,6 +26,7 @@ export default function AIPromptInput({
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [charCount, setCharCount] = useState(0);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,11 +58,17 @@ export default function AIPromptInput({
     
     setIsLoading(true);
     try {
-      // Call the onSubmit function with the prompt
-      await onSubmit(prompt);
+      // Add uploaded file references to the prompt
+      let fullPrompt = prompt;
+      if (uploadedFiles.length > 0) {
+        fullPrompt += "\n\nIncorporate these uploaded files: " + uploadedFiles.join(", ");
+      }
       
-      // Don't clear the prompt input after successful submission
-      // to maintain context for the user
+      // Call the onSubmit function with the enhanced prompt
+      await onSubmit(fullPrompt);
+      
+      // Clear uploaded files after submission
+      setUploadedFiles([]);
     } catch (error) {
       console.error("Error processing prompt:", error);
       toast.error("Failed to process your request. Please try again.");
@@ -93,6 +100,7 @@ export default function AIPromptInput({
   const handleClear = () => {
     setPrompt('');
     setCharCount(0);
+    setUploadedFiles([]);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -108,17 +116,26 @@ export default function AIPromptInput({
     const files = e.target.files;
     if (files && files.length > 0 && onFileUpload) {
       try {
-        const fileUrl = await onFileUpload(files[0]);
-        // Insert the file URL at cursor position or append to the end
+        const promises = Array.from(files).map(async (file) => {
+          const fileUrl = await onFileUpload(file);
+          return fileUrl;
+        });
+        
+        const results = await Promise.all(promises);
+        setUploadedFiles(prev => [...prev, ...results]);
+        
+        // Insert file info at cursor position or append to the end
+        const filesList = results.map(url => `[File: ${url}]`).join(", ");
         if (textareaRef.current) {
           const cursorPos = textareaRef.current.selectionStart;
           const textBefore = prompt.substring(0, cursorPos);
           const textAfter = prompt.substring(cursorPos);
-          const newText = `${textBefore}[File: ${fileUrl}]${textAfter}`;
+          const newText = `${textBefore}${filesList}${textAfter}`;
           setPrompt(newText);
           setCharCount(newText.length);
         }
-        toast.success("File uploaded successfully!");
+        
+        toast.success(`${files.length} file(s) uploaded successfully!`);
       } catch (error) {
         toast.error("Failed to upload file");
         console.error(error);
@@ -138,10 +155,7 @@ export default function AIPromptInput({
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-sm font-medium">What would you like to build?</h3>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Sparkles className="h-4 w-4 text-blossom-500" />
-            <span className="text-xs font-medium">Using Gemini 2.5 Flash</span>
-          </div>
+          <span className="text-xs font-medium text-blossom-600">Using Gemini 2.5 Flash</span>
         </div>
       </div>
       
@@ -154,18 +168,28 @@ export default function AIPromptInput({
           disabled={isLoading || isProcessing}
           className="min-h-32 pr-12 resize-none border-blossom-200 focus:border-blossom-500 transition-all duration-200"
         />
-        <Sparkles className="absolute right-3 top-3 h-5 w-5 text-blossom-400" />
         
         {/* Character count with dynamic color */}
         <div className={`absolute bottom-2 right-3 text-xs ${getCharCountColor()}`}>
           {charCount} characters
         </div>
+        
+        {/* Display uploaded files */}
+        {uploadedFiles.length > 0 && (
+          <div className="mt-2 text-xs flex flex-wrap gap-1">
+            {uploadedFiles.map((file, index) => (
+              <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-full bg-blossom-100 text-blossom-800">
+                {file}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2">
         <Button
           type="submit"
-          className="bg-blossom-500 hover:bg-blossom-600 text-white flex-grow md:flex-grow-0 md:min-w-[200px]"
+          className="bg-blossom-500 hover:bg-blossom-600 text-white flex-grow md:flex-grow-0 md:min-w-[180px]"
           disabled={isLoading || isProcessing || !prompt.trim()}
         >
           {isLoading || isProcessing ? (
@@ -185,7 +209,7 @@ export default function AIPromptInput({
           type="button"
           variant="outline"
           onClick={handleClear}
-          disabled={isLoading || isProcessing || !prompt.trim()}
+          disabled={isLoading || isProcessing || (!prompt.trim() && uploadedFiles.length === 0)}
           className="flex-grow-0"
         >
           <XCircle className="h-4 w-4 mr-2" />
@@ -200,11 +224,12 @@ export default function AIPromptInput({
           className="flex-grow-0"
         >
           <Upload className="h-4 w-4 mr-2" />
-          Upload File
+          Upload Files
           <input 
             type="file" 
             ref={fileInputRef} 
             className="hidden" 
+            multiple
             onChange={handleFileChange}
           />
         </Button>

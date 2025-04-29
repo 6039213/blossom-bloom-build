@@ -56,7 +56,7 @@ export default function CodeGenerator({
 }: CodeGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const handlePromptSubmit = async (prompt: string, model: string = "gemini-2.5-flash-preview") => {
+  const handlePromptSubmit = async (prompt: string) => {
     setIsGenerating(true);
     setErrorMessage(null);
     
@@ -86,11 +86,6 @@ export default function CodeGenerator({
     ]);
     
     try {
-      const provider = { name: "gemini", stream: geminiProvider.stream };
-      if (!provider) {
-        throw new Error("No LLM provider available");
-      }
-      
       const extractedName = extractProjectName(prompt);
       setProjectName(extractedName);
       
@@ -108,7 +103,7 @@ export default function CodeGenerator({
       let codeBuffer = '';
       let inCodeBlock = false;
       
-      await provider.stream({
+      await geminiProvider.stream({
         messages: [
           {
             role: 'user',
@@ -186,6 +181,7 @@ Do not include any explanations, just the code files. Make sure to implement all
         }
       });
       
+      // Use the existing parseProjectFiles function to extract files from the AI response
       let parsedFiles = parseProjectFiles(codeBuffer || streamedText);
       
       if (Object.keys(initialFiles).length > 0) {

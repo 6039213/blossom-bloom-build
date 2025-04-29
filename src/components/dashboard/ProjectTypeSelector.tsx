@@ -30,23 +30,23 @@ export default function ProjectTypeSelector({ onSelect }: ProjectTypeSelectorPro
   };
   
   return (
-    <div className="space-y-3">
-      <h3 className="text-lg font-medium mb-2">Choose a project template</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+    <div className="space-y-2">
+      <h3 className="text-base font-medium mb-1">Choose a template</h3>
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
         {Object.entries(projectTemplates).map(([type, template]) => (
           <Button 
             key={type}
             variant={selectedType === type ? "default" : "outline"}
             className={cn(
-              "h-auto py-2 justify-start flex-col items-center gap-1 w-full",
+              "h-auto py-1.5 px-2 justify-start flex-col items-center gap-1 w-full",
               selectedType === type ? "bg-blossom-500 hover:bg-blossom-600 text-white" : "hover:bg-blossom-50 hover:text-blossom-600"
             )}
             onClick={() => handleSelect(type)}
           >
-            <div className="w-8 h-8 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center">
               {renderIcon(template.icon)}
             </div>
-            <span className="text-xs font-medium">{template.displayName}</span>
+            <span className="text-xs font-medium truncate w-full text-center">{template.displayName}</span>
           </Button>
         ))}
       </div>

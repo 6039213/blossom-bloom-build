@@ -13,18 +13,8 @@ export const PROVIDERS = {
   gemini: geminiProvider 
 };
 
-// Model configurations
+// Model configurations - Standardized on Gemini 2.5 Flash
 export const MODEL_LIST = [
-  {
-    name: 'gemini-pro',
-    label: 'Gemini Pro',
-    provider: 'gemini'
-  },
-  {
-    name: 'gemini-1.5-flash',
-    label: 'Gemini 1.5 Flash',
-    provider: 'gemini'
-  },
   {
     name: 'gemini-2.5-flash-preview',
     label: 'Gemini 2.5 Flash',
