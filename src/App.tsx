@@ -20,7 +20,7 @@ import ProjectsPage from './pages/ProjectsPage';
 import TeamPage from './pages/TeamPage';
 import NotFound from './pages/NotFound';
 import Dashboard from './pages/Dashboard';
-import AIBuilder from './pages/AIBuilder';
+import BoltBuilder from './pages/BoltBuilder';
 import AuthPage from './pages/AuthPage';
 import ProjectDetail from './pages/ProjectDetail';
 import SettingsPage from './pages/SettingsPage';
@@ -45,7 +45,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/dashboard/projects" element={<ProjectsPage />} />
           <Route path="/dashboard/projects/:projectId" element={<ProjectDetail />} />
-          <Route path="/dashboard/ai-builder" element={<AIBuilder />} />
+          <Route path="/dashboard/ai-builder" element={<BoltBuilder />} />
           <Route path="/dashboard/team" element={<TeamPage />} />
           <Route path="/dashboard/settings" element={<SettingsPage />} />
           <Route path="/dashboard/help" element={<HelpPage />} />
