@@ -26,7 +26,7 @@ export default function AIPromptInput({
     e?.preventDefault();
     if (!prompt.trim()) return;
     
-    // Call either onSend or onSubmit (backwards compatibility)
+    // Call either onSend or onSubmit (for backwards compatibility)
     if (onSend) onSend(prompt);
     if (onSubmit) onSubmit(prompt);
     
