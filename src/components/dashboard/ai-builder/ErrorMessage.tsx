@@ -1,6 +1,8 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 interface ErrorMessageProps {
   errorMessage: string;
@@ -9,10 +11,12 @@ interface ErrorMessageProps {
 
 export default function ErrorMessage({ errorMessage, onDismiss }: ErrorMessageProps) {
   return (
-    <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-      <p className="text-xs text-red-700 dark:text-red-300">
-        <strong>Error:</strong> {errorMessage}
-      </p>
+    <Alert variant="destructive" className="mt-2">
+      <AlertTriangle className="h-4 w-4" />
+      <AlertTitle>Error</AlertTitle>
+      <AlertDescription className="text-xs">
+        {errorMessage}
+      </AlertDescription>
       <Button 
         variant="destructive" 
         size="sm" 
@@ -21,6 +25,6 @@ export default function ErrorMessage({ errorMessage, onDismiss }: ErrorMessagePr
       >
         Dismiss
       </Button>
-    </div>
+    </Alert>
   );
 }

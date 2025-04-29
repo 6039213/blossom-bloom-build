@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 export default function DashboardSidebar() {
   const location = useLocation();
   const supabase = getSupabaseClient();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   
   // Automatically collapse on mobile screens
@@ -29,8 +29,6 @@ export default function DashboardSidebar() {
     const checkScreenSize = () => {
       if (window.innerWidth < 768) {
         setIsExpanded(false);
-      } else {
-        setIsExpanded(true);
       }
     };
     

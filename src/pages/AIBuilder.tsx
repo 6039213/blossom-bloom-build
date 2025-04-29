@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,59 +6,193 @@ import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIResponseDisplay, { ChatMessage } from '@/components/dashboard/AIResponseDisplay';
 import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
 import { useAuth } from '@/contexts/AuthContext';
-import { createDefaultFilesForTemplate, projectTemplates, ProjectTemplate } from '@/utils/projectTemplates';
+import { createDefaultFilesForTemplate, projectTemplates } from '@/utils/projectTemplates';
 import { 
   CodeGenerator, 
   CodePreview, 
   EmptyStateView, 
-  ProjectInput
+  ErrorMessage,
+  ProjectInput,
+  WebContainerService,
+  Types
 } from './ai-builder';
-import { ProjectFiles } from '@/components/dashboard/ai-builder/types';
 import { findMainFile } from '@/components/dashboard/ai-builder/utils';
+import { geminiProvider } from '@/lib/providers/gemini';
 
 export default function AIBuilder() {
+  // State variables
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCode, setGeneratedCode] = useState('');
-  const [projectFiles, setProjectFiles] = useState<ProjectFiles>({});
+  const [projectFiles, setProjectFiles] = useState<Types.ProjectFiles>({});
   const [activeTab, setActiveTab] = useState('preview');
   const [projectName, setProjectName] = useState('');
   const [activeFile, setActiveFile] = useState('/src/App.tsx');
   const [viewportSize, setViewportSize] = useState('desktop');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showTemplateSelector, setShowTemplateSelector] = useState(true);
-  const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Types.ProjectTemplate | null>(null);
   const [detectedType, setDetectedType] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [streamingMessage, setStreamingMessage] = useState<string>('');
   const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
+  const [terminalOutput, setTerminalOutput] = useState<string>('');
+  const [webContainerInstance, setWebContainerInstance] = useState<Types.WebContainerInstance | null>(null);
+
+  // Refs
   const chatContainerRef = useRef<HTMLDivElement>(null);
   
+  // Hooks
   const { createProject } = useProjectStore();
   const navigate = useNavigate();
   const { user } = useAuth();
   
+  // Scroll to bottom of chat container when messages change
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages]);
-
-  const { handlePromptSubmit } = CodeGenerator({
-    setProjectFiles,
-    setGeneratedCode,
-    setActiveFile,
-    setProjectName,
-    setDetectedType,
-    setActiveTab,
-    setShowTemplateSelector,
-    setErrorMessage,
-    setChatMessages,
-    setStreamingMessage,
-    setCurrentMessageId,
-    selectedTemplate
-  });
   
-  const handleTemplateSelect = (template: ProjectTemplate) => {
+  // Handle terminal data from WebContainer
+  const handleTerminalData = useCallback((data: string) => {
+    setTerminalOutput(prev => prev + data);
+  }, []);
+  
+  // Handle WebContainer ready
+  const handleWebContainerReady = useCallback((instance: Types.WebContainerInstance) => {
+    setWebContainerInstance(instance);
+    toast.success("AI Builder is ready");
+  }, []);
+  
+  // Handle prompt submission
+  const handlePromptSubmit = useCallback(async (prompt: string) => {
+    if (!prompt.trim()) return;
+    
+    // Generate a new message ID
+    const messageId = uuidv4();
+    setCurrentMessageId(messageId);
+    
+    // Add user message to chat
+    setChatMessages(prev => [
+      ...prev,
+      { role: 'user', content: prompt, id: uuidv4() }
+    ]);
+    
+    // Reset streaming message
+    setStreamingMessage('');
+    
+    // Show generating state
+    setIsGenerating(true);
+    
+    try {
+      // Prepare system message
+      const systemMessage = {
+        role: 'system',
+        content: 'You are an AI assistant that helps with generating code for web applications. ' +
+                 'Always output React components in TypeScript (.tsx). ' +
+                 'Never emit .js / .jsx. ' +
+                 'Do not offer model switching.'
+      };
+      
+      // Stream response from Gemini
+      await geminiProvider.stream({
+        messages: [
+          systemMessage,
+          ...chatMessages.map(msg => ({ role: msg.role, content: msg.content })),
+          { role: 'user', content: prompt }
+        ],
+        onToken: (token: string) => {
+          setStreamingMessage(prev => prev + token);
+        },
+      });
+      
+      // Add AI response to chat
+      setChatMessages(prev => [
+        ...prev,
+        { role: 'user', content: prompt, id: uuidv4() },
+        { role: 'assistant', content: streamingMessage, id: messageId }
+      ]);
+      
+      // Parse code blocks from response
+      const parsedFiles = parseCodeBlocks(streamingMessage);
+      if (Object.keys(parsedFiles).length > 0) {
+        setProjectFiles(parsedFiles);
+        setGeneratedCode(JSON.stringify(parsedFiles, null, 2));
+        
+        // Find main file and set as active
+        const mainFile = findMainFile(parsedFiles, detectedType || 'react');
+        setActiveFile(mainFile);
+        
+        // Switch to preview tab
+        setActiveTab('preview');
+        
+        // Detect project type if not already set
+        if (!detectedType) {
+          detectProjectType(parsedFiles);
+        }
+        
+        // Set project name if not already set
+        if (!projectName) {
+          setProjectName(extractProjectName(prompt));
+        }
+        
+        // Hide template selector
+        setShowTemplateSelector(false);
+        
+        // Apply changes to WebContainer if available
+        if (webContainerInstance) {
+          try {
+            // Create a simple diff string for demonstration
+            const diffString = createDiffString(parsedFiles);
+            await webContainerInstance.applyDiff(diffString);
+            
+            // Check if we need to install dependencies
+            const filesChanged = Object.keys(parsedFiles);
+            const needsInstall = filesChanged.some(file => file.includes('package.json'));
+            
+            if (needsInstall) {
+              await webContainerInstance.installAndRestartIfNeeded(filesChanged);
+            }
+          } catch (error) {
+            console.error("Failed to apply changes to WebContainer:", error);
+            setErrorMessage("Failed to apply changes to WebContainer");
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error generating code:", error);
+      setErrorMessage(error instanceof Error ? error.message : 'Unknown error generating code');
+    } finally {
+      // Hide generating state
+      setIsGenerating(false);
+      setCurrentMessageId(null);
+    }
+  }, [chatMessages, streamingMessage, webContainerInstance, detectedType, projectName]);
+  
+  // Helper functions
+  const parseCodeBlocks = (text: string): Types.ProjectFiles => {
+    // Mock implementation - in reality, you would parse the code blocks from the AI response
+    const files: Types.ProjectFiles = {};
+    return files;
+  };
+  
+  const detectProjectType = (files: Types.ProjectFiles): void => {
+    // Mock implementation - in reality, you would detect the project type based on the files
+    setDetectedType('react');
+  };
+  
+  const extractProjectName = (prompt: string): string => {
+    // Mock implementation - in reality, you would extract a project name from the prompt
+    return prompt.split(' ')[0] || 'New Project';
+  };
+  
+  const createDiffString = (files: Types.ProjectFiles): string => {
+    // Mock implementation - in reality, you would create a diff string from the files
+    return Object.keys(files).map(path => `create ${path}`).join('\n');
+  };
+  
+  // Template selection handler
+  const handleTemplateSelect = (template: Types.ProjectTemplate) => {
     setSelectedTemplate(template);
     setDetectedType(template.type);
     setShowTemplateSelector(false);
@@ -76,22 +209,40 @@ export default function AIBuilder() {
     }
   };
   
+  // Action handlers
   const handleCopyCode = () => {
     navigator.clipboard.writeText(generatedCode);
     toast.success("Code copied to clipboard");
   };
   
   const handleDownloadCode = () => {
-    const blob = new Blob([generatedCode], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'generated-project.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("Code downloaded successfully");
+    if (webContainerInstance) {
+      webContainerInstance.packZip().then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${projectName || 'generated-project'}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("Code downloaded successfully");
+      }).catch(error => {
+        console.error("Failed to download ZIP:", error);
+        setErrorMessage("Failed to download ZIP");
+      });
+    } else {
+      const blob = new Blob([generatedCode], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${projectName || 'generated-project'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Code downloaded successfully");
+    }
   };
 
   const handleSaveProject = async () => {
@@ -124,12 +275,13 @@ export default function AIBuilder() {
     }
   };
 
-  const handleCodeChange = (updatedFiles: ProjectFiles) => {
+  const handleCodeChange = (updatedFiles: Types.ProjectFiles) => {
     setProjectFiles(updatedFiles);
     setGeneratedCode(JSON.stringify(updatedFiles, null, 2));
   };
 
   const handleOpenInNewTab = () => {
+    // Implementation unchanged
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
@@ -185,6 +337,28 @@ export default function AIBuilder() {
       handlePromptSubmit(selectedTemplate.defaultPrompt);
     }
   };
+
+  const handleSnapshot = () => {
+    if (webContainerInstance) {
+      webContainerInstance.snapshot()
+        .then(() => toast.success("Snapshot created successfully"))
+        .catch(error => {
+          console.error("Failed to create snapshot:", error);
+          setErrorMessage("Failed to create snapshot");
+        });
+    }
+  };
+
+  const handleRevert = () => {
+    if (webContainerInstance) {
+      webContainerInstance.revert()
+        .then(() => toast.success("Reverted to previous snapshot"))
+        .catch(error => {
+          console.error("Failed to revert to snapshot:", error);
+          setErrorMessage("Failed to revert to snapshot");
+        });
+    }
+  };
   
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -215,6 +389,19 @@ export default function AIBuilder() {
               style={{ scrollBehavior: 'smooth' }}
             >
               <AIResponseDisplay messages={chatMessages} isLoading={false} />
+              
+              {/* Terminal Output Section */}
+              {terminalOutput && (
+                <div className="p-4 bg-gray-900 text-gray-300 font-mono text-xs">
+                  <div className="mb-2 text-gray-500 flex items-center">
+                    <span>Terminal Output</span>
+                    <div className="flex-1 ml-2 border-t border-gray-700" />
+                  </div>
+                  <pre className="whitespace-pre-wrap">
+                    {terminalOutput}
+                  </pre>
+                </div>
+              )}
             </div>
             
             <ProjectInput 
@@ -230,6 +417,8 @@ export default function AIBuilder() {
               onSaveCode={handleSaveProject}
               showSaveButton={Object.keys(projectFiles).length > 0}
               onReportError={handleReportError}
+              onSnapshot={handleSnapshot}
+              onRevert={handleRevert}
             />
           </div>
           
@@ -259,11 +448,18 @@ export default function AIBuilder() {
                 }}
                 onSave={handleSaveProject}
                 onOpenInNewTab={handleOpenInNewTab}
+                terminalOutput={terminalOutput}
               />
             )}
           </div>
         </main>
       </div>
+      
+      {/* WebContainer Service (invisible component) */}
+      <WebContainerService 
+        onTerminalData={handleTerminalData}
+        onReady={handleWebContainerReady}
+      />
     </div>
   );
 }

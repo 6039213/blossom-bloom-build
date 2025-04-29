@@ -23,3 +23,24 @@ export interface ProjectTemplate {
   suggestedDependencies?: Record<string, string>;
   defaultPrompt: string;
 }
+
+// WebContainer related types
+export interface WebContainerInstance {
+  applyDiff: (diff: string) => Promise<void>;
+  installAndRestartIfNeeded: (filesChanged: string[]) => Promise<void>;
+  snapshot: () => Promise<void>;
+  revert: () => Promise<void>;
+  packZip: () => Promise<Blob>;
+  onTerminalData: (callback: (data: string) => void) => () => void;
+}
+
+export interface FileChange {
+  path: string;
+  content: string;
+  type: 'create' | 'update' | 'delete';
+}
+
+export interface DiffResult {
+  changes: FileChange[];
+  requiresInstall: boolean;
+}

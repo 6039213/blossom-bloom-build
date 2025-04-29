@@ -6,6 +6,7 @@ import ErrorMessage from '@/components/dashboard/ai-builder/ErrorMessage';
 import ProjectInput from '@/components/dashboard/ai-builder/ProjectInput';
 import * as Types from '@/components/dashboard/ai-builder/types';
 import * as Utils from '@/components/dashboard/ai-builder/utils';
+import WebContainerService from '@/components/dashboard/ai-builder/WebContainerService';
 
 export {
   CodeGenerator,
@@ -14,5 +15,6 @@ export {
   ErrorMessage,
   ProjectInput,
   Types,
-  Utils
+  Utils,
+  WebContainerService
 };
