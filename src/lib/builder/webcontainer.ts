@@ -12,11 +12,8 @@ let terminalCallback: ((data: string) => void) | undefined;
  */
 export const bootContainer = async () => {
   try {
-    // Initialize WebContainer with correct options format
-    webcontainer = await WebContainer.boot({
-      // Note: removed 'workdir' as it's not in BootOptions
-      licenseKey: import.meta.env.VITE_WEBCONTAINERS_LICENSE_KEY
-    });
+    // Initialize WebContainer with correct options format (no licenseKey)
+    webcontainer = await WebContainer.boot();
     
     // Create workspace directory
     await webcontainer.fs.mkdir('/workspace', { recursive: true });
@@ -37,9 +34,9 @@ export const bootContainer = async () => {
     }));
     
     // Get server URL (using a different approach as .url property doesn't exist)
-    // We'll need to extract URL from server output or use a different approach
+    // We need to extract URL from server output or use a different approach
     // For now, we'll set a placeholder
-    serverUrl = '';
+    serverUrl = 'http://localhost:3000'; // Default placeholder
     
     return webcontainer;
   } catch (error) {
@@ -123,8 +120,8 @@ export const installAndRestartIfNeeded = async (filesChanged: string[]) => {
     
     const server = await webcontainer.spawn('npm', ['run', 'dev']);
     
-    // We cannot access server.url directly anymore, so need a different approach
-    // For now, keeping serverUrl as is
+    // Cannot access server.url directly, need to extract from output
+    // Keeping serverUrl as is for now
     
     // Pipe server output to terminal
     server.output.pipeTo(new WritableStream({
@@ -156,8 +153,8 @@ export const snapshot = async () => {
   }
   
   try {
-    // Changed from fs.zip to fs.writeFile + fs.readFile approach
-    // First create a temporary file to store state
+    // Changed approach since fs.zip doesn't exist
+    // Create a temporary file to store state
     await webcontainer.fs.writeFile('/tmp-snapshot.txt', new Date().toString());
     const snapshotData = await webcontainer.fs.readFile('/tmp-snapshot.txt');
     return snapshotData;
@@ -181,8 +178,6 @@ export const revert = async (snapshotData: Uint8Array) => {
     
     // Restart the server after reverting
     const server = await webcontainer.spawn('npm', ['run', 'dev']);
-    
-    // We cannot access server.url directly
     
     // Pipe server output to terminal
     server.output.pipeTo(new WritableStream({
@@ -214,7 +209,7 @@ export const packZip = async () => {
   }
   
   try {
-    // Instead of using fs.zip which doesn't exist, we create a simple blob with project info
+    // Instead of using fs.zip which doesn't exist, create a simple blob with project info
     const fileList = await webcontainer.spawn('ls', ['-la']);
     let output = '';
     
