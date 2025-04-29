@@ -1,90 +1,42 @@
-
-// API Keys
-export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-
-// Application information
 export const APP_NAME = 'Blossom';
+export const APP_DESCRIPTION = 'Create beautiful websites with AI';
+export const GEMINI_API_KEY = 'AIzaSyAOo3YOsgQE5Qq4APJISQ6tuQvd_dFmVV0'; 
+export const STRIPE_PUBLIC_KEY = 'pk_live_51R2XkQP3GFaeFOE467f1y4JLmp6cXwtrLi8CxrsFirS0zqdCL1H42cNU6UUCvRg5WlI6zVpgjzS2LtJRJRkBx35M004xazkEeo';
 
-// Import the gemini provider
-import { geminiProvider } from "./providers/gemini";
-
-// Provider configuration - Standardized on Gemini 2.5 Flash only
-export const PROVIDERS = { 
-  gemini: geminiProvider 
-};
-
-// Simplified model configuration - Only using Gemini 2.5 Flash
-export const MODEL_LIST = [
-  {
-    name: 'gemini-2.5-flash-preview',
-    label: 'Gemini 2.5 Flash',
-    provider: 'gemini'
-  }
-];
-
-export const DEFAULT_MODEL = 'gemini-2.5-flash-preview';
-
-// System prompt for guidance
-export const SYSTEM_PROMPT = `You are Blossom AI, a sophisticated code assistant specialized in generating modern websites with React and TypeScript.
-Generate complete, functional TypeScript React components following best practices.
-Use Tailwind CSS for styling with our branded gold color palette.
-Always use functional components with TypeScript and proper imports.
-Keep responses concise, focusing primarily on code with minimal explanations.
-All imports from the src directory MUST use the @/ prefix.
-Always output React components in TypeScript (.tsx) format.`;
-
-// File extension mapping
-export const FILE_EXTENSION_MAPPING = {
-  '.jsx': '.tsx',
-  '.js': '.tsx'
-};
-
-// Project templates
-export const PROJECT_TYPES = [
-  'landing',
-  'dashboard',
-  'ecommerce',
-  'blog',
-  'portfolio'
-];
-
-// Pricing plans configuration
+// Plans - updated to keep only monthly plans with the correct pricing
 export const PLANS = {
   FREE: {
     name: 'Free',
     price: 0,
     features: [
-      'Up to 3 projects',
-      'Basic templates',
-      'Community support',
-      'Standard AI responses',
-      'Export as HTML/CSS/JS'
+      '3 projects',
+      'Basic website builder',
+      'Community support'
     ]
   },
   STANDARD: {
     name: 'Standard',
-    price: 19,
+    price: 20,
+    stripePriceId: 'prod_S9HVoXku7P4TBW',
     features: [
       'Unlimited projects',
-      'All templates',
+      'AI content generation',
+      'Custom domains',
       'Priority support',
-      'Advanced AI capabilities',
-      'Custom domain hosting',
-      'No Blossom branding',
-      'Export source code'
+      'Version history'
     ]
   },
   PREMIUM: {
     name: 'Premium',
-    price: 49,
+    price: 100,
+    stripePriceId: 'prod_S9HVkBwzlkjjAE',
     features: [
       'Everything in Standard',
+      'Advanced AI features',
+      'White-label websites',
       'Team collaboration',
       'API access',
-      'Custom templates',
-      'SSO Authentication',
-      'Analytics dashboard',
-      'Dedicated support'
+      'Analytics dashboard'
     ]
   }
-};
+}

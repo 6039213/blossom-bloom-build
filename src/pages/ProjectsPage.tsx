@@ -7,7 +7,7 @@ import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import ProjectCard from '@/components/dashboard/ProjectCard';
 import NewProjectModal from '@/components/dashboard/NewProjectModal';
 import { toast } from 'sonner';
-import { Search, Plus, Sparkles } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,10 +59,6 @@ export default function ProjectsPage() {
     }
   };
   
-  const goToAIBuilder = () => {
-    navigate('/dashboard/ai-builder');
-  };
-  
   const filteredProjects = projects.filter((project) => 
     project.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -88,13 +84,6 @@ export default function ProjectsPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Button 
-                onClick={goToAIBuilder}
-                className="bg-blossom-500 hover:bg-blossom-600 text-white"
-              >
-                <Sparkles className="mr-2 h-4 w-4" />
-                AI Builder
-              </Button>
               <NewProjectModal onCreateProject={handleCreateProject} />
             </div>
           </div>
@@ -123,16 +112,7 @@ export default function ProjectsPage() {
                   }
                 </p>
                 {!searchTerm && (
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <Button 
-                      onClick={goToAIBuilder}
-                      className="bg-blossom-500 hover:bg-blossom-600 text-white w-full sm:w-auto"
-                    >
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Create with AI
-                    </Button>
-                    <NewProjectModal onCreateProject={handleCreateProject} />
-                  </div>
+                  <NewProjectModal onCreateProject={handleCreateProject} />
                 )}
                 {searchTerm && (
                   <Button 

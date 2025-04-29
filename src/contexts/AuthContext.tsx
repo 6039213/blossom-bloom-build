@@ -2,7 +2,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getSupabaseClient } from '@/lib/supabase-client';
 import { AuthSession, User } from '@supabase/supabase-js';
-import { toast } from 'sonner';
 
 interface AuthContextType {
   session: AuthSession | null;
@@ -20,38 +19,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = getSupabaseClient();
 
   useEffect(() => {
-    // Set up auth state listener FIRST to prevent missing events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      // Only synchronous state updates here
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
-
-    // THEN check for existing session
+    // Get the current session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
     }).catch(error => {
-      console.error('Auth session check failed:', error);
-      toast.error('Authentication error: Could not retrieve session');
+      console.warn('Auth session check failed:', error);
       setIsLoading(false);
     });
 
-    // Cleanup subscription on unmount
-    return () => {
-      subscription?.unsubscribe();
-    };
+    try {
+      // Listen for auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      });
+
+      // Cleanup subscription on unmount
+      return () => {
+        subscription?.unsubscribe();
+      };
+    } catch (error) {
+      console.warn('Auth listener setup failed:', error);
+      setIsLoading(false);
+    }
   }, []);
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
-      toast.success('Successfully signed out');
     } catch (error) {
       console.error('Error signing out:', error);
-      toast.error('Error signing out');
     }
   };
 
