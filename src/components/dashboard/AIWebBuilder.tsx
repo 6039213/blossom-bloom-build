@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Eye, Code, Upload, Send } from 'lucide-react';
@@ -10,6 +9,7 @@ import FileExplorer, { FileSystemItem } from './FileExplorer';
 import MonacoEditor from './MonacoEditor';
 import { buildFileTree, createNewFile } from '@/utils/fileSystem';
 import CodePreview from './ai-builder/CodePreview';
+import ErrorDetectionHandler from './ai-builder/ErrorDetectionHandler';
 import { detectProjectType } from './ai-builder/utils';
 import { ProjectFiles } from './ai-builder/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -359,7 +359,7 @@ export default function AIWebBuilder() {
       <div className="w-7/12 flex flex-col">
         {/* Tab controls */}
         <div className="border-b border-border p-4">
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'preview' | 'code')}>
+          <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'preview' | 'code')}>
             <TabsList className="grid w-[200px] grid-cols-2">
               <TabsTrigger 
                 value="preview" 
@@ -386,7 +386,7 @@ export default function AIWebBuilder() {
               <CodePreview 
                 projectFiles={projectFiles}
                 activeTab={activeTab} 
-                setActiveTab={setActiveTab}
+                setActiveTab={(value: string) => setActiveTab(value as 'preview' | 'code')}
                 activeFile={activeFile || ''}
                 viewportSize={viewportSize}
                 setViewportSize={setViewportSize}

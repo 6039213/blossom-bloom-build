@@ -4,7 +4,7 @@ import AIPromptInput from '@/components/dashboard/AIPromptInput';
 import ProjectTypeSelector from '@/components/dashboard/ProjectTypeSelector';
 import { Button } from '@/components/ui/button';
 import ErrorMessage from './ErrorMessage';
-import { ProjectTemplate } from './types';
+import { ProjectTemplate } from '@/utils/projectTemplates';
 
 interface ProjectInputProps {
   showTemplateSelector: boolean;

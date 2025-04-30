@@ -33,6 +33,7 @@ export interface ProjectTemplate {
   name: string;
   description: string;
   type: string;
+  displayName: string;
   icon?: string;
   dependencies?: Record<string, string>;
 }
