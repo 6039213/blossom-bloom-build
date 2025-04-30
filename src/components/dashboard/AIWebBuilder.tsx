@@ -25,7 +25,7 @@ interface AIResponse {
 export default function AIWebBuilder() {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [prompt, setPrompt] = useState('');
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; edits?: FileEdit[]; npmChanges?: string[] }>([]);
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; edits?: FileEdit[]; npmChanges?: string[] }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [projectFiles, setProjectFiles] = useState<Record<string, { code: string }>>({});
 
@@ -120,10 +120,10 @@ export default function AIWebBuilder() {
             { 
               file: "src/components/Hero.tsx", 
               action: "replace", 
-              content: `import React from 'react';\n\nexport default function Hero() {\n  return (\n    <div className="bg-blossom-50 py-16">\n      <div className="container mx-auto px-4">\n        <h1 className="text-4xl font-bold text-center text-blossom-900">Welcome to Our Platform</h1>\n        <p className="mt-4 text-xl text-center text-blossom-600">The future of web development is here</p>\n        <div className="mt-8 flex justify-center">\n          <button className="bg-blossom-500 text-white px-6 py-2 rounded-md hover:bg-blossom-600 transition">Get Started</button>\n        </div>\n      </div>\n    </div>\n  );\n}` 
+              content: 'import React from \'react\';\n\nexport default function Hero() {\n  return (\n    <div className="bg-blossom-50 py-16">\n      <div className="container mx-auto px-4">\n        <h1 className="text-4xl font-bold text-center text-blossom-900">Welcome to Our Platform</h1>\n        <p className="mt-4 text-xl text-center text-blossom-600">The future of web development is here</p>\n        <div className="mt-8 flex justify-center">\n          <button className="bg-blossom-500 text-white px-6 py-2 rounded-md hover:bg-blossom-600 transition">Get Started</button>\n        </div>\n      </div>\n    </div>\n  );\n}'
             }
           ],
-          message: "✅ Hero.tsx updated with new heading and button styling",
+          message: "✅ Hero.tsx updated with new heading and button styling"
         };
       } else if (userPrompt.toLowerCase().includes('button')) {
         return {
@@ -131,7 +131,7 @@ export default function AIWebBuilder() {
             { 
               file: "src/components/Button.tsx", 
               action: "create", 
-              content: `import React from 'react';\n\ninterface ButtonProps {\n  children: React.ReactNode;\n  variant?: 'primary' | 'secondary' | 'outline';\n  size?: 'sm' | 'md' | 'lg';\n  onClick?: () => void;\n}\n\nexport default function Button({ children, variant = 'primary', size = 'md', onClick }: ButtonProps) {\n  const baseClasses = 'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';\n  \n  const variantClasses = {\n    primary: 'bg-blossom-500 text-white hover:bg-blossom-600 focus:ring-blossom-500',\n    secondary: 'bg-blossom-100 text-blossom-700 hover:bg-blossom-200 focus:ring-blossom-300',\n    outline: 'bg-transparent border border-blossom-300 text-blossom-700 hover:bg-blossom-50 focus:ring-blossom-300',\n  };\n  \n  const sizeClasses = {\n    sm: 'px-3 py-1.5 text-sm',\n    md: 'px-4 py-2 text-base',\n    lg: 'px-6 py-3 text-lg',\n  };\n  \n  return (\n    <button\n      onClick={onClick}\n      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]}`}\n    >\n      {children}\n    </button>\n  );\n}` 
+              content: 'import React from \'react\';\n\ninterface ButtonProps {\n  children: React.ReactNode;\n  variant?: \'primary\' | \'secondary\' | \'outline\';\n  size?: \'sm\' | \'md\' | \'lg\';\n  onClick?: () => void;\n}\n\nexport default function Button({ children, variant = \'primary\', size = \'md\', onClick }: ButtonProps) {\n  const baseClasses = \'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2\';\n  \n  const variantClasses = {\n    primary: \'bg-blossom-500 text-white hover:bg-blossom-600 focus:ring-blossom-500\',\n    secondary: \'bg-blossom-100 text-blossom-700 hover:bg-blossom-200 focus:ring-blossom-300\',\n    outline: \'bg-transparent border border-blossom-300 text-blossom-700 hover:bg-blossom-50 focus:ring-blossom-300\',\n  };\n  \n  const sizeClasses = {\n    sm: \'px-3 py-1.5 text-sm\',\n    md: \'px-4 py-2 text-base\',\n    lg: \'px-6 py-3 text-lg\',\n  };\n  \n  return (\n    <button\n      onClick={onClick}\n      className={baseClasses + " " + variantClasses[variant] + " " + sizeClasses[size]}\n    >\n      {children}\n    </button>\n  );\n}'
             }
           ],
           message: "✅ Created a new Button.tsx component with multiple variants and sizes",
@@ -143,7 +143,7 @@ export default function AIWebBuilder() {
             { 
               file: "src/components/Feature.tsx", 
               action: "create", 
-              content: `import React from 'react';\n\ninterface FeatureProps {\n  title: string;\n  description: string;\n  icon: React.ReactNode;\n}\n\nexport default function Feature({ title, description, icon }: FeatureProps) {\n  return (\n    <div className="p-6 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">\n      <div className="w-12 h-12 bg-blossom-100 rounded-full flex items-center justify-center text-blossom-600 mb-4">\n        {icon}\n      </div>\n      <h3 className="text-xl font-semibold text-gray-900 mb-2">{title}</h3>\n      <p className="text-gray-600">{description}</p>\n    </div>\n  );\n}` 
+              content: 'import React from \'react\';\n\ninterface FeatureProps {\n  title: string;\n  description: string;\n  icon: React.ReactNode;\n}\n\nexport default function Feature({ title, description, icon }: FeatureProps) {\n  return (\n    <div className="p-6 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">\n      <div className="w-12 h-12 bg-blossom-100 rounded-full flex items-center justify-center text-blossom-600 mb-4">\n        {icon}\n      </div>\n      <h3 className="text-xl font-semibold text-gray-900 mb-2">{title}</h3>\n      <p className="text-gray-600">{description}</p>\n    </div>\n  );\n}'
             }
           ],
           message: "✅ Created Feature.tsx component for showcasing product features",

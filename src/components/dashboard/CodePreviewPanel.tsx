@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -14,7 +15,7 @@ export default function CodePreviewPanel({ activeTab, projectFiles }: CodePrevie
     let previewContent = '';
     
     // Try to find a main component to render
-    if (Object.keys(projectFiles).length === 0) {
+    if (!projectFiles || Object.keys(projectFiles).length === 0) {
       // Default preview when no files exist
       return '<div class="p-8"><h1 class="text-4xl font-bold mb-4">Hello from Blossom AI</h1><p class="mb-4">This is where your generated website will appear.</p><p>Enter a prompt to get started!</p></div>';
     }
@@ -73,7 +74,7 @@ export default function CodePreviewPanel({ activeTab, projectFiles }: CodePrevie
   };
 
   const getGeneratedCode = () => {
-    if (Object.keys(projectFiles).length === 0) {
+    if (!projectFiles || Object.keys(projectFiles).length === 0) {
       return 'No files generated yet. Enter a prompt to get started!';
     }
     
@@ -97,7 +98,7 @@ export default function CodePreviewPanel({ activeTab, projectFiles }: CodePrevie
       
       <TabsContent value="code" className="mt-0 h-full">
         <div className="h-full overflow-auto flex flex-col">
-          {Object.keys(projectFiles).length > 0 ? (
+          {projectFiles && Object.keys(projectFiles).length > 0 ? (
             <div className="flex-1 p-4">
               <div className="flex flex-wrap gap-2 mb-4">
                 {Object.keys(projectFiles).map(file => (
