@@ -147,7 +147,7 @@ export default function CodePreview({
                       className="flex-grow h-full"
                       showOpenInCodeSandbox={false}
                       showSandpackErrorOverlay={false}
-                      onError={handleSandpackError}
+                      onRuntimeError={handleSandpackError}
                     />
                   </SandpackLayout>
                 </SandpackProvider>

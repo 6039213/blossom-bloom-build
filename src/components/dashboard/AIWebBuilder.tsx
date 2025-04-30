@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Eye, Code, Upload, Send } from 'lucide-react';
@@ -11,7 +12,7 @@ import { buildFileTree, createNewFile } from '@/utils/fileSystem';
 import CodePreview from './ai-builder/CodePreview';
 import ErrorDetectionHandler from './ai-builder/ErrorDetectionHandler';
 import { detectProjectType } from './ai-builder/utils';
-import { ProjectFiles } from './ai-builder/types';
+import { ProjectFiles, RuntimeError } from './ai-builder/types';
 import { v4 as uuidv4 } from 'uuid';
 
 // Define types for our AI response
@@ -48,7 +49,7 @@ export default function AIWebBuilder() {
   const [projectFiles, setProjectFiles] = useState<ProjectFiles>({});
   const [viewportSize, setViewportSize] = useState('desktop');
   const [detectedType, setDetectedType] = useState<string | null>('react');
-  const [runtimeError, setRuntimeError] = useState<{ message: string; file?: string } | null>(null);
+  const [runtimeError, setRuntimeError] = useState<RuntimeError | null>(null);
   
   // Update project files when files change
   useEffect(() => {
@@ -111,7 +112,7 @@ export default function AIWebBuilder() {
     setFiles(newFiles);
   };
 
-  const handleRuntimeError = (error: { message: string; file?: string } | null) => {
+  const handleRuntimeError = (error: RuntimeError | null) => {
     setRuntimeError(error);
   };
 
@@ -392,6 +393,9 @@ export default function AIWebBuilder() {
                 setViewportSize={setViewportSize}
                 detectedType={detectedType}
                 onDetectError={handleRuntimeError}
+                runtimeError={runtimeError}
+                onFixError={handleFixError}
+                onIgnoreError={() => setRuntimeError(null)}
               />
             </TabsContent>
             <TabsContent value="code" className="mt-0 h-full">

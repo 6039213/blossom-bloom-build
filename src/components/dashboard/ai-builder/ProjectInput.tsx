@@ -4,7 +4,7 @@ import AIPromptInput from '@/components/dashboard/AIPromptInput';
 import ProjectTypeSelector from '@/components/dashboard/ProjectTypeSelector';
 import { Button } from '@/components/ui/button';
 import ErrorMessage from './ErrorMessage';
-import { ProjectTemplate } from '@/utils/projectTemplates';
+import { ProjectTemplate } from './types';
 
 interface ProjectInputProps {
   showTemplateSelector: boolean;
@@ -41,11 +41,27 @@ export default function ProjectInput({
   onRevert,
   onFileUpload
 }: ProjectInputProps) {
+  // Custom template adapter to convert between the two ProjectTemplate types
+  const handleTemplateSelect = (template: any) => {
+    // Add the missing properties from projectTemplates.ts to our local ProjectTemplate
+    const adaptedTemplate: ProjectTemplate = {
+      ...template,
+      id: template.id || template.type,
+      name: template.name || template.displayName,
+      fileStructure: template.fileStructure || [],
+      suggestedDependencies: template.suggestedDependencies || {},
+      defaultPrompt: template.defaultPrompt || '',
+      boilerplateCode: template.boilerplateCode || {}
+    };
+    
+    onTemplateSelect(adaptedTemplate);
+  };
+  
   return (
     <div className="p-4 border-t border-border">
       {showTemplateSelector && (
         <div className="mb-4">
-          <ProjectTypeSelector onSelect={onTemplateSelect} />
+          <ProjectTypeSelector onSelect={handleTemplateSelect} />
         </div>
       )}
       

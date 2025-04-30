@@ -27,7 +27,7 @@ export interface DiffResult {
   requiresInstall: boolean;
 }
 
-// Project Templates
+// Project Templates - Aligning with the structure in projectTemplates.ts
 export interface ProjectTemplate {
   id: string;
   name: string;
@@ -36,6 +36,11 @@ export interface ProjectTemplate {
   displayName: string;
   icon?: string;
   dependencies?: Record<string, string>;
+  // Add missing properties from projectTemplates.ts
+  fileStructure: string[];
+  suggestedDependencies: Record<string, string>;
+  defaultPrompt: string;
+  boilerplateCode: Record<string, string>;
 }
 
 // Chat Message Types

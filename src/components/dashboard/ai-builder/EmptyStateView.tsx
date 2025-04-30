@@ -1,35 +1,103 @@
 
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 import { ProjectTemplate } from './types';
 
-interface EmptyStateViewProps {
-  selectedTemplate: ProjectTemplate | null;
+export interface EmptyStateViewProps {
+  onTemplateSelect: (template: ProjectTemplate) => void;
 }
 
-export default function EmptyStateView({ selectedTemplate }: EmptyStateViewProps) {
+export default function EmptyStateView({ onTemplateSelect }: EmptyStateViewProps) {
   return (
-    <div className="flex items-center justify-center h-full">
-      <div className="text-center max-w-md">
-        <div className="w-16 h-16 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center mx-auto mb-4">
-          <Sparkles className="h-6 w-6 text-blossom-500" />
-        </div>
-        <h3 className="text-xl font-semibold mb-2">Let's Create Something Amazing</h3>
-        <p className="text-muted-foreground mb-4 text-sm">
-          {selectedTemplate 
-            ? "Customize your website by entering a detailed prompt or use the default template prompt."
-            : "Choose a template or type a description of the website you want to build."}
+    <div className="h-full flex items-center justify-center p-8">
+      <div className="text-center max-w-lg mx-auto">
+        <h2 className="text-2xl font-bold mb-4">Create a New Project</h2>
+        <p className="text-muted-foreground mb-6">
+          Select a template to get started or describe your project to the AI assistant.
         </p>
-        <ul className="text-left space-y-2 bg-muted p-3 rounded-lg text-xs">
-          <li className="flex items-start">
-            <span className="bg-blossom-100 dark:bg-blossom-900/30 p-1 rounded text-blossom-700 dark:text-blossom-300 mr-2">Tip</span>
-            <span>Be specific about your website's purpose, style, and content.</span>
-          </li>
-          <li className="flex items-start">
-            <span className="bg-blossom-100 dark:bg-blossom-900/30 p-1 rounded text-blossom-700 dark:text-blossom-300 mr-2">Tip</span>
-            <span>Mention color schemes or specific design elements you'd like to include.</span>
-          </li>
-        </ul>
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {/* These are placeholder buttons - in a real implementation, they would use actual templates */}
+          <Button 
+            variant="outline" 
+            className="h-24 flex flex-col items-center justify-center gap-2"
+            onClick={() => onTemplateSelect({
+              id: 'landing',
+              name: 'Landing Page',
+              displayName: 'Landing Page',
+              description: 'A simple landing page',
+              type: 'landing',
+              icon: 'layout',
+              fileStructure: [],
+              suggestedDependencies: {},
+              defaultPrompt: "Create a landing page",
+              boilerplateCode: {}
+            })}
+          >
+            <Plus className="h-6 w-6" />
+            <span>Landing Page</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-24 flex flex-col items-center justify-center gap-2"
+            onClick={() => onTemplateSelect({
+              id: 'dashboard',
+              name: 'Dashboard',
+              displayName: 'Dashboard',
+              description: 'Admin dashboard',
+              type: 'dashboard',
+              icon: 'layout-dashboard',
+              fileStructure: [],
+              suggestedDependencies: {},
+              defaultPrompt: "Create a dashboard app",
+              boilerplateCode: {}
+            })}
+          >
+            <Plus className="h-6 w-6" />
+            <span>Dashboard</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-24 flex flex-col items-center justify-center gap-2"
+            onClick={() => onTemplateSelect({
+              id: 'blog',
+              name: 'Blog',
+              displayName: 'Blog',
+              description: 'A blog template',
+              type: 'blog',
+              icon: 'file-text',
+              fileStructure: [],
+              suggestedDependencies: {},
+              defaultPrompt: "Create a blog",
+              boilerplateCode: {}
+            })}
+          >
+            <Plus className="h-6 w-6" />
+            <span>Blog</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="h-24 flex flex-col items-center justify-center gap-2"
+            onClick={() => onTemplateSelect({
+              id: 'ecommerce',
+              name: 'E-commerce',
+              displayName: 'E-commerce',
+              description: 'Online store',
+              type: 'ecommerce',
+              icon: 'shopping-cart',
+              fileStructure: [],
+              suggestedDependencies: {},
+              defaultPrompt: "Create an e-commerce site",
+              boilerplateCode: {}
+            })}
+          >
+            <Plus className="h-6 w-6" />
+            <span>E-commerce</span>
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Or type a prompt like "Create a portfolio website with dark theme"
+        </p>
       </div>
     </div>
   );
