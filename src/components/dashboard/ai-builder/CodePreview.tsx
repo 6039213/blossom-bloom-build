@@ -1,12 +1,13 @@
 
-import React from 'react';
-import { SandpackProvider, SandpackLayout, SandpackPreview } from '@codesandbox/sandpack-react';
+import React, { useEffect, useState } from 'react';
+import { SandpackProvider, SandpackLayout, SandpackPreview, SandpackConsole } from '@codesandbox/sandpack-react';
 import CodePreviewTabs from '@/components/dashboard/CodePreviewTabs';
 import CodeActionButtons from '@/components/dashboard/CodeActionButtons';
 import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
 import { ProjectFiles } from './types';
 import { getProjectDependencies } from './utils';
 import { projectTemplates } from '@/utils/projectTemplates';
+import ErrorDetectionHandler from './ErrorDetectionHandler';
 
 // Import non-type dependencies
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -27,6 +28,7 @@ interface CodePreviewProps {
   onSave?: () => void;
   onOpenInNewTab?: () => void;
   terminalOutput?: string;
+  onDetectError?: (error: { message: string; file?: string } | null) => void;
 }
 
 export default function CodePreview({
@@ -43,8 +45,11 @@ export default function CodePreview({
   onReset,
   onSave,
   onOpenInNewTab,
-  terminalOutput
+  terminalOutput,
+  onDetectError
 }: CodePreviewProps) {
+  const [error, setError] = useState<{ message: string; file?: string } | null>(null);
+  
   const getViewportClasses = () => {
     switch(viewportSize) {
       case 'mobile':
@@ -57,11 +62,35 @@ export default function CodePreview({
     }
   };
 
+  // Handle errors from Sandpack
+  const handleSandpackError = (error: any) => {
+    if (!error) {
+      setError(null);
+      if (onDetectError) onDetectError(null);
+      return;
+    }
+    
+    let errorInfo = {
+      message: error.message || 'Onbekende fout',
+      file: 'onbekend bestand'
+    };
+    
+    // Try to determine the file from the error message
+    const fileMatch = error.message?.match(/(?:in|at) ([^:(\s]+)/) || 
+                     error.message?.match(/([^\/\s]+\.(?:js|jsx|ts|tsx))/);
+    if (fileMatch && fileMatch[1]) {
+      errorInfo.file = fileMatch[1];
+    }
+    
+    setError(errorInfo);
+    if (onDetectError) onDetectError(errorInfo);
+  };
+
   return (
     <div className="w-full h-full mx-auto flex flex-col">
       <Tabs 
         value={activeTab} 
-        onValueChange={setActiveTab} 
+        onValueChange={(val) => setActiveTab(val)} 
         className="w-full h-full flex flex-col"
       >
         <div className="flex items-center justify-between w-full mb-2">
@@ -96,12 +125,33 @@ export default function CodePreview({
                   }}
                   options={{
                     visibleFiles: [activeFile],
+                    externalResources: [
+                      "https://cdn.tailwindcss.com"
+                    ]
                   }}
                 >
+                  {error && (
+                    <div className="px-4 py-2">
+                      <ErrorDetectionHandler 
+                        error={error}
+                        onFixError={() => {
+                          // Dit wordt later afgehandeld in de AIWebBuilder component
+                          if (onDetectError && error) onDetectError(error);
+                        }}
+                        onIgnoreError={() => {
+                          setError(null);
+                          if (onDetectError) onDetectError(null);
+                        }}
+                      />
+                    </div>
+                  )}
                   <SandpackLayout className="h-full">
                     <SandpackPreview
                       showRefreshButton
                       className="flex-grow h-full"
+                      showOpenInCodeSandbox={false}
+                      showSandpackErrorOverlay={false}
+                      onError={handleSandpackError}
                     />
                   </SandpackLayout>
                 </SandpackProvider>
@@ -121,6 +171,7 @@ export default function CodePreview({
                 <SandpackFileExplorer className="min-w-[180px]" />
                 <SandpackCustomCodeEditor onCodeChange={onCodeChange || (() => {})} />
               </SandpackLayout>
+              <SandpackConsole className="h-40" />
             </SandpackProvider>
           </TabsContent>
           

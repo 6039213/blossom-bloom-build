@@ -9,9 +9,10 @@ import ChatMessages from './ChatMessages';
 import FileExplorer, { FileSystemItem } from './FileExplorer';
 import MonacoEditor from './MonacoEditor';
 import { buildFileTree, createNewFile } from '@/utils/fileSystem';
-import CodePreview from './CodePreview';
+import CodePreview from './ai-builder/CodePreview';
 import { detectProjectType } from './ai-builder/utils';
 import { ProjectFiles } from './ai-builder/types';
+import { v4 as uuidv4 } from 'uuid';
 
 // Define types for our AI response
 interface FileEdit {
@@ -31,6 +32,8 @@ export default function AIWebBuilder() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; edits?: FileEdit[]; npmChanges?: string[] }>>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [projectId, setProjectId] = useState<string>(uuidv4());
+  const [projectName, setProjectName] = useState<string>("Nieuw Project");
   
   // File system state
   const [files, setFiles] = useState<Record<string, string>>({
@@ -45,6 +48,7 @@ export default function AIWebBuilder() {
   const [projectFiles, setProjectFiles] = useState<ProjectFiles>({});
   const [viewportSize, setViewportSize] = useState('desktop');
   const [detectedType, setDetectedType] = useState<string | null>('react');
+  const [runtimeError, setRuntimeError] = useState<{ message: string; file?: string } | null>(null);
   
   // Update project files when files change
   useEffect(() => {
@@ -107,17 +111,44 @@ export default function AIWebBuilder() {
     setFiles(newFiles);
   };
 
+  const handleRuntimeError = (error: { message: string; file?: string } | null) => {
+    setRuntimeError(error);
+  };
+
+  const handleFixError = async () => {
+    if (!runtimeError) return;
+    
+    const errorFile = runtimeError.file || '';
+    const errorMessage = runtimeError.message || '';
+    
+    // Automatically generate a prompt to fix the error
+    const fixPrompt = `Fix deze fout in ${errorFile}: ${errorMessage}. Alleen deze file aanpassen, geen andere bestanden wijzigen.`;
+    
+    // Add the prompt to messages
+    const userMessage = { role: 'user' as const, content: fixPrompt };
+    setMessages(prev => [...prev, userMessage]);
+    
+    // Auto-submit this prompt
+    await processPrompt(fixPrompt);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!prompt.trim()) return;
     
+    await processPrompt(prompt);
+  };
+  
+  const processPrompt = async (promptText: string) => {
     // Add user message
-    const userMessage = { role: 'user' as const, content: prompt };
+    const userMessage = { role: 'user' as const, content: promptText };
     setMessages(prev => [...prev, userMessage]);
     
-    // Clear input
-    setPrompt('');
+    // Clear input if this was from the input field
+    if (prompt === promptText) {
+      setPrompt('');
+    }
     
     // Call AI service
     setIsLoading(true);
@@ -125,7 +156,7 @@ export default function AIWebBuilder() {
     try {
       // In a real implementation, this would call your AI service
       // For demonstration, we'll simulate the AI response
-      const aiResponse = await callAIModel(prompt);
+      const aiResponse = await callAIModel(promptText);
       
       // Process file edits
       if (aiResponse.edits && aiResponse.edits.length > 0) {
@@ -214,7 +245,7 @@ export default function AIWebBuilder() {
             { 
               file: "src/components/Button.tsx", 
               action: "create", 
-              content: "import React from 'react';\n\ninterface ButtonProps {\n  children: React.ReactNode;\n  variant?: 'primary' | 'secondary' | 'outline';\n  size?: 'sm' | 'md' | 'lg';\n  onClick?: () => void;\n}\n\nexport default function Button({ children, variant = 'primary', size = 'md', onClick }: ButtonProps) {\n  const baseClasses = 'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';\n  \n  const variantClasses = {\n    primary: 'bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500',\n    secondary: 'bg-blue-100 text-blue-700 hover:bg-blue-200 focus:ring-blue-300',\n    outline: 'bg-transparent border border-blue-300 text-blue-700 hover:bg-blue-50 focus:ring-blue-300',\n  };\n  \n  const sizeClasses = {\n    sm: 'px-3 py-1.5 text-sm',\n    md: 'px-4 py-2 text-base',\n    lg: 'px-6 py-3 text-lg',\n  };\n  \n  return (\n    <button\n      onClick={onClick}\n      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]}`}\n    >\n      {children}\n    </button>\n  );\n}"
+              content: "import React from 'react';\n\ninterface ButtonProps {\n  children: React.ReactNode;\n  variant?: 'primary' | 'secondary' | 'outline';\n  size?: 'sm' | 'md' | 'lg';\n  onClick?: () => void;\n}\n\nexport default function Button({ children, variant = 'primary', size = 'md', onClick }: ButtonProps) {\n  const baseClasses = 'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';\n  \n  const variantClasses = {\n    primary: 'bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500',\n    secondary: 'bg-blue-100 text-blue-700 hover:bg-blue-200 focus:ring-blue-300',\n    outline: 'bg-transparent border border-blue-300 text-blue-700 hover:bg-blue-50 focus:ring-blue-300',\n  };\n  \n  const sizeClasses = {\n    sm: 'px-3 py-1.5 text-sm',\n    md: 'px-4 py-2 text-base',\n    lg: 'px-6 py-3 text-lg',\n  };\n  \n  return (\n    <button\n      onClick={onClick}\n      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]}`}\n    >\n      {children}\n    </button>\n  );\n}" 
             },
             {
               file: "src/App.tsx",
@@ -253,9 +284,20 @@ export default function AIWebBuilder() {
     <div className="flex h-full overflow-hidden bg-background">
       {/* Chat section (left ~25%) */}
       <div className="w-1/4 flex flex-col border-r border-border">
+        {/* Chat header */}
+        <div className="p-3 border-b border-border bg-muted/30">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">{projectName}</h3>
+            <span className="text-xs text-muted-foreground">Project ID: {projectId.substring(0, 6)}</span>
+          </div>
+        </div>
+
         {/* Messages container */}
         <div className="flex-1 overflow-y-auto p-4">
-          <ChatMessages messages={messages} isLoading={isLoading} />
+          <ChatMessages 
+            messages={messages} 
+            isLoading={isLoading} 
+          />
         </div>
         
         {/* Input section */}
@@ -265,7 +307,7 @@ export default function AIWebBuilder() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Describe the website you want to build..."
+              placeholder="Beschrijf de website die je wilt bouwen..."
               className="min-h-[120px] resize-none border-gray-200 focus:border-blue-500"
               disabled={isLoading}
             />
@@ -290,12 +332,12 @@ export default function AIWebBuilder() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Generating...
+                    Genereren...
                   </span>
                 ) : (
                   <>
                     <Send className="w-4 h-4 mr-2" />
-                    Generate
+                    Genereren
                   </>
                 )}
               </Button>
@@ -349,6 +391,7 @@ export default function AIWebBuilder() {
                 viewportSize={viewportSize}
                 setViewportSize={setViewportSize}
                 detectedType={detectedType}
+                onDetectError={handleRuntimeError}
               />
             </TabsContent>
             <TabsContent value="code" className="mt-0 h-full">
@@ -363,6 +406,17 @@ export default function AIWebBuilder() {
             </TabsContent>
           </Tabs>
         </div>
+
+        {/* Show runtime error at the bottom of the page */}
+        {runtimeError && (
+          <div className="p-2 bg-red-50 border-t border-red-200">
+            <ErrorDetectionHandler 
+              error={runtimeError}
+              onFixError={handleFixError}
+              onIgnoreError={() => setRuntimeError(null)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

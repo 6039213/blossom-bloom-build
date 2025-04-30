@@ -27,6 +27,16 @@ export interface DiffResult {
   requiresInstall: boolean;
 }
 
+// Project Templates
+export interface ProjectTemplate {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  icon?: string;
+  dependencies?: Record<string, string>;
+}
+
 // Chat Message Types
 export interface AIMessage {
   role: 'assistant';
