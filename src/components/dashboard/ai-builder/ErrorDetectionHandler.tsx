@@ -3,10 +3,12 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from 'lucide-react';
-import { RuntimeError } from './types';
 
 interface ErrorDetectionHandlerProps {
-  error: RuntimeError | null;
+  error: {
+    message: string;
+    file?: string;
+  } | null;
   onFixError: () => void;
   onIgnoreError: () => void;
 }
@@ -18,14 +20,14 @@ export default function ErrorDetectionHandler({
 }: ErrorDetectionHandlerProps) {
   if (!error) return null;
   
-  const errorFile = error.file || 'unknown file';
-  const errorMessage = error.message || 'Unknown error';
+  const errorFile = error.file || 'onbekend bestand';
+  const errorMessage = error.message || 'Onbekende fout';
   
   return (
     <Alert variant="destructive" className="mb-4">
       <AlertTriangle className="h-4 w-4" />
       <AlertTitle className="flex items-center">
-        <span>🚨 Error in {errorFile}: </span>
+        <span>🚨 Fout in {errorFile}: </span>
       </AlertTitle>
       <AlertDescription className="space-y-2">
         <div className="text-sm font-mono break-words">{errorMessage}</div>

@@ -27,7 +27,7 @@ export interface DiffResult {
   requiresInstall: boolean;
 }
 
-// Project Templates - Aligning with the structure in projectTemplates.ts
+// Project Templates
 export interface ProjectTemplate {
   id: string;
   name: string;
@@ -36,18 +36,13 @@ export interface ProjectTemplate {
   displayName: string;
   icon?: string;
   dependencies?: Record<string, string>;
-  // Add missing properties from projectTemplates.ts
-  fileStructure: string[];
-  suggestedDependencies: Record<string, string>;
-  defaultPrompt: string;
-  boilerplateCode: Record<string, string>;
 }
 
 // Chat Message Types
 export interface AIMessage {
   role: 'assistant';
   content: string;
-  files?: Record<string, string>;
+  files?: string[];
   npmChanges?: string[];
 }
 
@@ -57,16 +52,3 @@ export interface UserMessage {
 }
 
 export type InternalChatMessage = AIMessage | UserMessage;
-
-// Error Type
-export interface RuntimeError {
-  message: string;
-  file?: string;
-}
-
-// Gemini Response Type
-export interface GeminiResponse {
-  files: Record<string, string>;
-  message: string;
-  npmChanges?: string[];
-}

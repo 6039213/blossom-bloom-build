@@ -4,7 +4,7 @@ import { SandpackProvider, SandpackLayout, SandpackPreview, SandpackConsole } fr
 import CodePreviewTabs from '@/components/dashboard/CodePreviewTabs';
 import CodeActionButtons from '@/components/dashboard/CodeActionButtons';
 import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
-import { ProjectFiles, RuntimeError } from './types';
+import { ProjectFiles } from './types';
 import { getProjectDependencies } from './utils';
 import { projectTemplates } from '@/utils/projectTemplates';
 import ErrorDetectionHandler from './ErrorDetectionHandler';
@@ -28,10 +28,7 @@ interface CodePreviewProps {
   onSave?: () => void;
   onOpenInNewTab?: () => void;
   terminalOutput?: string;
-  onDetectError: (error: RuntimeError | null) => void;
-  runtimeError: RuntimeError | null;
-  onFixError: () => void;
-  onIgnoreError: () => void;
+  onDetectError?: (error: { message: string; file?: string } | null) => void;
 }
 
 export default function CodePreview({
@@ -49,11 +46,10 @@ export default function CodePreview({
   onSave,
   onOpenInNewTab,
   terminalOutput,
-  onDetectError,
-  runtimeError,
-  onFixError,
-  onIgnoreError
+  onDetectError
 }: CodePreviewProps) {
+  const [error, setError] = useState<{ message: string; file?: string } | null>(null);
+  
   const getViewportClasses = () => {
     switch(viewportSize) {
       case 'mobile':
@@ -67,25 +63,27 @@ export default function CodePreview({
   };
 
   // Handle errors from Sandpack
-  const handleSandpackError = (error: Error | null) => {
+  const handleSandpackError = (error: any) => {
     if (!error) {
-      onDetectError(null);
+      setError(null);
+      if (onDetectError) onDetectError(null);
       return;
     }
     
-    let errorInfo: RuntimeError = {
-      message: error.message || 'Unknown error',
-      file: 'unknown file'
+    let errorInfo = {
+      message: error.message || 'Onbekende fout',
+      file: 'onbekend bestand'
     };
     
     // Try to determine the file from the error message
     const fileMatch = error.message?.match(/(?:in|at) ([^:(\s]+)/) || 
-                      error.message?.match(/([^\/\s]+\.(?:js|jsx|ts|tsx))/);
+                     error.message?.match(/([^\/\s]+\.(?:js|jsx|ts|tsx))/);
     if (fileMatch && fileMatch[1]) {
       errorInfo.file = fileMatch[1];
     }
     
-    onDetectError(errorInfo);
+    setError(errorInfo);
+    if (onDetectError) onDetectError(errorInfo);
   };
 
   return (
@@ -115,7 +113,7 @@ export default function CodePreview({
         </div>
         
         <div className="flex-1 overflow-hidden border border-border rounded-lg">
-          <TabsContent value="preview" className="mt-0 h-full data-[state=active]:flex data-[state=active]:flex-col">
+          <TabsContent value="preview" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col">
             <div className={`h-full w-full overflow-auto transition-all duration-300 ${getViewportClasses()}`}>
               {Object.keys(projectFiles).length > 0 && (
                 <SandpackProvider
@@ -132,12 +130,18 @@ export default function CodePreview({
                     ]
                   }}
                 >
-                  {runtimeError && (
+                  {error && (
                     <div className="px-4 py-2">
                       <ErrorDetectionHandler 
-                        error={runtimeError}
-                        onFixError={onFixError}
-                        onIgnoreError={onIgnoreError}
+                        error={error}
+                        onFixError={() => {
+                          // Dit wordt later afgehandeld in de AIWebBuilder component
+                          if (onDetectError && error) onDetectError(error);
+                        }}
+                        onIgnoreError={() => {
+                          setError(null);
+                          if (onDetectError) onDetectError(null);
+                        }}
                       />
                     </div>
                   )}
@@ -147,14 +151,14 @@ export default function CodePreview({
                       className="flex-grow h-full"
                       showOpenInCodeSandbox={false}
                       showSandpackErrorOverlay={false}
-                      onRuntimeError={handleSandpackError}
+                      onError={handleSandpackError}
                     />
                   </SandpackLayout>
                 </SandpackProvider>
               )}
             </div>
           </TabsContent>
-          <TabsContent value="code" className="mt-0 h-full data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
+          <TabsContent value="code" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
             <SandpackProvider
               template="react-ts"
               theme="auto"
@@ -164,7 +168,7 @@ export default function CodePreview({
               }}
             >
               <SandpackLayout className="h-full">
-                <SandpackFileExplorer className="min-w-[180px] border-r border-border" />
+                <SandpackFileExplorer className="min-w-[180px]" />
                 <SandpackCustomCodeEditor onCodeChange={onCodeChange || (() => {})} />
               </SandpackLayout>
               <SandpackConsole className="h-40" />
