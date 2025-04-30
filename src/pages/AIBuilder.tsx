@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
-import AIWebBuilder from '@/components/dashboard/AIWebBuilder';
+import AIWebBuilder from '@/components/dashboard/ai-builder/AIWebBuilder';
 
 export default function AIBuilder() {
   // Page title effect

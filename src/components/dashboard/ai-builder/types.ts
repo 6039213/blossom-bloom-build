@@ -42,7 +42,7 @@ export interface ProjectTemplate {
 export interface AIMessage {
   role: 'assistant';
   content: string;
-  files?: string[];
+  files?: Record<string, string>;
   npmChanges?: string[];
 }
 
@@ -52,3 +52,16 @@ export interface UserMessage {
 }
 
 export type InternalChatMessage = AIMessage | UserMessage;
+
+// Error Type
+export interface RuntimeError {
+  message: string;
+  file?: string;
+}
+
+// Gemini Response Type
+export interface GeminiResponse {
+  files: Record<string, string>;
+  message: string;
+  npmChanges?: string[];
+}
