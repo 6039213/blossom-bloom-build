@@ -8,6 +8,10 @@ import { ProjectFiles } from './types';
 import { getProjectDependencies } from './utils';
 import { projectTemplates } from '@/utils/projectTemplates';
 
+// Import non-type dependencies
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SandpackFileExplorer } from '@codesandbox/sandpack-react';
+
 interface CodePreviewProps {
   projectFiles: ProjectFiles;
   activeTab: string;
@@ -137,7 +141,3 @@ export default function CodePreview({
     </div>
   );
 }
-
-// Import non-type dependencies
-import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { SandpackFileExplorer } from '@codesandbox/sandpack-react';

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Eye, Code, Upload, Send } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -91,24 +91,24 @@ export default function AIWebBuilder() {
       <div className="w-2/3 flex flex-col">
         {/* Tab controls */}
         <div className="border-b border-border p-4">
-          <TabsList className="grid w-[200px] grid-cols-2">
-            <TabsTrigger 
-              value="preview" 
-              onClick={() => setActiveTab('preview')} 
-              className={activeTab === 'preview' ? 'bg-primary/20' : ''}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              Preview
-            </TabsTrigger>
-            <TabsTrigger 
-              value="code" 
-              onClick={() => setActiveTab('code')} 
-              className={activeTab === 'code' ? 'bg-primary/20' : ''}
-            >
-              <Code className="h-4 w-4 mr-2" />
-              Code
-            </TabsTrigger>
-          </TabsList>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'preview' | 'code')}>
+            <TabsList className="grid w-[200px] grid-cols-2">
+              <TabsTrigger 
+                value="preview" 
+                className={activeTab === 'preview' ? 'bg-primary/20' : ''}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </TabsTrigger>
+              <TabsTrigger 
+                value="code" 
+                className={activeTab === 'code' ? 'bg-primary/20' : ''}
+              >
+                <Code className="h-4 w-4 mr-2" />
+                Code
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
         
         {/* Content area */}
@@ -119,3 +119,4 @@ export default function AIWebBuilder() {
     </div>
   );
 }
+

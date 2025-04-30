@@ -22,16 +22,18 @@ export default function CodePreviewTabs({
 }: CodePreviewTabsProps) {
   return (
     <div className="flex items-center gap-2">
-      <TabsList>
-        <TabsTrigger value="preview" onClick={() => onTabChange('preview')} className={`flex items-center ${activeTab === 'preview' ? 'bg-primary/20' : ''}`}>
-          <Eye className="h-3 w-3 mr-1" />
-          Preview
-        </TabsTrigger>
-        <TabsTrigger value="code" onClick={() => onTabChange('code')} className={`flex items-center ${activeTab === 'code' ? 'bg-primary/20' : ''}`}>
-          <Code className="h-3 w-3 mr-1" />
-          Code
-        </TabsTrigger>
-      </TabsList>
+      <Tabs value={activeTab} onValueChange={onTabChange}>
+        <TabsList>
+          <TabsTrigger value="preview" className={`flex items-center ${activeTab === 'preview' ? 'bg-primary/20' : ''}`}>
+            <Eye className="h-3 w-3 mr-1" />
+            Preview
+          </TabsTrigger>
+          <TabsTrigger value="code" className={`flex items-center ${activeTab === 'code' ? 'bg-primary/20' : ''}`}>
+            <Code className="h-3 w-3 mr-1" />
+            Code
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
       
       {showViewportToggle && activeTab === 'preview' && (
         <ToggleGroup type="single" value={viewportSize} onValueChange={(value) => value && onViewportChange(value)}>
