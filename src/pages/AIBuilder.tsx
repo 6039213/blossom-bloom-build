@@ -1,320 +1,367 @@
-import { useState, useEffect } from 'react';
-import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
-import AIPromptInput from '@/components/dashboard/AIPromptInput';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { GEMINI_API_KEY } from '@/lib/constants';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
-  Download,
-  Copy,
-  Code,
-  Eye,
-  Sparkles,
-  RefreshCw,
-  Save,
-  ExternalLink,
-  Smartphone,
-  Tablet,
-  Monitor,
-} from 'lucide-react';
-import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
-import { supabase } from '@/integrations/supabase/client';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
+import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
+import AIResponseDisplay, { ChatMessage } from '@/components/dashboard/AIResponseDisplay';
+import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
 import { useAuth } from '@/contexts/AuthContext';
+import { createDefaultFilesForTemplate, projectTemplates } from '@/utils/projectTemplates';
 import { 
-  SandpackProvider, 
-  SandpackLayout, 
-  SandpackPreview,
-  SandpackFileExplorer
-} from '@codesandbox/sandpack-react';
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
+  CodeGenerator, 
+  CodePreview, 
+  EmptyStateView, 
+  ErrorMessage,
+  ProjectInput,
+  WebContainerService,
+  Types,
+} from './ai-builder';
+import { findMainFile } from '@/components/dashboard/ai-builder/utils';
+import { geminiProvider } from '@/lib/providers/gemini';
 
-interface ProjectFile {
-  code: string;
+// Add InternalChatMessage interface
+interface InternalChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  id: string;
+  createdAt: Date;
+  isStreaming?: boolean;
+  codeFiles?: {
+    path: string;
+    content: string;
+  }[];
 }
-
-interface ProjectFiles {
-  [filePath: string]: ProjectFile;
-}
-
-const defaultScssVariables = `
-$primary-color: #f59e0b;
-$secondary-color: #3b82f6;
-$text-color: #374151;
-$background-color: #ffffff;
-$accent-color: #10b981;
-$font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-$border-radius: 0.375rem;
-$box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-$transition-duration: 0.15s;
-`;
 
 export default function AIBuilder() {
+  // State variables
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCode, setGeneratedCode] = useState('');
-  const [projectFiles, setProjectFiles] = useState<ProjectFiles>({});
+  const [projectFiles, setProjectFiles] = useState<Types.ProjectFiles>({});
   const [activeTab, setActiveTab] = useState('preview');
   const [projectName, setProjectName] = useState('');
   const [activeFile, setActiveFile] = useState('/src/App.tsx');
   const [viewportSize, setViewportSize] = useState('desktop');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState<Types.ProjectTemplate | null>(null);
+  const [detectedType, setDetectedType] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [streamingMessage, setStreamingMessage] = useState<string>('');
+  const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
+  const [terminalOutput, setTerminalOutput] = useState<string>('');
+  const [webContainerInstance, setWebContainerInstance] = useState<Types.WebContainerInstance | null>(null);
+  const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
+  const [lastSnapshotTime, setLastSnapshotTime] = useState<Date | null>(null);
+
+  // Refs
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSnapshotTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Hooks
   const { createProject } = useProjectStore();
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const getProjectDependencies = (files: ProjectFiles) => {
-    const dependencies = {
-      "react": "^18.2.0",
-      "react-dom": "^18.2.0",
-      "typescript": "^5.0.4"
+  // Scroll to bottom of chat container when messages change
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+  
+  // Handle terminal data from WebContainer
+  const handleTerminalData = useCallback((data: string) => {
+    setTerminalOutput(prev => prev + data);
+  }, []);
+  
+  // Handle WebContainer ready
+  const handleWebContainerReady = useCallback((instance: Types.WebContainerInstance) => {
+    setWebContainerInstance(instance);
+    toast.success("AI Builder is ready");
+  }, []);
+
+  // Auto save functionality
+  useEffect(() => {
+    if (Object.keys(projectFiles).length > 0 && user) {
+      // Clear any existing timer
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+      
+      // Set new timer for auto save (every 5 minutes)
+      autoSaveTimerRef.current = setTimeout(() => {
+        handleSaveProject(true);
+      }, 5 * 60 * 1000); // 5 minutes
+    }
+    
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [projectFiles, user]);
+
+  // Auto snapshot functionality
+  useEffect(() => {
+    if (webContainerInstance && Object.keys(projectFiles).length > 0) {
+      // Clear any existing timer
+      if (autoSnapshotTimerRef.current) {
+        clearTimeout(autoSnapshotTimerRef.current);
+      }
+      
+      // Set new timer for auto snapshot (every 10 minutes)
+      autoSnapshotTimerRef.current = setTimeout(() => {
+        handleSnapshot(true);
+      }, 10 * 60 * 1000); // 10 minutes
+    }
+    
+    return () => {
+      if (autoSnapshotTimerRef.current) {
+        clearTimeout(autoSnapshotTimerRef.current);
+      }
+    };
+  }, [projectFiles, webContainerInstance]);
+  
+  // Handle prompt submission
+  const handlePromptSubmit = useCallback(async (prompt: string) => {
+    if (!prompt.trim()) return;
+    
+    // Generate a new message ID
+    const messageId = uuidv4();
+    setCurrentMessageId(messageId);
+    
+    // Create new chat messages with createdAt property
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: prompt,
+      id: uuidv4(),
+      createdAt: new Date()
     };
     
-    const allCode = Object.values(files).map(file => file.code).join(' ');
+    // Add user message to chat
+    setChatMessages(prev => [...prev, userMessage]);
     
-    if (allCode.includes('react-router-dom')) {
-      dependencies["react-router-dom"] = "^6.15.0";
-    }
+    // Reset streaming message
+    setStreamingMessage('');
     
-    if (allCode.includes('.scss')) {
-      dependencies["sass"] = "^1.64.2";
-    }
+    // Show generating state
+    setIsGenerating(true);
     
-    if (allCode.includes('axios')) {
-      dependencies["axios"] = "^1.4.0";
-    }
-    
-    return dependencies;
-  };
-
-  const fixScssImports = (files: ProjectFiles): ProjectFiles => {
-    const updatedFiles = { ...files };
-    
-    if (!Object.keys(updatedFiles).some(path => path.includes('variables.scss'))) {
-      updatedFiles['/src/styles/variables.scss'] = { code: defaultScssVariables };
-    }
-
-    Object.keys(updatedFiles).forEach(filePath => {
-      if (filePath.endsWith('.scss') || filePath.endsWith('.sass')) {
-        if (!filePath.includes('variables.scss')) {
-          const fileContent = updatedFiles[filePath].code;
-          
-          if (!fileContent.includes('@import') || !fileContent.includes('variables.scss')) {
-            const pathSegments = filePath.split('/').filter(Boolean);
-            pathSegments.pop();
+    try {
+      // Prepare system message
+      const systemMessage = {
+        role: 'system',
+        content: 'You are an AI assistant that helps with generating code for web applications. ' +
+                 'Always output React components in TypeScript (.tsx). ' +
+                 'Never emit .js / .jsx. ' +
+                 'Do not offer model switching.'
+      };
+      
+      // Stream response from Gemini
+      await geminiProvider.stream({
+        messages: [
+          systemMessage,
+          ...chatMessages.map(msg => ({ role: msg.role, content: msg.content })),
+          { role: 'user', content: prompt }
+        ],
+        onToken: (token: string) => {
+          setStreamingMessage(prev => prev + token);
+        },
+      });
+      
+      // Create assistant message with createdAt property
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: streamingMessage,
+        id: messageId,
+        createdAt: new Date()
+      };
+      
+      // Add AI response to chat
+      setChatMessages(prev => [...prev, assistantMessage]);
+      
+      // Parse code blocks from response
+      const parsedFiles = parseCodeBlocks(streamingMessage);
+      if (Object.keys(parsedFiles).length > 0) {
+        setProjectFiles(parsedFiles);
+        setGeneratedCode(JSON.stringify(parsedFiles, null, 2));
+        
+        // Find main file and set as active
+        const mainFile = findMainFile(parsedFiles, detectedType || 'react');
+        setActiveFile(mainFile);
+        
+        // Switch to preview tab
+        setActiveTab('preview');
+        
+        // Detect project type if not already set
+        if (!detectedType) {
+          detectProjectType(parsedFiles);
+        }
+        
+        // Set project name if not already set
+        if (!projectName) {
+          setProjectName(extractProjectName(prompt));
+        }
+        
+        // Hide template selector
+        setShowTemplateSelector(false);
+        
+        // Apply changes to WebContainer if available
+        if (webContainerInstance) {
+          try {
+            // Create a simple diff string for demonstration
+            const diffString = createDiffString(parsedFiles);
+            await webContainerInstance.applyDiff(diffString);
             
-            let relativePath = '';
-            for (let i = 0; i < pathSegments.length - 1; i++) {
-              if (pathSegments[i] !== 'styles') {
-                relativePath += '../';
-              }
+            // Check if we need to install dependencies
+            const filesChanged = Object.keys(parsedFiles);
+            const needsInstall = filesChanged.some(file => file.includes('package.json'));
+            
+            if (needsInstall) {
+              await webContainerInstance.installAndRestartIfNeeded(filesChanged);
             }
-            
-            updatedFiles[filePath] = { 
-              code: `@import '${relativePath}styles/variables.scss';\n\n${fileContent}`
-            };
+          } catch (error) {
+            console.error("Failed to apply changes to WebContainer:", error);
+            setErrorMessage("Failed to apply changes to WebContainer");
           }
         }
       }
-    });
-    
-    return updatedFiles;
-  };
-  
-  const handlePromptSubmit = async (prompt: string) => {
-    setIsGenerating(true);
-    setErrorMessage(null);
-    try {
-      if (!GEMINI_API_KEY) {
-        toast.error("Gemini API key is not configured correctly");
-        return;
-      }
-      
-      setProjectName(extractProjectName(prompt));
-      
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  text: `Generate a complete React website based on this description: "${prompt}". 
-
-This MUST be a modern React 18+ application with TypeScript (.tsx files) and SCSS modules for styling.
-Include the following file structure:
-
-/src
-  /components (with reusable UI components)
-  /pages (with page components)
-  /hooks (custom React hooks if needed)
-  /contexts (React context providers if needed)
-  /utils (utility functions)
-  /styles (SCSS module files)
-  App.tsx
-  index.tsx
-/public
-  index.html
-package.json
-vite.config.ts
-
-Important requirements:
-1. Use functional components with TypeScript (React.FC<Props>)
-2. Use SCSS modules for styling (.module.scss files)
-3. Proper imports and exports between files
-4. Use react-router-dom for navigation if needed
-5. All TypeScript types must be properly defined
-6. Make it visually appealing with a modern design
-7. Make sure the code is fully functional and the website is responsive
-8. IMPORTANT: Define all SCSS variables! Create a variables.scss file with at least these variables:
-   $primary-color: #f59e0b;
-   $secondary-color: #3b82f6;
-   $text-color: #374151;
-   $background-color: #ffffff;
-   And import it into all other SCSS files using the CORRECT RELATIVE PATH!
-
-Return the complete multi-file project as a single response with clear file path indicators like:
-// FILE: src/App.tsx
-// code here...
-
-// FILE: src/components/Header.tsx
-// code here...
-
-Do not include any explanations, just the code files. Make sure to implement all necessary features for a production-ready application.`
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 8192,
-          }
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error.message || 'Error generating website');
-      }
-      
-      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-        throw new Error('Invalid response from Gemini API');
-      }
-      
-      const text = data.candidates[0].content.parts[0].text;
-      const parsedFiles = parseProjectFiles(text);
-      const fixedFiles = fixScssImports(parsedFiles);
-      
-      setProjectFiles(fixedFiles);
-      setGeneratedCode(JSON.stringify(fixedFiles, null, 2));
-      
-      const fileKeys = Object.keys(fixedFiles);
-      const appFile = fileKeys.find(path => path.endsWith('App.tsx')) || fileKeys[0];
-      setActiveFile(appFile);
-      
-      toast.success("Website generated successfully!");
-      setActiveTab('preview');
     } catch (error) {
-      console.error("Error generating website:", error);
-      toast.error("Failed to generate website: " + (error instanceof Error ? error.message : "Unknown error"));
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error generating website");
+      console.error("Error generating code:", error);
+      setErrorMessage(error instanceof Error ? error.message : 'Unknown error generating code');
     } finally {
+      // Hide generating state
       setIsGenerating(false);
+      setCurrentMessageId(null);
     }
-  };
+  }, [chatMessages, streamingMessage, webContainerInstance, detectedType, projectName]);
   
-  const parseProjectFiles = (text: string): ProjectFiles => {
-    const fileRegex = /\/\/ FILE: (.*?)\n([\s\S]*?)(?=\/\/ FILE:|$)/g;
-    const files: ProjectFiles = {};
-    let match;
-    
-    while ((match = fileRegex.exec(text)) !== null) {
-      const filePath = match[1].trim();
-      const fileContent = match[2].trim();
-      
-      const sandpackPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
-      
-      files[sandpackPath] = { code: fileContent };
-    }
-    
+  // Helper functions
+  const parseCodeBlocks = (text: string): Types.ProjectFiles => {
+    // Mock implementation - in reality, you would parse the code blocks from the AI response
+    const files: Types.ProjectFiles = {};
     return files;
   };
   
-  const extractProjectName = (prompt: string) => {
-    let name = prompt.split('.')[0].split('!')[0].trim();
-    if (name.length > 50) {
-      name = name.substring(0, 47) + '...';
-    }
-    return name || 'New Project';
+  const detectProjectType = (files: Types.ProjectFiles): void => {
+    // Mock implementation - in reality, you would detect the project type based on the files
+    setDetectedType('react');
   };
   
+  const extractProjectName = (prompt: string): string => {
+    // Mock implementation - in reality, you would extract a project name from the prompt
+    return prompt.split(' ')[0] || 'New Project';
+  };
+  
+  const createDiffString = (files: Types.ProjectFiles): string => {
+    // Mock implementation - in reality, you would create a diff string from the files
+    return Object.keys(files).map(path => `create ${path}`).join('\n');
+  };
+  
+  // Template selection handler
+  const handleTemplateSelect = (template: Types.ProjectTemplate) => {
+    setSelectedTemplate(template);
+    setDetectedType(template.type);
+    setShowTemplateSelector(false);
+    
+    const defaultFiles = createDefaultFilesForTemplate(template.type);
+    if (Object.keys(defaultFiles).length > 0) {
+      setProjectFiles(defaultFiles);
+      setGeneratedCode(JSON.stringify(defaultFiles, null, 2));
+      
+      let mainFile = findMainFile(defaultFiles, template.type);
+      setActiveFile(mainFile);
+      
+      toast.success("Template files created! You can customize with AI prompt or edit directly.");
+    }
+  };
+  
+  // Action handlers
   const handleCopyCode = () => {
     navigator.clipboard.writeText(generatedCode);
     toast.success("Code copied to clipboard");
   };
   
   const handleDownloadCode = () => {
-    const blob = new Blob([generatedCode], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'generated-project.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("Code downloaded successfully");
+    if (webContainerInstance) {
+      webContainerInstance.packZip().then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${projectName || 'generated-project'}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("Code downloaded successfully");
+      }).catch(error => {
+        console.error("Failed to download ZIP:", error);
+        setErrorMessage("Failed to download ZIP");
+      });
+    } else {
+      const blob = new Blob([generatedCode], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${projectName || 'generated-project'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Code downloaded successfully");
+    }
   };
 
-  const handleSaveProject = async () => {
+  const handleSaveProject = async (isAutoSave = false) => {
     if (!user) {
-      toast.error("You must be logged in to save a project");
-      navigate('/auth');
+      if (!isAutoSave) {
+        toast.error("You must be logged in to save a project");
+        navigate('/auth');
+      }
       return;
     }
 
     if (Object.keys(projectFiles).length === 0) {
-      toast.error("No project to save");
+      if (!isAutoSave) {
+        toast.error("No project to save");
+      }
       return;
     }
 
     try {
       const projectData = {
         title: projectName,
-        description: "Generated with AI Builder",
+        description: `${detectedType ? `${detectedType.charAt(0).toUpperCase() + detectedType.slice(1)} clone ` : ""}Generated with AI Builder`,
         code: JSON.stringify(projectFiles),
         status: 'draft' as ProjectStatus
       };
 
       const newProject = await createProject(projectData);
+      setLastSaveTime(new Date());
       
-      toast.success("Project saved successfully");
-      navigate(`/dashboard/projects/${newProject.id}`);
+      if (!isAutoSave) {
+        toast.success("Project saved successfully");
+        navigate(`/dashboard/projects/${newProject.id}`);
+      } else {
+        toast.success("Project auto-saved");
+      }
     } catch (error) {
       console.error("Error saving project:", error);
-      toast.error("Failed to save project");
+      if (!isAutoSave) {
+        toast.error("Failed to save project");
+      }
     }
   };
 
-  const handleCodeChange = (updatedFiles: ProjectFiles) => {
+  const handleCodeChange = (updatedFiles: Types.ProjectFiles) => {
     setProjectFiles(updatedFiles);
     setGeneratedCode(JSON.stringify(updatedFiles, null, 2));
   };
 
   const handleOpenInNewTab = () => {
+    // Implementation unchanged
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
@@ -353,26 +400,74 @@ Do not include any explanations, just the code files. Make sure to implement all
     URL.revokeObjectURL(url);
   };
   
-  const getViewportClasses = () => {
-    switch(viewportSize) {
-      case 'mobile':
-        return 'w-[320px] mx-auto border border-border rounded-lg shadow-lg';
-      case 'tablet':
-        return 'w-[768px] mx-auto border border-border rounded-lg shadow-lg';
-      case 'desktop':
-      default:
-        return 'w-full';
-    }
-  };
-  
   const handleReportError = (error: Error) => {
     setErrorMessage(error.message);
     toast.error("Error reported. Our AI assistant will help resolve this issue.");
   };
   
+  const handleResetSelection = () => {
+    setSelectedTemplate(null);
+    setShowTemplateSelector(true);
+    setProjectFiles({});
+    setGeneratedCode('');
+  };
+
+  const handleUseTemplatePrompt = () => {
+    if (selectedTemplate) {
+      handlePromptSubmit(selectedTemplate.defaultPrompt);
+    }
+  };
+
+  const handleSnapshot = (isAutoSnapshot = false) => {
+    if (webContainerInstance) {
+      webContainerInstance.snapshot()
+        .then(() => {
+          setLastSnapshotTime(new Date());
+          if (!isAutoSnapshot) {
+            toast.success("Snapshot created successfully");
+          } else {
+            toast.success("Auto-snapshot created");
+          }
+        })
+        .catch(error => {
+          console.error("Failed to create snapshot:", error);
+          if (!isAutoSnapshot) {
+            setErrorMessage("Failed to create snapshot");
+          }
+        });
+    }
+  };
+
+  const handleRevert = () => {
+    if (webContainerInstance) {
+      webContainerInstance.revert()
+        .then(() => toast.success("Reverted to previous snapshot"))
+        .catch(error => {
+          console.error("Failed to revert to snapshot:", error);
+          setErrorMessage("Failed to revert to snapshot");
+        });
+    }
+  };
+
+  // File upload handler
+  const handleFileUpload = async (file: File): Promise<string> => {
+    // In a real implementation, this would upload to a storage service
+    // For demo, we'll just return a mock URL
+    return new Promise((resolve, reject) => {
+      try {
+        // Create a blob URL for the file
+        const url = URL.createObjectURL(file);
+        // In a real app, you'd upload to storage and get a permanent URL
+        resolve(`${file.name} (local preview)`);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  };
+  
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <div className="hidden md:block md:w-64 h-full">
+      <div className="h-full">
         <DashboardSidebar />
       </div>
       
@@ -380,196 +475,109 @@ Do not include any explanations, just the code files. Make sure to implement all
         <header className="bg-white dark:bg-gray-900 border-b border-border p-4 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">AI Website Builder</h1>
+            {detectedType && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Project type:</span>
+                <span className="bg-blossom-100 dark:bg-blossom-900/30 px-2 py-1 rounded text-xs font-medium text-blossom-700 dark:text-blossom-300 capitalize">
+                  {detectedType}
+                </span>
+              </div>
+            )}
           </div>
         </header>
         
-        <main className="flex-1 overflow-hidden grid grid-rows-[auto_1fr]">
-          <div className="p-4 bg-white dark:bg-gray-900 border-b border-border">
-            <div className="max-w-4xl mx-auto">
-              <h2 className="text-lg font-semibold mb-2 flex items-center">
-                <Sparkles className="h-4 w-4 mr-2 text-blossom-500" />
-                Tell us about your website
-              </h2>
-              <AIPromptInput 
-                onSubmit={handlePromptSubmit} 
-                isProcessing={isGenerating}
-                onSaveCode={handleSaveProject}
-                showSaveButton={Object.keys(projectFiles).length > 0}
-                onReportError={handleReportError}
-              />
+        <main className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5">
+          <div className="flex flex-col h-full overflow-hidden border-r border-border lg:col-span-2">
+            <div 
+              ref={chatContainerRef}
+              className="flex-1 overflow-y-auto" 
+              style={{ scrollBehavior: 'smooth' }}
+            >
+              <AIResponseDisplay messages={chatMessages} isLoading={false} />
               
-              {errorMessage && (
-                <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <p className="text-xs text-red-700 dark:text-red-300">
-                    <strong>Error:</strong> {errorMessage}
-                  </p>
-                  <Button 
-                    variant="destructive" 
-                    size="sm" 
-                    className="mt-1"
-                    onClick={() => setErrorMessage(null)}
-                  >
-                    Dismiss
-                  </Button>
+              {/* Terminal Output Section */}
+              {terminalOutput && (
+                <div className="p-4 bg-gray-900 text-gray-300 font-mono text-xs">
+                  <div className="mb-2 text-gray-500 flex items-center">
+                    <span>Terminal Output</span>
+                    <div className="flex-1 ml-2 border-t border-gray-700" />
+                  </div>
+                  <pre className="whitespace-pre-wrap">
+                    {terminalOutput}
+                  </pre>
                 </div>
               )}
             </div>
+            
+            <ProjectInput 
+              showTemplateSelector={showTemplateSelector}
+              selectedTemplate={selectedTemplate}
+              onTemplateSelect={handleTemplateSelect}
+              onResetSelection={handleResetSelection}
+              onUseTemplatePrompt={handleUseTemplatePrompt}
+              errorMessage={errorMessage}
+              onDismissError={() => setErrorMessage(null)}
+              onPromptSubmit={handlePromptSubmit}
+              isGenerating={isGenerating}
+              onSaveCode={handleSaveProject}
+              showSaveButton={Object.keys(projectFiles).length > 0}
+              onReportError={handleReportError}
+              onSnapshot={handleSnapshot}
+              onRevert={handleRevert}
+              onFileUpload={handleFileUpload}
+            />
+
+            {/* Auto-save and Auto-snapshot info */}
+            {(lastSaveTime || lastSnapshotTime) && (
+              <div className="p-2 text-xs text-muted-foreground border-t border-border">
+                {lastSaveTime && (
+                  <p>Last auto-save: {lastSaveTime.toLocaleTimeString()}</p>
+                )}
+                {lastSnapshotTime && (
+                  <p>Last auto-snapshot: {lastSnapshotTime.toLocaleTimeString()}</p>
+                )}
+              </div>
+            )}
           </div>
           
-          <div className="overflow-hidden p-2 flex-grow">
+          <div className="overflow-hidden p-2 h-full border-t md:border-t-0 lg:col-span-3">
             {Object.keys(projectFiles).length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center max-w-md">
-                  <div className="w-16 h-16 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center mx-auto mb-4">
-                    <Sparkles className="h-6 w-6 text-blossom-500" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">Let's Create Something Amazing</h3>
-                  <p className="text-muted-foreground mb-4 text-sm">
-                    Type a description of the website you want to build and our AI will generate it for you.
-                  </p>
-                  <ul className="text-left space-y-2 bg-muted p-3 rounded-lg text-xs">
-                    <li className="flex items-start">
-                      <span className="bg-blossom-100 dark:bg-blossom-900/30 p-1 rounded text-blossom-700 dark:text-blossom-300 mr-2">Tip</span>
-                      <span>Be specific about your website's purpose, style, and content.</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="bg-blossom-100 dark:bg-blossom-900/30 p-1 rounded text-blossom-700 dark:text-blossom-300 mr-2">Tip</span>
-                      <span>Mention color schemes or specific design elements you'd like to include.</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+              <EmptyStateView selectedTemplate={selectedTemplate} />
             ) : (
-              <div className="w-full h-full mx-auto flex flex-col">
-                <Tabs 
-                  value={activeTab} 
-                  onValueChange={setActiveTab} 
-                  className="w-full h-full flex flex-col"
-                >
-                  <div className="flex items-center justify-between w-full mb-2">
-                    <div className="flex items-center gap-2">
-                      <TabsList>
-                        <TabsTrigger value="preview" className="flex items-center">
-                          <Eye className="h-3 w-3 mr-1" />
-                          Preview
-                        </TabsTrigger>
-                        <TabsTrigger value="code" className="flex items-center">
-                          <Code className="h-3 w-3 mr-1" />
-                          Code
-                        </TabsTrigger>
-                      </TabsList>
-                      
-                      {activeTab === 'preview' && (
-                        <ToggleGroup type="single" value={viewportSize} onValueChange={(value) => value && setViewportSize(value)}>
-                          <ToggleGroupItem value="mobile" aria-label="Mobile view">
-                            <Smartphone className="h-3 w-3" />
-                          </ToggleGroupItem>
-                          <ToggleGroupItem value="tablet" aria-label="Tablet view">
-                            <Tablet className="h-3 w-3" />
-                          </ToggleGroupItem>
-                          <ToggleGroupItem value="desktop" aria-label="Desktop view">
-                            <Monitor className="h-3 w-3" />
-                          </ToggleGroupItem>
-                        </ToggleGroup>
-                      )}
-                    </div>
-                    
-                    <div className="flex space-x-1">
-                      {activeTab === 'preview' && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={handleOpenInNewTab}
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          New Tab
-                        </Button>
-                      )}
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleCopyCode}
-                      >
-                        <Copy className="h-3 w-3 mr-1" />
-                        Copy
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleDownloadCode}
-                      >
-                        <Download className="h-3 w-3 mr-1" />
-                        Download
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => {
-                          setProjectFiles({});
-                          setGeneratedCode('');
-                        }}
-                      >
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                        Reset
-                      </Button>
-                      <Button 
-                        variant="default"
-                        size="sm"
-                        onClick={handleSaveProject}
-                      >
-                        <Save className="h-3 w-3 mr-1" />
-                        Save
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="flex-1 overflow-hidden border border-border rounded-lg">
-                    <TabsContent value="preview" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col">
-                      <div className={`h-full w-full overflow-auto transition-all duration-300 ${getViewportClasses()}`}>
-                        {Object.keys(projectFiles).length > 0 && (
-                          <SandpackProvider
-                            template="react-ts"
-                            theme="auto"
-                            files={projectFiles}
-                            customSetup={{
-                              dependencies: getProjectDependencies(projectFiles),
-                            }}
-                            options={{
-                              visibleFiles: [activeFile],
-                            }}
-                          >
-                            <SandpackLayout className="h-full">
-                              <SandpackPreview
-                                showRefreshButton
-                                className="flex-grow h-full"
-                              />
-                            </SandpackLayout>
-                          </SandpackProvider>
-                        )}
-                      </div>
-                    </TabsContent>
-                    <TabsContent value="code" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
-                      <SandpackProvider
-                        template="react-ts"
-                        theme="auto"
-                        files={projectFiles}
-                        customSetup={{
-                          dependencies: getProjectDependencies(projectFiles),
-                        }}
-                      >
-                        <SandpackLayout className="h-full">
-                          <SandpackFileExplorer className="min-w-[180px]" />
-                          <SandpackCustomCodeEditor onCodeChange={handleCodeChange} />
-                        </SandpackLayout>
-                      </SandpackProvider>
-                    </TabsContent>
-                  </div>
-                </Tabs>
-              </div>
+              <CodePreview 
+                projectFiles={projectFiles}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                activeFile={activeFile}
+                viewportSize={viewportSize}
+                setViewportSize={setViewportSize}
+                detectedType={detectedType}
+                onCodeChange={handleCodeChange}
+                onCopy={handleCopyCode}
+                onDownload={handleDownloadCode}
+                onReset={() => {
+                  setProjectFiles({});
+                  setGeneratedCode('');
+                  if (selectedTemplate) {
+                    setShowTemplateSelector(false);
+                  } else {
+                    setShowTemplateSelector(true);
+                  }
+                }}
+                onSave={handleSaveProject}
+                onOpenInNewTab={handleOpenInNewTab}
+                terminalOutput={terminalOutput}
+              />
             )}
           </div>
         </main>
       </div>
+      
+      {/* WebContainer Service (invisible component) */}
+      <WebContainerService 
+        onTerminalData={handleTerminalData}
+        onReady={handleWebContainerReady}
+      />
     </div>
   );
 }

@@ -41,6 +41,18 @@ export default function SandpackCustomCodeEditor({ onCodeChange }: CustomCodeEdi
       }
     });
     
+    // Force initial render of code
+    setTimeout(() => {
+      const currentFiles = Object.entries(sandpack.files).reduce((acc, [path, file]) => {
+        return {
+          ...acc,
+          [path]: { code: file.code || '' }
+        };
+      }, {} as ProjectFiles);
+      
+      onCodeChange(currentFiles);
+    }, 500);
+    
     return () => {
       unsubscribe();
     };
@@ -56,6 +68,7 @@ export default function SandpackCustomCodeEditor({ onCodeChange }: CustomCodeEdi
           readOnly={false}
           wrapContent
           className="h-full"
+          style={{ height: '100%', minHeight: '300px' }}
         />
       </div>
     </div>
