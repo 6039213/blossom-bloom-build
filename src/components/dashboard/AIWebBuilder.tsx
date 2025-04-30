@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Eye, Code, Upload, Send } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import ChatMessages from './ChatMessages';
 import CodePreviewPanel from './CodePreviewPanel';
-import { geminiProvider } from '@/lib/providers/gemini';
+import FileExplorer, { FileSystemItem } from './FileExplorer';
+import MonacoEditor from './MonacoEditor';
+import { buildFileTree, createNewFile } from '@/utils/fileSystem';
 
 // Define types for our AI response
 interface FileEdit {
@@ -28,6 +30,49 @@ export default function AIWebBuilder() {
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; edits?: FileEdit[]; npmChanges?: string[] }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [projectFiles, setProjectFiles] = useState<Record<string, { code: string }>>({});
+  
+  // File system state
+  const [files, setFiles] = useState<Record<string, string>>({
+    'src/App.tsx': 'import React from "react";\n\nexport default function App() {\n  return (\n    <div>\n      <h1>Hello World</h1>\n    </div>\n  );\n}',
+    'src/index.tsx': 'import React from "react";\nimport ReactDOM from "react-dom";\nimport App from "./App";\n\nReactDOM.render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>,\n  document.getElementById("root")\n);',
+    'src/styles/global.css': 'body {\n  margin: 0;\n  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;\n}',
+  });
+  const [fileTree, setFileTree] = useState<FileSystemItem[]>([]);
+  const [activeFile, setActiveFile] = useState<string | null>(null);
+  const [openFiles, setOpenFiles] = useState<string[]>([]);
+
+  // Update file tree when files change
+  useEffect(() => {
+    const tree = buildFileTree(files);
+    setFileTree(tree);
+    
+    // Update projectFiles for preview panel
+    const formattedFiles: Record<string, { code: string }> = {};
+    Object.entries(files).forEach(([path, content]) => {
+      formattedFiles[path] = { code: content };
+    });
+    setProjectFiles(formattedFiles);
+  }, [files]);
+
+  const handleFileSelect = (path: string) => {
+    setActiveFile(path);
+    
+    // Add to open files if not already open
+    if (!openFiles.includes(path)) {
+      setOpenFiles(prev => [...prev, path]);
+    }
+  };
+
+  const handleTabChange = (path: string) => {
+    setActiveFile(path);
+  };
+
+  const handleContentChange = (path: string, content: string) => {
+    setFiles(prev => ({
+      ...prev,
+      [path]: content
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,19 +96,19 @@ export default function AIWebBuilder() {
       
       // Process file edits
       if (aiResponse.edits && aiResponse.edits.length > 0) {
-        const updatedFiles = { ...projectFiles };
+        const updatedFiles = { ...files };
         
         // Apply each edit to the files
         aiResponse.edits.forEach(edit => {
           if (edit.action === 'replace' || edit.action === 'create') {
-            updatedFiles[edit.file] = { code: edit.content };
+            updatedFiles[edit.file] = edit.content;
           } else if (edit.action === 'delete') {
             delete updatedFiles[edit.file];
           }
         });
         
-        // Update project files state
-        setProjectFiles(updatedFiles);
+        // Update files state
+        setFiles(updatedFiles);
       }
       
       // Add AI message with edits info
@@ -120,7 +165,7 @@ export default function AIWebBuilder() {
             { 
               file: "src/components/Hero.tsx", 
               action: "replace", 
-              content: 'import React from \'react\';\n\nexport default function Hero() {\n  return (\n    <div className="bg-blossom-50 py-16">\n      <div className="container mx-auto px-4">\n        <h1 className="text-4xl font-bold text-center text-blossom-900">Welcome to Our Platform</h1>\n        <p className="mt-4 text-xl text-center text-blossom-600">The future of web development is here</p>\n        <div className="mt-8 flex justify-center">\n          <button className="bg-blossom-500 text-white px-6 py-2 rounded-md hover:bg-blossom-600 transition">Get Started</button>\n        </div>\n      </div>\n    </div>\n  );\n}'
+              content: "import React from 'react';\n\nexport default function Hero() {\n  return (\n    <div className=\"bg-blossom-50 py-16\">\n      <div className=\"container mx-auto px-4\">\n        <h1 className=\"text-4xl font-bold text-center text-blossom-900\">Welcome to Our Platform</h1>\n        <p className=\"mt-4 text-xl text-center text-blossom-600\">The future of web development is here</p>\n        <div className=\"mt-8 flex justify-center\">\n          <button className=\"bg-blossom-500 text-white px-6 py-2 rounded-md hover:bg-blossom-600 transition\">Get Started</button>\n        </div>\n      </div>\n    </div>\n  );\n}" 
             }
           ],
           message: "✅ Hero.tsx updated with new heading and button styling"
@@ -131,7 +176,7 @@ export default function AIWebBuilder() {
             { 
               file: "src/components/Button.tsx", 
               action: "create", 
-              content: 'import React from \'react\';\n\ninterface ButtonProps {\n  children: React.ReactNode;\n  variant?: \'primary\' | \'secondary\' | \'outline\';\n  size?: \'sm\' | \'md\' | \'lg\';\n  onClick?: () => void;\n}\n\nexport default function Button({ children, variant = \'primary\', size = \'md\', onClick }: ButtonProps) {\n  const baseClasses = \'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2\';\n  \n  const variantClasses = {\n    primary: \'bg-blossom-500 text-white hover:bg-blossom-600 focus:ring-blossom-500\',\n    secondary: \'bg-blossom-100 text-blossom-700 hover:bg-blossom-200 focus:ring-blossom-300\',\n    outline: \'bg-transparent border border-blossom-300 text-blossom-700 hover:bg-blossom-50 focus:ring-blossom-300\',\n  };\n  \n  const sizeClasses = {\n    sm: \'px-3 py-1.5 text-sm\',\n    md: \'px-4 py-2 text-base\',\n    lg: \'px-6 py-3 text-lg\',\n  };\n  \n  return (\n    <button\n      onClick={onClick}\n      className={baseClasses + " " + variantClasses[variant] + " " + sizeClasses[size]}\n    >\n      {children}\n    </button>\n  );\n}'
+              content: "import React from 'react';\n\ninterface ButtonProps {\n  children: React.ReactNode;\n  variant?: 'primary' | 'secondary' | 'outline';\n  size?: 'sm' | 'md' | 'lg';\n  onClick?: () => void;\n}\n\nexport default function Button({ children, variant = 'primary', size = 'md', onClick }: ButtonProps) {\n  const baseClasses = 'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';\n  \n  const variantClasses = {\n    primary: 'bg-blossom-500 text-white hover:bg-blossom-600 focus:ring-blossom-500',\n    secondary: 'bg-blossom-100 text-blossom-700 hover:bg-blossom-200 focus:ring-blossom-300',\n    outline: 'bg-transparent border border-blossom-300 text-blossom-700 hover:bg-blossom-50 focus:ring-blossom-300',\n  };\n  \n  const sizeClasses = {\n    sm: 'px-3 py-1.5 text-sm',\n    md: 'px-4 py-2 text-base',\n    lg: 'px-6 py-3 text-lg',\n  };\n  \n  return (\n    <button\n      onClick={onClick}\n      className={baseClasses + \" \" + variantClasses[variant] + \" \" + sizeClasses[size]}\n    >\n      {children}\n    </button>\n  );\n}" 
             }
           ],
           message: "✅ Created a new Button.tsx component with multiple variants and sizes",
@@ -143,7 +188,7 @@ export default function AIWebBuilder() {
             { 
               file: "src/components/Feature.tsx", 
               action: "create", 
-              content: 'import React from \'react\';\n\ninterface FeatureProps {\n  title: string;\n  description: string;\n  icon: React.ReactNode;\n}\n\nexport default function Feature({ title, description, icon }: FeatureProps) {\n  return (\n    <div className="p-6 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">\n      <div className="w-12 h-12 bg-blossom-100 rounded-full flex items-center justify-center text-blossom-600 mb-4">\n        {icon}\n      </div>\n      <h3 className="text-xl font-semibold text-gray-900 mb-2">{title}</h3>\n      <p className="text-gray-600">{description}</p>\n    </div>\n  );\n}'
+              content: "import React from 'react';\n\ninterface FeatureProps {\n  title: string;\n  description: string;\n  icon: React.ReactNode;\n}\n\nexport default function Feature({ title, description, icon }: FeatureProps) {\n  return (\n    <div className=\"p-6 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow\">\n      <div className=\"w-12 h-12 bg-blossom-100 rounded-full flex items-center justify-center text-blossom-600 mb-4\">\n        {icon}\n      </div>\n      <h3 className=\"text-xl font-semibold text-gray-900 mb-2\">{title}</h3>\n      <p className=\"text-gray-600\">{description}</p>\n    </div>\n  );\n}" 
             }
           ],
           message: "✅ Created Feature.tsx component for showcasing product features",
@@ -158,8 +203,8 @@ export default function AIWebBuilder() {
 
   return (
     <div className="flex h-full overflow-hidden bg-background">
-      {/* Chat section (left ~35%) */}
-      <div className="w-1/3 flex flex-col border-r border-border">
+      {/* Chat section (left ~25%) */}
+      <div className="w-1/4 flex flex-col border-r border-border">
         {/* Messages container */}
         <div className="flex-1 overflow-y-auto p-4">
           <ChatMessages messages={messages} isLoading={isLoading} />
@@ -211,8 +256,17 @@ export default function AIWebBuilder() {
         </div>
       </div>
       
-      {/* Preview/Code section (right ~65%) */}
-      <div className="w-2/3 flex flex-col">
+      {/* File explorer (middle) */}
+      <div className="w-1/6 flex flex-col">
+        <FileExplorer 
+          files={fileTree} 
+          activeFile={activeFile}
+          onFileSelect={handleFileSelect}
+        />
+      </div>
+      
+      {/* Code Editor / Preview section */}
+      <div className="w-7/12 flex flex-col">
         {/* Tab controls */}
         <div className="border-b border-border p-4">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'preview' | 'code')}>
@@ -237,7 +291,20 @@ export default function AIWebBuilder() {
         
         {/* Content area */}
         <div className="flex-1 overflow-hidden">
-          <CodePreviewPanel activeTab={activeTab} projectFiles={projectFiles} />
+          <Tabs value={activeTab} className="h-full">
+            <TabsContent value="preview" className="mt-0 h-full">
+              <CodePreviewPanel activeTab="preview" projectFiles={projectFiles} />
+            </TabsContent>
+            <TabsContent value="code" className="mt-0 h-full">
+              <MonacoEditor 
+                files={files} 
+                activeFile={activeFile}
+                onContentChange={handleContentChange}
+                openFiles={openFiles}
+                onTabChange={handleTabChange}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
