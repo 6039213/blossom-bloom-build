@@ -6,10 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import ChatMessages from './ChatMessages';
-import CodePreviewPanel from './CodePreviewPanel';
 import FileExplorer, { FileSystemItem } from './FileExplorer';
 import MonacoEditor from './MonacoEditor';
 import { buildFileTree, createNewFile } from '@/utils/fileSystem';
+import CodePreview from './CodePreview';
+import { detectProjectType } from './ai-builder/utils';
+import { ProjectFiles } from './ai-builder/types';
 
 // Define types for our AI response
 interface FileEdit {
@@ -29,29 +31,38 @@ export default function AIWebBuilder() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; edits?: FileEdit[]; npmChanges?: string[] }>>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [projectFiles, setProjectFiles] = useState<Record<string, { code: string }>>({});
   
   // File system state
   const [files, setFiles] = useState<Record<string, string>>({
-    'src/App.tsx': 'import React from "react";\n\nexport default function App() {\n  return (\n    <div>\n      <h1>Hello World</h1>\n    </div>\n  );\n}',
-    'src/index.tsx': 'import React from "react";\nimport ReactDOM from "react-dom";\nimport App from "./App";\n\nReactDOM.render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>,\n  document.getElementById("root")\n);',
-    'src/styles/global.css': 'body {\n  margin: 0;\n  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;\n}',
+    'src/App.tsx': 'import React from "react";\n\nexport default function App() {\n  return (\n    <div className="p-4">\n      <h1 className="text-2xl font-bold text-blue-600">Hello World</h1>\n      <p className="mt-2">Start building your app by describing it to the AI.</p>\n    </div>\n  );\n}',
+    'src/index.tsx': 'import React from "react";\nimport ReactDOM from "react-dom/client";\nimport App from "./App";\nimport "./styles/tailwind.css";\n\nReactDOM.createRoot(document.getElementById("root")!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>,\n);',
+    'src/styles/tailwind.css': '@tailwind base;\n@tailwind components;\n@tailwind utilities;',
   });
+  
   const [fileTree, setFileTree] = useState<FileSystemItem[]>([]);
-  const [activeFile, setActiveFile] = useState<string | null>(null);
-  const [openFiles, setOpenFiles] = useState<string[]>([]);
+  const [activeFile, setActiveFile] = useState<string | null>('src/App.tsx');
+  const [openFiles, setOpenFiles] = useState<string[]>(['src/App.tsx']);
+  const [projectFiles, setProjectFiles] = useState<ProjectFiles>({});
+  const [viewportSize, setViewportSize] = useState('desktop');
+  const [detectedType, setDetectedType] = useState<string | null>('react');
+  
+  // Update project files when files change
+  useEffect(() => {
+    const formattedFiles: ProjectFiles = {};
+    Object.entries(files).forEach(([path, content]) => {
+      formattedFiles[path] = { code: content };
+    });
+    setProjectFiles(formattedFiles);
+    
+    // Detect project type
+    const type = detectProjectType(formattedFiles);
+    setDetectedType(type);
+  }, [files]);
 
   // Update file tree when files change
   useEffect(() => {
     const tree = buildFileTree(files);
     setFileTree(tree);
-    
-    // Update projectFiles for preview panel
-    const formattedFiles: Record<string, { code: string }> = {};
-    Object.entries(files).forEach(([path, content]) => {
-      formattedFiles[path] = { code: content };
-    });
-    setProjectFiles(formattedFiles);
   }, [files]);
 
   const handleFileSelect = (path: string) => {
@@ -66,12 +77,34 @@ export default function AIWebBuilder() {
   const handleTabChange = (path: string) => {
     setActiveFile(path);
   };
+  
+  const handleTabClose = (path: string) => {
+    // Remove from open files
+    const newOpenFiles = openFiles.filter(file => file !== path);
+    setOpenFiles(newOpenFiles);
+    
+    // Set a new active file if the closed one was active
+    if (activeFile === path && newOpenFiles.length > 0) {
+      setActiveFile(newOpenFiles[newOpenFiles.length - 1]);
+    } else if (newOpenFiles.length === 0) {
+      setActiveFile(null);
+    }
+  };
 
   const handleContentChange = (path: string, content: string) => {
     setFiles(prev => ({
       ...prev,
       [path]: content
     }));
+  };
+  
+  const handleProjectFilesChange = (newProjectFiles: ProjectFiles) => {
+    // Update the files state from the editor
+    const newFiles: Record<string, string> = {};
+    Object.entries(newProjectFiles).forEach(([path, { code }]) => {
+      newFiles[path] = code;
+    });
+    setFiles(newFiles);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -164,11 +197,16 @@ export default function AIWebBuilder() {
           edits: [
             { 
               file: "src/components/Hero.tsx", 
-              action: "replace", 
-              content: "import React from 'react';\n\nexport default function Hero() {\n  return (\n    <div className=\"bg-blossom-50 py-16\">\n      <div className=\"container mx-auto px-4\">\n        <h1 className=\"text-4xl font-bold text-center text-blossom-900\">Welcome to Our Platform</h1>\n        <p className=\"mt-4 text-xl text-center text-blossom-600\">The future of web development is here</p>\n        <div className=\"mt-8 flex justify-center\">\n          <button className=\"bg-blossom-500 text-white px-6 py-2 rounded-md hover:bg-blossom-600 transition\">Get Started</button>\n        </div>\n      </div>\n    </div>\n  );\n}" 
+              action: "create", 
+              content: "import React from 'react';\n\nexport default function Hero() {\n  return (\n    <div className=\"bg-blue-50 py-16\">\n      <div className=\"container mx-auto px-4\">\n        <h1 className=\"text-4xl font-bold text-center text-blue-900\">Welcome to Our Platform</h1>\n        <p className=\"mt-4 text-xl text-center text-blue-600\">The future of web development is here</p>\n        <div className=\"mt-8 flex justify-center\">\n          <button className=\"bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition\">Get Started</button>\n        </div>\n      </div>\n    </div>\n  );\n}"
+            },
+            {
+              file: "src/App.tsx",
+              action: "replace",
+              content: "import React from 'react';\nimport Hero from './components/Hero';\n\nexport default function App() {\n  return (\n    <div>\n      <Hero />\n      <div className=\"container mx-auto px-4 py-8\">\n        <h2 className=\"text-2xl font-semibold mb-4\">Features</h2>\n        <p>Our platform offers amazing features...</p>\n      </div>\n    </div>\n  );\n}"
             }
           ],
-          message: "✅ Hero.tsx updated with new heading and button styling"
+          message: "✅ Created a Hero component and updated App.tsx to use it"
         };
       } else if (userPrompt.toLowerCase().includes('button')) {
         return {
@@ -176,10 +214,15 @@ export default function AIWebBuilder() {
             { 
               file: "src/components/Button.tsx", 
               action: "create", 
-              content: "import React from 'react';\n\ninterface ButtonProps {\n  children: React.ReactNode;\n  variant?: 'primary' | 'secondary' | 'outline';\n  size?: 'sm' | 'md' | 'lg';\n  onClick?: () => void;\n}\n\nexport default function Button({ children, variant = 'primary', size = 'md', onClick }: ButtonProps) {\n  const baseClasses = 'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';\n  \n  const variantClasses = {\n    primary: 'bg-blossom-500 text-white hover:bg-blossom-600 focus:ring-blossom-500',\n    secondary: 'bg-blossom-100 text-blossom-700 hover:bg-blossom-200 focus:ring-blossom-300',\n    outline: 'bg-transparent border border-blossom-300 text-blossom-700 hover:bg-blossom-50 focus:ring-blossom-300',\n  };\n  \n  const sizeClasses = {\n    sm: 'px-3 py-1.5 text-sm',\n    md: 'px-4 py-2 text-base',\n    lg: 'px-6 py-3 text-lg',\n  };\n  \n  return (\n    <button\n      onClick={onClick}\n      className={baseClasses + \" \" + variantClasses[variant] + \" \" + sizeClasses[size]}\n    >\n      {children}\n    </button>\n  );\n}" 
+              content: "import React from 'react';\n\ninterface ButtonProps {\n  children: React.ReactNode;\n  variant?: 'primary' | 'secondary' | 'outline';\n  size?: 'sm' | 'md' | 'lg';\n  onClick?: () => void;\n}\n\nexport default function Button({ children, variant = 'primary', size = 'md', onClick }: ButtonProps) {\n  const baseClasses = 'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';\n  \n  const variantClasses = {\n    primary: 'bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500',\n    secondary: 'bg-blue-100 text-blue-700 hover:bg-blue-200 focus:ring-blue-300',\n    outline: 'bg-transparent border border-blue-300 text-blue-700 hover:bg-blue-50 focus:ring-blue-300',\n  };\n  \n  const sizeClasses = {\n    sm: 'px-3 py-1.5 text-sm',\n    md: 'px-4 py-2 text-base',\n    lg: 'px-6 py-3 text-lg',\n  };\n  \n  return (\n    <button\n      onClick={onClick}\n      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]}`}\n    >\n      {children}\n    </button>\n  );\n}"
+            },
+            {
+              file: "src/App.tsx",
+              action: "replace",
+              content: "import React from 'react';\nimport Button from './components/Button';\n\nexport default function App() {\n  return (\n    <div className=\"p-8\">\n      <h1 className=\"text-2xl font-bold mb-6\">Button Component Demo</h1>\n      <div className=\"space-y-4\">\n        <div className=\"flex space-x-4\">\n          <Button variant=\"primary\">Primary Button</Button>\n          <Button variant=\"secondary\">Secondary Button</Button>\n          <Button variant=\"outline\">Outline Button</Button>\n        </div>\n        <div className=\"flex space-x-4\">\n          <Button size=\"sm\">Small Button</Button>\n          <Button size=\"md\">Medium Button</Button>\n          <Button size=\"lg\">Large Button</Button>\n        </div>\n      </div>\n    </div>\n  );\n}"
             }
           ],
-          message: "✅ Created a new Button.tsx component with multiple variants and sizes",
+          message: "✅ Created a new Button.tsx component with multiple variants and sizes and updated App.tsx",
           npmChanges: []
         };
       } else {
@@ -188,11 +231,16 @@ export default function AIWebBuilder() {
             { 
               file: "src/components/Feature.tsx", 
               action: "create", 
-              content: "import React from 'react';\n\ninterface FeatureProps {\n  title: string;\n  description: string;\n  icon: React.ReactNode;\n}\n\nexport default function Feature({ title, description, icon }: FeatureProps) {\n  return (\n    <div className=\"p-6 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow\">\n      <div className=\"w-12 h-12 bg-blossom-100 rounded-full flex items-center justify-center text-blossom-600 mb-4\">\n        {icon}\n      </div>\n      <h3 className=\"text-xl font-semibold text-gray-900 mb-2\">{title}</h3>\n      <p className=\"text-gray-600\">{description}</p>\n    </div>\n  );\n}" 
+              content: "import React from 'react';\n\ninterface FeatureProps {\n  title: string;\n  description: string;\n  icon: React.ReactNode;\n}\n\nexport default function Feature({ title, description, icon }: FeatureProps) {\n  return (\n    <div className=\"p-6 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow\">\n      <div className=\"w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-4\">\n        {icon}\n      </div>\n      <h3 className=\"text-xl font-semibold text-gray-900 mb-2\">{title}</h3>\n      <p className=\"text-gray-600\">{description}</p>\n    </div>\n  );\n}"
+            },
+            {
+              file: "src/App.tsx",
+              action: "replace",
+              content: "import React from 'react';\nimport Feature from './components/Feature';\n\nexport default function App() {\n  // Simulate icons with emoji for simplicity\n  const starIcon = <span className=\"text-xl\">⭐</span>;\n  const lightningIcon = <span className=\"text-xl\">⚡</span>;\n  const diamondIcon = <span className=\"text-xl\">💎</span>;\n\n  return (\n    <div className=\"container mx-auto p-6\">\n      <h1 className=\"text-3xl font-bold text-center mb-10\">Our Amazing Features</h1>\n      <div className=\"grid grid-cols-1 md:grid-cols-3 gap-6\">\n        <Feature \n          icon={starIcon} \n          title=\"Premium Quality\" \n          description=\"Our products are made with the finest materials for durability and comfort.\"\n        />\n        <Feature \n          icon={lightningIcon} \n          title=\"Fast Delivery\" \n          description=\"We offer quick and reliable shipping to get your items to you as soon as possible.\"\n        />\n        <Feature \n          icon={diamondIcon} \n          title=\"Best Value\" \n          description=\"Competitive pricing without compromising on quality, giving you the best value.\"\n        />\n      </div>\n    </div>\n  );\n}"
             }
           ],
-          message: "✅ Created Feature.tsx component for showcasing product features",
-          npmChanges: ["npm install framer-motion"]
+          message: "✅ Created Feature.tsx component for showcasing product features and updated App.tsx",
+          npmChanges: []
         };
       }
     } catch (error) {
@@ -218,7 +266,7 @@ export default function AIWebBuilder() {
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Describe the website you want to build..."
-              className="min-h-[120px] resize-none border-blossom-200 focus:border-blossom-500"
+              className="min-h-[120px] resize-none border-gray-200 focus:border-blue-500"
               disabled={isLoading}
             />
             <div className="flex justify-between">
@@ -233,7 +281,7 @@ export default function AIWebBuilder() {
               </Button>
               <Button 
                 type="submit"
-                className="bg-blossom-500 hover:bg-blossom-600 text-white"
+                className="bg-blue-500 hover:bg-blue-600 text-white"
                 disabled={!prompt.trim() || isLoading}
               >
                 {isLoading ? (
@@ -293,7 +341,15 @@ export default function AIWebBuilder() {
         <div className="flex-1 overflow-hidden">
           <Tabs value={activeTab} className="h-full">
             <TabsContent value="preview" className="mt-0 h-full">
-              <CodePreviewPanel activeTab="preview" projectFiles={projectFiles} />
+              <CodePreview 
+                projectFiles={projectFiles}
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab}
+                activeFile={activeFile || ''}
+                viewportSize={viewportSize}
+                setViewportSize={setViewportSize}
+                detectedType={detectedType}
+              />
             </TabsContent>
             <TabsContent value="code" className="mt-0 h-full">
               <MonacoEditor 
@@ -302,6 +358,7 @@ export default function AIWebBuilder() {
                 onContentChange={handleContentChange}
                 openFiles={openFiles}
                 onTabChange={handleTabChange}
+                onTabClose={handleTabClose}
               />
             </TabsContent>
           </Tabs>

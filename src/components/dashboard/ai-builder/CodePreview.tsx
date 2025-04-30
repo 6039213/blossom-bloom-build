@@ -20,12 +20,12 @@ interface CodePreviewProps {
   viewportSize: string;
   setViewportSize: (size: string) => void;
   detectedType: string | null;
-  onCodeChange: (files: ProjectFiles) => void;
-  onCopy: () => void;
-  onDownload: () => void;
-  onReset: () => void;
-  onSave: () => void;
-  onOpenInNewTab: () => void;
+  onCodeChange?: (files: ProjectFiles) => void;
+  onCopy?: () => void;
+  onDownload?: () => void;
+  onReset?: () => void;
+  onSave?: () => void;
+  onOpenInNewTab?: () => void;
   terminalOutput?: string;
 }
 
@@ -119,7 +119,7 @@ export default function CodePreview({
             >
               <SandpackLayout className="h-full">
                 <SandpackFileExplorer className="min-w-[180px]" />
-                <SandpackCustomCodeEditor onCodeChange={onCodeChange} />
+                <SandpackCustomCodeEditor onCodeChange={onCodeChange || (() => {})} />
               </SandpackLayout>
             </SandpackProvider>
           </TabsContent>

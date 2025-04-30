@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -8,7 +9,7 @@ interface CodePreviewPanelProps {
 }
 
 export default function CodePreviewPanel({ activeTab, projectFiles }: CodePreviewPanelProps) {
-  // Function to generate HTML for preview
+  // Function to generate HTML for preview when not using Sandpack
   const generatePreviewHtml = () => {
     // This is a simplified approach - in a real app, you'd need more sophisticated rendering
     let previewContent = '';

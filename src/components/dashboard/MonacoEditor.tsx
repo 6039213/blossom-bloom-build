@@ -2,6 +2,7 @@
 import React from 'react';
 import Editor from '@monaco-editor/react';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { X } from 'lucide-react';
 
 interface MonacoEditorProps {
   files: Record<string, string>;
@@ -46,6 +47,13 @@ export default function MonacoEditor({
     }
   };
 
+  const handleCloseTab = (e: React.MouseEvent, filePath: string) => {
+    e.stopPropagation(); // Prevent tab activation when clicking the close button
+    if (onTabClose) {
+      onTabClose(filePath);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <Tabs value={activeFile || ''} onValueChange={onTabChange} className="w-full">
@@ -57,6 +65,12 @@ export default function MonacoEditor({
               className="flex items-center gap-1 text-xs"
             >
               <span className="truncate max-w-[120px]">{filePath.split('/').pop()}</span>
+              {onTabClose && (
+                <X 
+                  className="w-3 h-3 ml-1 opacity-60 hover:opacity-100" 
+                  onClick={(e) => handleCloseTab(e, filePath)}
+                />
+              )}
             </TabsTrigger>
           ))}
         </TabsList>
