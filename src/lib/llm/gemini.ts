@@ -1,4 +1,3 @@
-
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getSelectedModel } from '@/lib/llm/modelSelection';
 import { ANTHROPIC_API_KEY, GEMINI_API_KEY } from '@/lib/constants';
@@ -142,7 +141,6 @@ async function* streamFromClaude(
 }
 
 // Stream generator for Gemini API (original implementation)
-// Note: This function is kept for backward compatibility but won't be used in practice
 async function* streamFromGemini(
   prompt: string,
   onToken: (token: string) => void

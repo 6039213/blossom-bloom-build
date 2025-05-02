@@ -31,6 +31,13 @@ export const MODEL_LIST = [
 // Default AI model
 export const DEFAULT_MODEL = 'claude';
 
+// Cache duration in milliseconds (30 minutes)
+export const CACHE_DURATION = 30 * 60 * 1000;
+
+// API Keys (these will be empty by default for security)
+export const ANTHROPIC_API_KEY = '';
+export const GEMINI_API_KEY = '';
+
 // Pricing plans - change from array to object with named properties
 export const PLANS = {
   FREE: {
