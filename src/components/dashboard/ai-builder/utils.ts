@@ -43,6 +43,22 @@ export function getProjectDependencies(
       if (content.includes("from 'react-hook-form'") || content.includes('from "react-hook-form"')) {
         dependencies["react-hook-form"] = "^7.46.1";
       }
+      
+      // ShadCN UI components
+      if (content.includes("from '@/components/ui/")) {
+        dependencies["class-variance-authority"] = "^0.7.0";
+        dependencies["clsx"] = "^2.0.0";
+      }
+      
+      // Zustand
+      if (content.includes("from 'zustand'") || content.includes('from "zustand"')) {
+        dependencies["zustand"] = "^4.4.1";
+      }
+      
+      // TanStack Query
+      if (content.includes("from '@tanstack/react-query'") || content.includes('from "@tanstack/react-query"')) {
+        dependencies["@tanstack/react-query"] = "^5.0.0";
+      }
     }
   });
   
@@ -79,10 +95,11 @@ export function detectProjectType(files: ProjectFiles): string | null {
  */
 export function parseProjectFiles(response: string): ProjectFiles {
   const projectFiles: ProjectFiles = {};
-  // Simple regex to extract file blocks from markdown code blocks
-  const fileBlockRegex = /```(?:tsx?|jsx?|css|scss|html|json|md)?\s*(?:\/\/\s*FILE:\s*([^\n]+))?([^`]*?)```/g;
   
+  // Extract file blocks from markdown code blocks
+  const fileBlockRegex = /```(?:tsx?|jsx?|css|scss|html|json|md)?\s*(?:\/\/\s*FILE:\s*([^\n]+))?([^`]*?)```/g;
   let match;
+  
   while ((match = fileBlockRegex.exec(response)) !== null) {
     const path = match[1]?.trim();
     const content = match[2]?.trim();
@@ -90,6 +107,29 @@ export function parseProjectFiles(response: string): ProjectFiles {
     if (path && content) {
       projectFiles[path] = { code: content };
     }
+  }
+  
+  // Also extract files from FILE: format
+  const fileHeaderRegex = /\/\/\s*FILE:\s*([^\n]+)\n([\s\S]*?)(?=\/\/\s*FILE:|$)/g;
+  while ((match = fileHeaderRegex.exec(response)) !== null) {
+    const path = match[1]?.trim();
+    const content = match[2]?.trim();
+    
+    if (path && content) {
+      projectFiles[path] = { code: content };
+    }
+  }
+  
+  // If no files were found but the response has TSX/JSX code, try to infer a component
+  if (Object.keys(projectFiles).length === 0 && (response.includes('export default') || response.includes('React.')) && 
+      (response.includes('return') || response.includes('render'))) {
+    
+    // Try to determine a component name
+    const componentNameMatch = response.match(/function\s+([A-Z][a-zA-Z0-9]+)/);
+    const componentName = componentNameMatch ? componentNameMatch[1] : 'Component';
+    
+    // Create a default file with the extracted component
+    projectFiles[`src/components/${componentName}.tsx`] = { code: response };
   }
   
   return projectFiles;
@@ -135,6 +175,101 @@ export function fixScssImports(files: ProjectFiles): ProjectFiles {
 }
 
 /**
+ * Ensure all files have the proper imports and references
+ */
+export function fixImportsAndReferences(files: ProjectFiles): ProjectFiles {
+  const result = { ...files };
+  
+  // Track all component names defined in the files
+  const definedComponents = new Map<string, string>();
+  
+  // First pass: find all component definitions
+  Object.entries(files).forEach(([path, { code }]) => {
+    // Check for component definitions (export default function ComponentName...)
+    const componentMatch = code.match(/export\s+default\s+function\s+([A-Z][a-zA-Z0-9]*)/);
+    if (componentMatch) {
+      const componentName = componentMatch[1];
+      definedComponents.set(componentName, path);
+    }
+    
+    // Check for component definitions with const
+    const constComponentMatch = code.match(/const\s+([A-Z][a-zA-Z0-9]*)\s*=\s*\(\s*(?:{[^}]*}\s*:.*?)?\s*\)\s*=>/);
+    if (constComponentMatch) {
+      const componentName = constComponentMatch[1];
+      definedComponents.set(componentName, path);
+    }
+  });
+  
+  // Second pass: fix missing imports
+  Object.entries(files).forEach(([path, { code }]) => {
+    // Look for JSX tags that match component names
+    definedComponents.forEach((componentPath, componentName) => {
+      if (path !== componentPath) {
+        // Check if component name is used as a JSX tag
+        const jsxTagRegex = new RegExp(`<${componentName}[\\s>/]`, 'g');
+        
+        if (jsxTagRegex.test(code) && !code.includes(`import ${componentName} from`)) {
+          // Calculate relative path
+          const relativePath = getRelativeImportPath(path, componentPath);
+          
+          // Add import statement at the top
+          const importStatement = `import ${componentName} from '${relativePath}';\n`;
+          result[path] = { code: importStatement + code };
+        }
+      }
+    });
+  });
+  
+  return result;
+}
+
+/**
+ * Helper function to calculate relative import path
+ */
+function getRelativeImportPath(fromPath: string, toPath: string): string {
+  const fromParts = fromPath.split('/');
+  const toParts = toPath.split('/');
+  
+  // Remove file names
+  fromParts.pop();
+  const toFileName = toParts.pop() || '';
+  
+  // Find common path
+  let commonParts = 0;
+  for (let i = 0; i < Math.min(fromParts.length, toParts.length); i++) {
+    if (fromParts[i] === toParts[i]) {
+      commonParts++;
+    } else {
+      break;
+    }
+  }
+  
+  // Calculate up-directory traversal
+  const upDirs = fromParts.length - commonParts;
+  
+  // Build relative path
+  let relativePath = '';
+  
+  if (upDirs === 0 && commonParts === 0) {
+    relativePath = './';
+  } else {
+    for (let i = 0; i < upDirs; i++) {
+      relativePath += '../';
+    }
+  }
+  
+  // Add destination path
+  for (let i = commonParts; i < toParts.length; i++) {
+    relativePath += toParts[i] + '/';
+  }
+  
+  // Add file name without extension
+  relativePath += toFileName.replace(/\.(tsx|jsx|ts|js)$/, '');
+  
+  return relativePath;
+}
+
+/**
  * Find the main file in the project
  */
 export function findMainFile(files: ProjectFiles, type: string | null): string {
@@ -171,7 +306,7 @@ export function ensureRequiredFilesExist(files: ProjectFiles, template: any): Pr
   const result = { ...files };
   
   // Add default files based on template if they don't exist
-  if (template.requiredFiles) {
+  if (template && template.requiredFiles) {
     template.requiredFiles.forEach((fileConfig: {path: string, content: string}) => {
       if (!files[fileConfig.path]) {
         result[fileConfig.path] = { code: fileConfig.content };
@@ -186,7 +321,7 @@ export function ensureRequiredFilesExist(files: ProjectFiles, template: any): Pr
  * Verify that all template files exist
  */
 export function verifyTemplateFilesExist(files: ProjectFiles, template: any): boolean {
-  if (!template.requiredFiles) return true;
+  if (!template || !template.requiredFiles) return true;
   
   return template.requiredFiles.every((fileConfig: {path: string}) => 
     Object.keys(files).includes(fileConfig.path)

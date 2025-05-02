@@ -19,12 +19,12 @@ export default function AIBuilder() {
     const initModels = async () => {
       setIsLoading(true);
       try {
-        // We have a hardcoded Anthropic key, so we can always use Claude
+        // We're only using Claude 3.7 Sonnet
         const initialModel = 'claude';
         setSelectedModelState(initialModel);
         setSelectedModel('claude');
         
-        // Get available models
+        // Get available models (will only return Claude 3.7 Sonnet)
         const models = getAvailableModels();
         if (models && models.length > 0) {
           setAvailableModels(models);
@@ -67,7 +67,7 @@ export default function AIBuilder() {
           <div className="flex items-center gap-2">
             {isModelsLoaded && availableModels && availableModels.length > 0 && (
               <span className="text-sm text-muted-foreground">
-                Powered by {availableModels[0]?.name || "AI"}
+                Powered by {availableModels[0]?.name || "Claude 3.7 Sonnet"}
               </span>
             )}
           </div>

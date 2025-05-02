@@ -1,7 +1,7 @@
 
 import type { LLMProvider } from "../types";
 
-// Get API key from environment variable or use the provided fallback if not available
+// Get API key from environment variable or use the hardcoded key
 const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY || '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';
 
 export const anthropicProvider: LLMProvider = {
@@ -149,10 +149,10 @@ export const anthropicProvider: LLMProvider = {
         }
       }
       
-      // Return an object with relevant stream information
       return {
         tokens,
-        creditsUsed: tokens * 10 // 1 token = 10 credits
+        creditsUsed: tokens * 10, // 1 token = 10 credits
+        complete: true
       };
       
     } catch (error) {

@@ -1,9 +1,8 @@
-
 import { anthropicProvider } from '../providers/anthropic';
 import { geminiProvider } from '../providers/gemini';
 import type { LLMProvider } from '../types';
 
-// Default to Claude if API key is available, otherwise fallback to Gemini
+// Always use Claude 3.7 Sonnet as our default provider
 let selectedProvider: LLMProvider = anthropicProvider;
 
 // Check if Anthropic API key is available - we now have a hardcoded key
@@ -11,18 +10,21 @@ const hasAnthropicKey = () => {
   return true;
 };
 
-// Check if Gemini API key is available
+// We're only using Claude 3.7 Sonnet, but keeping this for potential future expansion
 const hasGeminiKey = () => {
   return !!import.meta.env.VITE_GEMINI_API_KEY;
 };
 
-// Initialize based on API key availability
+// Initialize based on API key availability - but always default to Claude
 if (!hasAnthropicKey() && hasGeminiKey()) {
   selectedProvider = geminiProvider;
+} else {
+  selectedProvider = anthropicProvider; // Ensure Claude is selected
 }
 
 export const setSelectedModel = (provider: 'gemini' | 'claude') => {
-  selectedProvider = provider === 'claude' ? anthropicProvider : geminiProvider;
+  // For now we're only using Claude 3.7 Sonnet
+  selectedProvider = anthropicProvider;
 };
 
 export const getSelectedModel = (): LLMProvider => {
@@ -30,25 +32,13 @@ export const getSelectedModel = (): LLMProvider => {
 };
 
 export const getAvailableModels = () => {
-  const models = [];
-  
-  // Add Claude (always available now with hardcoded key)
-  models.push({
-    id: 'claude',
-    name: 'Claude 3.7 Sonnet',
-    provider: 'Anthropic',
-    available: true
-  });
-  
-  // Add Gemini if available
-  if (hasGeminiKey()) {
-    models.push({
-      id: 'gemini',
-      name: 'Gemini 2.5 Flash',
-      provider: 'Google',
+  // Only return Claude 3.7 Sonnet as available model
+  return [
+    {
+      id: 'claude',
+      name: 'Claude 3.7 Sonnet',
+      provider: 'Anthropic',
       available: true
-    });
-  }
-  
-  return models;
+    }
+  ];
 };

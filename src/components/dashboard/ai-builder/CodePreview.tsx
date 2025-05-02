@@ -48,7 +48,16 @@ export default function CodePreview({
   onDetectError
 }: CodePreviewProps) {
   const [error, setError] = useState<{ message: string; file?: string } | null>(null);
+  const [isJsxFile, setIsJsxFile] = useState(false);
   
+  // Check if active file is JSX/TSX to enable specific tooling
+  useEffect(() => {
+    if (activeFile) {
+      setIsJsxFile(activeFile.endsWith('.jsx') || activeFile.endsWith('.tsx'));
+    }
+  }, [activeFile]);
+  
+  // Get responsive viewport classes
   const getViewportClasses = () => {
     switch(viewportSize) {
       case 'mobile':
@@ -70,8 +79,8 @@ export default function CodePreview({
     }
     
     let errorInfo = {
-      message: error.message || 'Onbekende fout',
-      file: 'onbekend bestand'
+      message: error.message || 'Unknown error',
+      file: 'unknown file'
     };
     
     // Try to determine the file from the error message
@@ -158,34 +167,23 @@ export default function CodePreview({
           </TabsContent>
           
           <TabsContent value="code" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
-            <SandpackProvider
-              template="react-ts"
-              theme="auto"
-              files={projectFiles}
-              customSetup={{
-                dependencies: getProjectDependencies(projectFiles, detectedType, projectTemplates),
-              }}
-            >
-              <SandpackLayout className="h-full">
-                <SandpackFileExplorer className="min-w-[180px]" />
-                <SandpackCustomCodeEditor onCodeChange={onCodeChange || (() => {})} />
-              </SandpackLayout>
-              <SandpackConsole className="h-40" />
-            </SandpackProvider>
+            {Object.keys(projectFiles).length > 0 && (
+              <SandpackProvider
+                template="react-ts"
+                theme="auto"
+                files={projectFiles}
+                customSetup={{
+                  dependencies: getProjectDependencies(projectFiles, detectedType, projectTemplates),
+                }}
+              >
+                <SandpackLayout className="h-full">
+                  <SandpackFileExplorer className="min-w-[180px]" />
+                  <SandpackCustomCodeEditor onCodeChange={onCodeChange || (() => {})} />
+                </SandpackLayout>
+                <SandpackConsole className="h-40" />
+              </SandpackProvider>
+            )}
           </TabsContent>
-          
-          {/* Terminal Output Section */}
-          {terminalOutput && activeTab === 'code' && (
-            <div className="p-2 bg-gray-900 text-gray-300 font-mono text-xs">
-              <div className="mb-2 text-gray-500 flex items-center">
-                <span>Terminal Output</span>
-                <div className="flex-1 ml-2 border-t border-gray-700" />
-              </div>
-              <pre className="whitespace-pre-wrap max-h-40 overflow-y-auto">
-                {terminalOutput}
-              </pre>
-            </div>
-          )}
         </div>
       </Tabs>
     </div>

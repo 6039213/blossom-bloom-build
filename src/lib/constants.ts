@@ -15,19 +15,25 @@ export const APP_NAME = 'Blossom';
 
 // System prompt for AI
 export const SYSTEM_PROMPT = `
-You are a helpful AI assistant that specializes in generating website code using React and Tailwind CSS.
-Your goal is to help users create beautiful, responsive websites based on their descriptions.
+You are an expert AI assistant specialized in generating complete web applications using React and Tailwind CSS.
+Your task is to create fully functional, responsive, and beautiful websites based on user descriptions.
+
+When generating code:
+1. Create all necessary files including components, styles, and utilities
+2. Use TypeScript for all components
+3. Implement responsive design using Tailwind CSS
+4. Structure the application logically with separate components
+5. Add detailed comments to help understand complex logic
+6. Ensure proper error handling and fallbacks
+
+Always aim to create a complete solution that works out of the box.
 `;
 
-// Available AI models
+// Available AI models - now only showing Claude 3.7 Sonnet
 export const MODEL_LIST = [
   {
     name: 'claude',
     label: 'Claude 3.7 Sonnet',
-  },
-  {
-    name: 'gemini',
-    label: 'Gemini 2.5 Flash',
   }
 ];
 

@@ -34,7 +34,12 @@ export default function AIModelSelector({
     name: string;
     provider: string;
     available: boolean;
-  }>>([]);
+  }>>([{
+    id: 'claude',
+    name: 'Claude 3.7 Sonnet',
+    provider: 'Anthropic',
+    available: true
+  }]); // Initialize with default model to avoid undefined issues
   
   // Load models on component mount
   useEffect(() => {
@@ -44,10 +49,10 @@ export default function AIModelSelector({
         const availableModels = getAvailableModels();
         
         // Make sure we have models before setting state
-        if (availableModels && availableModels.length > 0) {
+        if (availableModels && Array.isArray(availableModels) && availableModels.length > 0) {
           setModels(availableModels);
         } else {
-          // Fallback to default models with Claude as available
+          // Fallback to default model with Claude as available
           setModels([{
             id: 'claude',
             name: 'Claude 3.7 Sonnet',
@@ -57,7 +62,7 @@ export default function AIModelSelector({
         }
       } catch (error) {
         console.error('Error loading models:', error);
-        // Fallback to default models with Claude as available
+        // Fallback to default model with Claude as available
         setModels([{
           id: 'claude',
           name: 'Claude 3.7 Sonnet',
@@ -74,11 +79,12 @@ export default function AIModelSelector({
   
   const handleModelChange = (modelId: string) => {
     try {
-      setSelectedModel(modelId as 'claude' | 'gemini');
+      // We're only supporting Claude, so ignore the modelId
+      setSelectedModel('claude' as 'claude' | 'gemini');
       setOpen(false);
       
       if (onModelChange) {
-        onModelChange(modelId);
+        onModelChange('claude');
       }
     } catch (error) {
       console.error('Error changing model:', error);
@@ -87,18 +93,12 @@ export default function AIModelSelector({
 
   // Find the current model display name (with safe fallback)
   const currentModel = React.useMemo(() => {
-    if (!models || models.length === 0) {
-      return { 
-        name: selectedModel === 'claude' ? 'Claude 3.7 Sonnet' : 'Gemini 2.5 Flash',
-        id: selectedModel 
-      };
-    }
-    
-    return models.find(m => m.id === selectedModel) || { 
-      name: selectedModel === 'claude' ? 'Claude 3.7 Sonnet' : 'Gemini 2.5 Flash',
-      id: selectedModel 
+    return {
+      name: 'Claude 3.7 Sonnet',
+      id: 'claude',
+      provider: 'Anthropic'
     };
-  }, [models, selectedModel]);
+  }, []);
 
   // Show loading state if models aren't loaded yet
   if (loading) {
@@ -120,20 +120,6 @@ export default function AIModelSelector({
     );
   }
 
-  // Make sure we have models before rendering the popover
-  if (!models || models.length === 0) {
-    return (
-      <Button
-        variant="outline"
-        className={cn("flex justify-between w-[220px] text-sm", className)}
-        disabled
-      >
-        No models available
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
-    );
-  }
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -143,15 +129,15 @@ export default function AIModelSelector({
           aria-expanded={open}
           className={cn("flex justify-between w-[220px] text-sm", className)}
         >
-          {currentModel?.name || "Select model"}
+          {currentModel?.name || "Claude 3.7 Sonnet"}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[220px] p-0">
         <Command>
-          <CommandEmpty>No AI models found.</CommandEmpty>
+          <CommandEmpty>Claude 3.7 Sonnet is loaded and ready.</CommandEmpty>
           <CommandGroup>
-            {models.map((model) => (
+            {Array.isArray(models) && models.map((model) => (
               <CommandItem
                 key={model.id}
                 value={model.id}
