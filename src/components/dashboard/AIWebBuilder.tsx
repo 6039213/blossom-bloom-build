@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Eye, Code, Upload, Send } from 'lucide-react';
+import { Upload, Send } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -14,7 +14,9 @@ import ErrorDetectionHandler from './ai-builder/ErrorDetectionHandler';
 import { detectProjectType } from './ai-builder/utils';
 import { ProjectFiles } from './ai-builder/types';
 import { v4 as uuidv4 } from 'uuid';
-import { geminiStream } from '@/lib/llm/gemini';
+import { getSelectedModel } from '@/lib/llm/modelSelection';
+import AIModelSelector from './ai-builder/AIModelSelector';
+import EmptyStateView from './ai-builder/EmptyStateView';
 
 // Define types for our AI response
 interface FileEdit {
@@ -46,6 +48,7 @@ export default function AIWebBuilder() {
   const [streamingResponse, setStreamingResponse] = useState('');
   const [projectId, setProjectId] = useState<string>(uuidv4());
   const [projectName, setProjectName] = useState<string>("Nieuw Project");
+  const [selectedModel, setSelectedModel] = useState('claude');
   
   // File system state
   const [files, setFiles] = useState<Record<string, string>>({
@@ -61,6 +64,13 @@ export default function AIWebBuilder() {
   const [viewportSize, setViewportSize] = useState('desktop');
   const [detectedType, setDetectedType] = useState<string | null>('react');
   const [runtimeError, setRuntimeError] = useState<{ message: string; file?: string } | null>(null);
+  const [hasGeneratedContent, setHasGeneratedContent] = useState(false);
+
+  // Handle model change
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
+    toast.success(`Now using ${model === 'claude' ? 'Claude 3.7 Sonnet' : 'Gemini 2.5 Flash'}`);
+  };
   
   // Update project files when files change
   useEffect(() => {
@@ -238,7 +248,10 @@ export default function AIWebBuilder() {
       Let me know which files you've created or modified.
       `;
       
-      // Stream response from Gemini
+      // Get the selected AI model
+      const model = getSelectedModel();
+      
+      // Stream response from the model
       let fullResponse = '';
       const addToken = (token: string) => {
         fullResponse += token;
@@ -254,11 +267,11 @@ export default function AIWebBuilder() {
         );
       };
       
-      // Use real Gemini API
-      for await (const chunk of geminiStream(contextPrompt, addToken)) {
-        // This just keeps the stream going
-        console.log("Processing chunk:", chunk);
-      }
+      // Use the selected model's generateStream method
+      await model.generateStream(contextPrompt, addToken, {
+        temperature: 0.7,
+        maxOutputTokens: 4096
+      });
       
       // When stream is complete, parse the file edits from the response
       const { fileEdits, npmChanges } = parseFileEditsFromResponse(fullResponse);
@@ -286,6 +299,9 @@ export default function AIWebBuilder() {
             setOpenFiles(prev => [...prev, newFile]);
           }
         }
+        
+        // Set flag that we have generated content
+        setHasGeneratedContent(true);
       }
       
       // Update the final assistant message with edits info
@@ -354,8 +370,15 @@ export default function AIWebBuilder() {
           />
         </div>
         
-        {/* Input section */}
+        {/* Model selector and input section */}
         <div className="border-t border-border p-4">
+          <div className="mb-3">
+            <AIModelSelector 
+              selectedModel={selectedModel}
+              onModelChange={handleModelChange}
+            />
+          </div>
+          
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Textarea 
               value={prompt}
@@ -411,54 +434,23 @@ export default function AIWebBuilder() {
       
       {/* Code Editor / Preview section */}
       <div className="w-7/12 flex flex-col">
-        {/* Tab controls */}
-        <div className="border-b border-border p-4">
-          <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'preview' | 'code')}>
-            <TabsList className="grid w-[200px] grid-cols-2">
-              <TabsTrigger 
-                value="preview" 
-                className={activeTab === 'preview' ? 'bg-primary/20' : ''}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </TabsTrigger>
-              <TabsTrigger 
-                value="code" 
-                className={activeTab === 'code' ? 'bg-primary/20' : ''}
-              >
-                <Code className="h-4 w-4 mr-2" />
-                Code
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        
         {/* Content area */}
-        <div className="flex-1 overflow-hidden">
-          <Tabs value={activeTab} className="h-full">
-            <TabsContent value="preview" className="mt-0 h-full">
-              <CodePreview 
-                projectFiles={projectFiles}
-                activeTab={activeTab} 
-                setActiveTab={(val) => setActiveTab(val as 'preview' | 'code')}
-                activeFile={activeFile || ''}
-                viewportSize={viewportSize}
-                setViewportSize={setViewportSize}
-                detectedType={detectedType}
-                onDetectError={handleRuntimeError}
-              />
-            </TabsContent>
-            <TabsContent value="code" className="mt-0 h-full">
-              <MonacoEditor 
-                files={files} 
-                activeFile={activeFile}
-                onContentChange={handleContentChange}
-                openFiles={openFiles}
-                onTabChange={handleTabChange}
-                onTabClose={handleTabClose}
-              />
-            </TabsContent>
-          </Tabs>
+        <div className="flex-1 overflow-hidden p-4">
+          {!hasGeneratedContent ? (
+            <EmptyStateView selectedTemplate={null} />
+          ) : (
+            <CodePreview 
+              projectFiles={projectFiles}
+              activeTab={activeTab} 
+              setActiveTab={(val) => setActiveTab(val as 'preview' | 'code')}
+              activeFile={activeFile || ''}
+              viewportSize={viewportSize}
+              setViewportSize={setViewportSize}
+              detectedType={detectedType}
+              onDetectError={handleRuntimeError}
+              onCodeChange={handleProjectFilesChange}
+            />
+          )}
         </div>
 
         {/* Show runtime error at the bottom of the page */}

@@ -14,22 +14,20 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { getAvailableModels, setSelectedModel, getSelectedModel } from '@/lib/llm/modelSelection';
+import { getAvailableModels, setSelectedModel } from '@/lib/llm/modelSelection';
 
 interface AIModelSelectorProps {
   className?: string;
+  selectedModel: string;
   onModelChange?: (modelId: string) => void;
 }
 
-export default function AIModelSelector({ className, onModelChange }: AIModelSelectorProps) {
+export default function AIModelSelector({ className, selectedModel, onModelChange }: AIModelSelectorProps) {
   const [open, setOpen] = React.useState(false);
   const models = getAvailableModels();
-  const currentProvider = getSelectedModel();
-  const [selectedModel, setSelectedModelState] = React.useState(currentProvider.name);
-
+  
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId as 'claude' | 'gemini');
-    setSelectedModelState(modelId);
     setOpen(false);
     
     if (onModelChange) {

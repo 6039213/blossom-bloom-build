@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { SandpackProvider, SandpackLayout, SandpackPreview, SandpackConsole } from '@codesandbox/sandpack-react';
+import { SandpackProvider, SandpackLayout, SandpackPreview, SandpackConsole, SandpackFileExplorer } from '@codesandbox/sandpack-react';
 import CodePreviewTabs from '@/components/dashboard/CodePreviewTabs';
 import CodeActionButtons from '@/components/dashboard/CodeActionButtons';
 import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
@@ -11,7 +11,6 @@ import ErrorDetectionHandler from './ErrorDetectionHandler';
 
 // Import non-type dependencies
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { SandpackFileExplorer } from '@codesandbox/sandpack-react';
 
 interface CodePreviewProps {
   projectFiles: ProjectFiles;
@@ -135,7 +134,6 @@ export default function CodePreview({
                       <ErrorDetectionHandler 
                         error={error}
                         onFixError={() => {
-                          // Dit wordt later afgehandeld in de AIWebBuilder component
                           if (onDetectError && error) onDetectError(error);
                         }}
                         onIgnoreError={() => {
@@ -151,13 +149,14 @@ export default function CodePreview({
                       className="flex-grow h-full"
                       showOpenInCodeSandbox={false}
                       showSandpackErrorOverlay={false}
-                      onError={handleSandpackError} // Use onError instead of onRuntimeError
+                      onError={handleSandpackError}
                     />
                   </SandpackLayout>
                 </SandpackProvider>
               )}
             </div>
           </TabsContent>
+          
           <TabsContent value="code" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
             <SandpackProvider
               template="react-ts"

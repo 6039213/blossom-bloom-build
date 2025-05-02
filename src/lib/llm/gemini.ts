@@ -6,15 +6,6 @@ import { getSelectedModel } from '@/lib/llm/modelSelection';
 // Initialize the Generative AI with the API key
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-// Helper to extract diffs from the prompt response
-const extractDiff = (text: string): string => {
-  // Basic implementation - in real usage, this would parse code blocks or diff format
-  if (text.includes('```') || text.includes('FILE:')) {
-    return text;
-  }
-  return '';
-};
-
 // Stream generator for Claude / Gemini API
 export async function* geminiStream(
   prompt: string,
@@ -23,7 +14,7 @@ export async function* geminiStream(
   const modelProvider = getSelectedModel();
   
   try {
-    // Try Claude first if selected
+    // Always try Claude first
     if (modelProvider.name === 'claude') {
       const modelResult = await streamFromClaude(prompt, onToken);
       if (modelResult) {
@@ -32,7 +23,7 @@ export async function* geminiStream(
       }
     }
     
-    // Default to Gemini or fallback to Gemini
+    // Only use Gemini if specifically selected or Claude failed
     yield* streamFromGemini(prompt, onToken);
   } catch (error) {
     console.error("Error in AI stream:", error);
@@ -123,8 +114,8 @@ async function* streamFromClaude(
                   }
                 }
                 
-                // Yield the extracted diff and changed files
-                yield { diff: extractDiff(text), filesChanged };
+                // Yield the processed chunk
+                yield { diff: text, filesChanged };
               }
             } catch (e) {
               console.error('Error parsing SSE data:', e);
@@ -136,12 +127,12 @@ async function* streamFromClaude(
     
     // Final yield to indicate completion
     yield { done: true, filesChanged };
+    return true;
   } catch (error) {
     console.error("Error streaming from Claude:", error);
     onToken(`Error connecting to Claude: ${error instanceof Error ? error.message : 'Unknown error'}`);
     
-    // Fall back to Gemini
-    console.log("Falling back to Gemini...");
+    // Return null to indicate we should fall back to Gemini
     return null;
   }
 }
@@ -151,53 +142,66 @@ async function* streamFromGemini(
   prompt: string,
   onToken: (token: string) => void
 ) {
-  // Get the model - specifically use gemini-2.5-flash-preview
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview' });
+  const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
   
-  // Generate content stream - using the correct format for content generation
-  const generationConfig = {
-    temperature: 0.7,
-    topP: 1,
-    topK: 40,
-    maxOutputTokens: 2048,
-  };
-  
-  // Create the stream - fixed format to match API
-  // Using the proper format for GenerateContentRequest
-  const result = await model.generateContentStream({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig
-  });
-  
-  let diff = '';
-  const filesChanged: string[] = [];
-  
-  // Process each chunk from the stream
-  for await (const chunk of result.stream) {
-    const text = chunk.text();
-    onToken(text);
-    diff += text;
-    
-    // Check for file changes
-    if (text.includes('// FILE:') || text.includes('```')) {
-      // Extract filename from content like "// FILE: src/path/to/file.tsx"
-      const fileRegex = /\/\/ FILE: ([^\n]+)/g;
-      let match;
-      while ((match = fileRegex.exec(text)) !== null) {
-        filesChanged.push(match[1]);
-      }
-      
-      // Also check for ```typescript filename or ```tsx filename patterns
-      const codeBlockRegex = /```(?:typescript|tsx|jsx|js) ([^\n]+)/g;
-      while ((match = codeBlockRegex.exec(text)) !== null) {
-        filesChanged.push(match[1]);
-      }
-    }
-    
-    // Yield the extracted diff and changed files
-    yield { diff: extractDiff(text), filesChanged };
+  if (!GEMINI_API_KEY) {
+    onToken("Error: No Gemini API key found. Please add a VITE_GEMINI_API_KEY to your environment variables.");
+    yield { done: true, filesChanged: [], error: true };
+    return;
   }
   
-  // Final yield to indicate completion
-  yield { done: true, filesChanged };
+  try {
+    // Get the model - specifically use gemini-2.5-flash-preview
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview' });
+    
+    // Generate content stream - using the correct format for content generation
+    const generationConfig = {
+      temperature: 0.7,
+      topP: 1,
+      topK: 40,
+      maxOutputTokens: 2048,
+    };
+    
+    // Create the stream
+    const result = await model.generateContentStream({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig
+    });
+    
+    let diff = '';
+    const filesChanged: string[] = [];
+    
+    // Process each chunk from the stream
+    for await (const chunk of result.stream) {
+      const text = chunk.text();
+      onToken(text);
+      diff += text;
+      
+      // Check for file changes
+      if (text.includes('// FILE:') || text.includes('```')) {
+        // Extract filename from content like "// FILE: src/path/to/file.tsx"
+        const fileRegex = /\/\/ FILE: ([^\n]+)/g;
+        let match;
+        while ((match = fileRegex.exec(text)) !== null) {
+          filesChanged.push(match[1]);
+        }
+        
+        // Also check for ```typescript filename or ```tsx filename patterns
+        const codeBlockRegex = /```(?:typescript|tsx|jsx|js) ([^\n]+)/g;
+        while ((match = codeBlockRegex.exec(text)) !== null) {
+          filesChanged.push(match[1]);
+        }
+      }
+      
+      // Yield the extracted diff and changed files
+      yield { diff: text, filesChanged };
+    }
+    
+    // Final yield to indicate completion
+    yield { done: true, filesChanged };
+  } catch (error) {
+    console.error("Error streaming from Gemini:", error);
+    onToken(`Error streaming from Gemini: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    yield { done: true, filesChanged: [], error: true };
+  }
 }
