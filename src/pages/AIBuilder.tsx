@@ -1,10 +1,9 @@
-
 import { useEffect, useState } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIWebBuilder from '@/components/dashboard/AIWebBuilder';
 import { toast } from 'sonner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { InfoCircle } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 export default function AIBuilder() {
   const [isLoading, setIsLoading] = useState(true);
