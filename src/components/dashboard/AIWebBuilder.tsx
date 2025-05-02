@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Eye, Code, Upload, Send } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,7 @@ import ErrorDetectionHandler from './ai-builder/ErrorDetectionHandler';
 import { detectProjectType } from './ai-builder/utils';
 import { ProjectFiles } from './ai-builder/types';
 import { v4 as uuidv4 } from 'uuid';
+import { geminiStream } from '@/lib/llm/gemini';
 
 // Define types for our AI response
 interface FileEdit {
@@ -32,6 +33,7 @@ export default function AIWebBuilder() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; edits?: FileEdit[]; npmChanges?: string[] }>>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingResponse, setStreamingResponse] = useState('');
   const [projectId, setProjectId] = useState<string>(uuidv4());
   const [projectName, setProjectName] = useState<string>("Nieuw Project");
   
@@ -139,6 +141,50 @@ export default function AIWebBuilder() {
     
     await processPrompt(prompt);
   };
+
+  // Parse code blocks from AI response
+  const parseFileEditsFromResponse = useCallback((response: string) => {
+    const fileEdits: FileEdit[] = [];
+    const fileRegex = /```(?:tsx|jsx|ts|js|css|html|json)(?: ([^\n]+))?\n([\s\S]*?)```/g;
+    
+    let match;
+    while ((match = fileRegex.exec(response)) !== null) {
+      const fileName = match[1]?.trim();
+      const fileContent = match[2];
+      
+      if (fileName && fileContent) {
+        fileEdits.push({
+          file: fileName,
+          action: files[fileName] ? 'replace' : 'create',
+          content: fileContent
+        });
+      }
+    }
+    
+    // Also check for FILE: format
+    const fileBlockRegex = /\/\/ FILE: ([^\n]+)\n([\s\S]*?)(?=\/\/ FILE:|$)/g;
+    while ((match = fileBlockRegex.exec(response)) !== null) {
+      const fileName = match[1]?.trim();
+      const fileContent = match[2].trim();
+      
+      if (fileName && fileContent) {
+        fileEdits.push({
+          file: fileName,
+          action: files[fileName] ? 'replace' : 'create',
+          content: fileContent
+        });
+      }
+    }
+    
+    // Extract npm dependencies
+    const npmChanges: string[] = [];
+    const npmRegex = /(?:npm install|yarn add) ([\w\s@\/-]+)/g;
+    while ((match = npmRegex.exec(response)) !== null) {
+      npmChanges.push(match[1].trim());
+    }
+    
+    return { fileEdits, npmChanges };
+  }, [files]);
   
   const processPrompt = async (promptText: string) => {
     // Add user message
@@ -152,18 +198,66 @@ export default function AIWebBuilder() {
     
     // Call AI service
     setIsLoading(true);
+    setStreamingResponse('');
     
     try {
-      // In a real implementation, this would call your AI service
-      // For demonstration, we'll simulate the AI response
-      const aiResponse = await callAIModel(promptText);
+      // Create a message to show while streaming
+      const assistantMessageId = uuidv4();
+      setMessages(prev => [
+        ...prev, 
+        { role: 'assistant', content: '', id: assistantMessageId }
+      ]);
       
-      // Process file edits
-      if (aiResponse.edits && aiResponse.edits.length > 0) {
+      // Add current files context to the prompt
+      const filesList = Object.keys(files).map(path => `- ${path}`).join('\n');
+      const contextPrompt = `
+      The user is building a website with these files:
+      ${filesList}
+      
+      Generate or modify code based on this request: "${promptText}"
+      
+      Return your response with code blocks like:
+      \`\`\`tsx src/components/NewComponent.tsx
+      // component code here
+      \`\`\`
+      
+      Or use FILE: format:
+      // FILE: src/components/AnotherComponent.tsx
+      // component code here
+      
+      Let me know which files you've created or modified.
+      `;
+      
+      // Stream response from Gemini
+      let fullResponse = '';
+      const addToken = (token: string) => {
+        fullResponse += token;
+        setStreamingResponse(fullResponse);
+        
+        // Update the streaming message in the messages list
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === assistantMessageId 
+              ? { ...msg, content: fullResponse } 
+              : msg
+          )
+        );
+      };
+      
+      // Use real Gemini API
+      for await (const chunk of geminiStream(contextPrompt, addToken)) {
+        // This just keeps the stream going
+        console.log("Processing chunk:", chunk);
+      }
+      
+      // When stream is complete, parse the file edits from the response
+      const { fileEdits, npmChanges } = parseFileEditsFromResponse(fullResponse);
+      
+      // Apply file edits
+      if (fileEdits.length > 0) {
         const updatedFiles = { ...files };
         
-        // Apply each edit to the files
-        aiResponse.edits.forEach(edit => {
+        fileEdits.forEach(edit => {
           if (edit.action === 'replace' || edit.action === 'create') {
             updatedFiles[edit.file] = edit.content;
           } else if (edit.action === 'delete') {
@@ -173,17 +267,32 @@ export default function AIWebBuilder() {
         
         // Update files state
         setFiles(updatedFiles);
+        
+        // If a new file was created, set it as active
+        if (fileEdits.some(edit => edit.action === 'create')) {
+          const newFile = fileEdits.find(edit => edit.action === 'create')?.file;
+          if (newFile) {
+            setActiveFile(newFile);
+            setOpenFiles(prev => [...prev, newFile]);
+          }
+        }
       }
       
-      // Add AI message with edits info
+      // Update the final assistant message with edits info
       const aiMessage = { 
         role: 'assistant' as const,
-        content: aiResponse.message,
-        edits: aiResponse.edits,
-        npmChanges: aiResponse.npmChanges
+        content: fullResponse,
+        edits: fileEdits,
+        npmChanges
       };
       
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === assistantMessageId 
+            ? aiMessage 
+            : msg
+        )
+      );
       
       // Show success notification
       toast.success("Changes applied successfully");
@@ -202,6 +311,7 @@ export default function AIWebBuilder() {
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setStreamingResponse('');
     }
   };
 
@@ -209,74 +319,6 @@ export default function AIWebBuilder() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
-    }
-  };
-  
-  // Simulated AI model call
-  const callAIModel = async (userPrompt: string): Promise<AIResponse> => {
-    // This is a placeholder for the actual API call
-    // In a real implementation, you would call Gemini or Claude here
-    
-    try {
-      // In a real implementation, this would integrate with the Gemini provider
-      // For now, just simulate a response with a delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate a response based on the prompt
-      if (userPrompt.toLowerCase().includes('hero')) {
-        return {
-          edits: [
-            { 
-              file: "src/components/Hero.tsx", 
-              action: "create", 
-              content: "import React from 'react';\n\nexport default function Hero() {\n  return (\n    <div className=\"bg-blue-50 py-16\">\n      <div className=\"container mx-auto px-4\">\n        <h1 className=\"text-4xl font-bold text-center text-blue-900\">Welcome to Our Platform</h1>\n        <p className=\"mt-4 text-xl text-center text-blue-600\">The future of web development is here</p>\n        <div className=\"mt-8 flex justify-center\">\n          <button className=\"bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition\">Get Started</button>\n        </div>\n      </div>\n    </div>\n  );\n}"
-            },
-            {
-              file: "src/App.tsx",
-              action: "replace",
-              content: "import React from 'react';\nimport Hero from './components/Hero';\n\nexport default function App() {\n  return (\n    <div>\n      <Hero />\n      <div className=\"container mx-auto px-4 py-8\">\n        <h2 className=\"text-2xl font-semibold mb-4\">Features</h2>\n        <p>Our platform offers amazing features...</p>\n      </div>\n    </div>\n  );\n}"
-            }
-          ],
-          message: "✅ Created a Hero component and updated App.tsx to use it"
-        };
-      } else if (userPrompt.toLowerCase().includes('button')) {
-        return {
-          edits: [
-            { 
-              file: "src/components/Button.tsx", 
-              action: "create", 
-              content: "import React from 'react';\n\ninterface ButtonProps {\n  children: React.ReactNode;\n  variant?: 'primary' | 'secondary' | 'outline';\n  size?: 'sm' | 'md' | 'lg';\n  onClick?: () => void;\n}\n\nexport default function Button({ children, variant = 'primary', size = 'md', onClick }: ButtonProps) {\n  const baseClasses = 'rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';\n  \n  const variantClasses = {\n    primary: 'bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500',\n    secondary: 'bg-blue-100 text-blue-700 hover:bg-blue-200 focus:ring-blue-300',\n    outline: 'bg-transparent border border-blue-300 text-blue-700 hover:bg-blue-50 focus:ring-blue-300',\n  };\n  \n  const sizeClasses = {\n    sm: 'px-3 py-1.5 text-sm',\n    md: 'px-4 py-2 text-base',\n    lg: 'px-6 py-3 text-lg',\n  };\n  \n  return (\n    <button\n      onClick={onClick}\n      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]}`}\n    >\n      {children}\n    </button>\n  );\n}" 
-            },
-            {
-              file: "src/App.tsx",
-              action: "replace",
-              content: "import React from 'react';\nimport Button from './components/Button';\n\nexport default function App() {\n  return (\n    <div className=\"p-8\">\n      <h1 className=\"text-2xl font-bold mb-6\">Button Component Demo</h1>\n      <div className=\"space-y-4\">\n        <div className=\"flex space-x-4\">\n          <Button variant=\"primary\">Primary Button</Button>\n          <Button variant=\"secondary\">Secondary Button</Button>\n          <Button variant=\"outline\">Outline Button</Button>\n        </div>\n        <div className=\"flex space-x-4\">\n          <Button size=\"sm\">Small Button</Button>\n          <Button size=\"md\">Medium Button</Button>\n          <Button size=\"lg\">Large Button</Button>\n        </div>\n      </div>\n    </div>\n  );\n}"
-            }
-          ],
-          message: "✅ Created a new Button.tsx component with multiple variants and sizes and updated App.tsx",
-          npmChanges: []
-        };
-      } else {
-        return {
-          edits: [
-            { 
-              file: "src/components/Feature.tsx", 
-              action: "create", 
-              content: "import React from 'react';\n\ninterface FeatureProps {\n  title: string;\n  description: string;\n  icon: React.ReactNode;\n}\n\nexport default function Feature({ title, description, icon }: FeatureProps) {\n  return (\n    <div className=\"p-6 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow\">\n      <div className=\"w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-4\">\n        {icon}\n      </div>\n      <h3 className=\"text-xl font-semibold text-gray-900 mb-2\">{title}</h3>\n      <p className=\"text-gray-600\">{description}</p>\n    </div>\n  );\n}"
-            },
-            {
-              file: "src/App.tsx",
-              action: "replace",
-              content: "import React from 'react';\nimport Feature from './components/Feature';\n\nexport default function App() {\n  // Simulate icons with emoji for simplicity\n  const starIcon = <span className=\"text-xl\">⭐</span>;\n  const lightningIcon = <span className=\"text-xl\">⚡</span>;\n  const diamondIcon = <span className=\"text-xl\">💎</span>;\n\n  return (\n    <div className=\"container mx-auto p-6\">\n      <h1 className=\"text-3xl font-bold text-center mb-10\">Our Amazing Features</h1>\n      <div className=\"grid grid-cols-1 md:grid-cols-3 gap-6\">\n        <Feature \n          icon={starIcon} \n          title=\"Premium Quality\" \n          description=\"Our products are made with the finest materials for durability and comfort.\"\n        />\n        <Feature \n          icon={lightningIcon} \n          title=\"Fast Delivery\" \n          description=\"We offer quick and reliable shipping to get your items to you as soon as possible.\"\n        />\n        <Feature \n          icon={diamondIcon} \n          title=\"Best Value\" \n          description=\"Competitive pricing without compromising on quality, giving you the best value.\"\n        />\n      </div>\n    </div>\n  );\n}"
-            }
-          ],
-          message: "✅ Created Feature.tsx component for showcasing product features and updated App.tsx",
-          npmChanges: []
-        };
-      }
-    } catch (error) {
-      console.error('Error generating response:', error);
-      throw error;
     }
   };
 
@@ -386,7 +428,7 @@ export default function AIWebBuilder() {
               <CodePreview 
                 projectFiles={projectFiles}
                 activeTab={activeTab} 
-                setActiveTab={(value: string) => setActiveTab(value as 'preview' | 'code')}
+                setActiveTab={(val) => setActiveTab(val as 'preview' | 'code')}
                 activeFile={activeFile || ''}
                 viewportSize={viewportSize}
                 setViewportSize={setViewportSize}
