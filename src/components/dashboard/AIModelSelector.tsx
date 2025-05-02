@@ -7,7 +7,6 @@ interface AIModelSelectorProps {
   onSelectModel: (model: string) => void;
 }
 
-// Simplified version that only shows Claude 3.7 Sonnet
 export default function AIModelSelector({ selectedModel, onSelectModel }: AIModelSelectorProps) {
   return (
     <div className="flex items-center gap-2">
@@ -16,7 +15,7 @@ export default function AIModelSelector({ selectedModel, onSelectModel }: AIMode
         <span className="text-sm font-medium">AI Model:</span>
       </div>
       <div className="px-3 py-1 rounded-md bg-blue-50 text-blue-700 text-sm">
-        Claude 3.7 Sonnet
+        Blossom AI
       </div>
     </div>
   );

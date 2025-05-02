@@ -1,17 +1,4 @@
 
-// API Keys - hardcoded backup for Claude
-export const ANTHROPIC_API_KEY = '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';
-
-// Add a placeholder for Gemini API key (we're not actually using Gemini but need this to prevent the import error)
-export const GEMINI_API_KEY = '';
-
-// Token limits and pricing
-export const ANTHROPIC_MAX_TOKENS = 4096;
-export const TOKENS_TO_CREDITS_RATIO = 10; // 1 token = 10 credits
-
-// Cache settings
-export const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
-
 // Application name
 export const APP_NAME = 'Blossom';
 
@@ -33,7 +20,7 @@ When generating code:
 Always aim to create a complete solution that works out of the box.
 `;
 
-// Available AI models - only showing Claude 3.7 Sonnet
+// Available AI models
 export const MODEL_LIST = [
   {
     name: 'claude',

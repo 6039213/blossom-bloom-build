@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Send, AlertCircle } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -12,7 +12,6 @@ import { detectProjectType } from './ai-builder/utils';
 import { ProjectFiles } from './ai-builder/types';
 import { buildFileTree } from '@/utils/fileStructureUtils';
 import { FileSystemItem } from './FileExplorer';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Define types for our AI response
 interface FileEdit {
@@ -41,7 +40,7 @@ export default function AIWebBuilder() {
   
   // File system state
   const [files, setFiles] = useState<Record<string, string>>({
-    'src/App.tsx': 'import React from "react";\n\nexport default function App() {\n  return (\n    <div className="flex min-h-screen items-center justify-center bg-gray-100">\n      <div className="w-full max-w-6xl p-4">\n        <h1 className="text-3xl font-bold text-blue-600 mb-6">Claude 3.7 Sonnet Web Builder</h1>\n        <p className="text-gray-700 mb-4">Start building your web app by describing it in the text input.</p>\n        <p className="text-gray-500 text-sm">Powered by advanced AI to generate complete, functional websites.</p>\n      </div>\n    </div>\n  );\n}',
+    'src/App.tsx': 'import React from "react";\n\nexport default function App() {\n  return (\n    <div className="flex min-h-screen items-center justify-center bg-gray-100">\n      <div className="w-full max-w-6xl p-4">\n        <h1 className="text-3xl font-bold text-blue-600 mb-6">Blossom AI Web Builder</h1>\n        <p className="text-gray-700 mb-4">Start building your web app by describing it in the text input.</p>\n        <p className="text-gray-500 text-sm">Powered by advanced AI to generate complete, functional websites.</p>\n      </div>\n    </div>\n  );\n}',
     'src/index.tsx': 'import React from "react";\nimport ReactDOM from "react-dom/client";\nimport App from "./App";\nimport "./styles/tailwind.css";\n\nReactDOM.createRoot(document.getElementById("root")!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>,\n);',
     'src/styles/tailwind.css': '@tailwind base;\n@tailwind components;\n@tailwind utilities;',
   });
@@ -54,7 +53,6 @@ export default function AIWebBuilder() {
   const [detectedType, setDetectedType] = useState<string | null>('react');
   const [runtimeError, setRuntimeError] = useState<{ message: string; file?: string } | null>(null);
   const [streamingResponse, setStreamingResponse] = useState('');
-  const [demoMode, setDemoMode] = useState(true);
 
   // Update project files when files change
   useEffect(() => {
@@ -155,35 +153,6 @@ export default function AIWebBuilder() {
     return { fileEdits, npmChanges };
   }, [files]);
   
-  // Handle AI generation in demo mode
-  const generateDemoResponse = async (promptText: string) => {
-    const demoResponses = [
-      "I'm running in demo mode for security. Here's a sample component based on your request:",
-      "```tsx src/components/DemoComponent.tsx\nimport React from 'react';\n\nexport default function DemoComponent() {\n  return (\n    <div className=\"bg-white shadow-md rounded-lg p-6 max-w-md mx-auto my-8\">\n      <h2 className=\"text-2xl font-bold text-gray-800 mb-4\">Demo Component</h2>\n      <p className=\"text-gray-600 mb-4\">This is a demonstration component created in demo mode.</p>\n      <p className=\"text-gray-600\">In production, real code would be generated based on your prompt:</p>\n      <div className=\"bg-gray-100 p-3 rounded mt-2 text-sm\">\"{promptText}\"</div>\n    </div>\n  );\n}\n```",
-      "To use this component, you can import it in your App.tsx file."
-    ];
-    
-    let fullResponse = '';
-    
-    // Simulate streaming with demo content
-    for (const text of demoResponses) {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      fullResponse += text + " ";
-      setStreamingResponse(fullResponse);
-      
-      // Update the streaming message in the messages list
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === 'streaming-message' 
-            ? { ...msg, content: fullResponse } 
-            : msg
-        )
-      );
-    }
-    
-    return fullResponse;
-  };
-  
   const processPrompt = async (promptText: string) => {
     // Add user message
     const userMessage = { role: 'user' as const, content: promptText, id: uuidv4() };
@@ -206,63 +175,60 @@ export default function AIWebBuilder() {
         { role: 'assistant', content: '', id: assistantMessageId }
       ]);
       
-      // Generate response (using demo mode for security)
-      let fullResponse;
-      if (demoMode) {
-        fullResponse = await generateDemoResponse(promptText);
-      } else {
-        // Add current files context to the prompt
-        const filesList = Object.keys(files).map(path => `- ${path}`).join('\n');
-        const contextPrompt = `
-        You are an AI web application builder specializing in React and Tailwind CSS.
+      // Generate response
+      let fullResponse = '';
+      
+      // Add current files context to the prompt
+      const filesList = Object.keys(files).map(path => `- ${path}`).join('\n');
+      const contextPrompt = `
+      You are an AI web application builder specializing in React and Tailwind CSS.
 
-        The user is building a website with these files:
-        ${filesList}
-        
-        Generate or modify code based on this request: "${promptText}"
-        
-        Return your response with code blocks like:
-        \`\`\`tsx src/components/NewComponent.tsx
-        // component code here
-        \`\`\`
-        
-        Or use FILE: format:
-        // FILE: src/components/AnotherComponent.tsx
-        // component code here
-        
-        Let me know which files you've created or modified.
-        `;
-        
-        // Get the Claude 3.7 Sonnet model
-        const model = getSelectedModel();
-        if (!model) {
-          throw new Error("AI model not available");
-        }
-        
-        // Stream response from the model
-        fullResponse = '';
-        const addToken = (token: string) => {
-          fullResponse += token;
-          setStreamingResponse(fullResponse);
-          
-          // Update the streaming message in the messages list
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === assistantMessageId 
-                ? { ...msg, content: fullResponse } 
-                : msg
-            )
-          );
-        };
-        
-        console.log("Sending prompt to Claude 3.7 Sonnet...");
-        
-        // Use the selected model's generateStream method
-        await model.generateStream(contextPrompt, addToken, {
-          temperature: 0.7,
-          maxOutputTokens: 4096
-        });
+      The user is building a website with these files:
+      ${filesList}
+      
+      Generate or modify code based on this request: "${promptText}"
+      
+      Return your response with code blocks like:
+      \`\`\`tsx src/components/NewComponent.tsx
+      // component code here
+      \`\`\`
+      
+      Or use FILE: format:
+      // FILE: src/components/AnotherComponent.tsx
+      // component code here
+      
+      Let me know which files you've created or modified.
+      `;
+      
+      // Get the Claude 3.7 Sonnet model
+      const model = getSelectedModel();
+      if (!model) {
+        throw new Error("AI model not available");
       }
+      
+      // Stream response from the model
+      fullResponse = '';
+      const addToken = (token: string) => {
+        fullResponse += token;
+        setStreamingResponse(fullResponse);
+        
+        // Update the streaming message in the messages list
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === assistantMessageId 
+              ? { ...msg, content: fullResponse } 
+              : msg
+          )
+        );
+      };
+      
+      console.log("Building your website with Blossom AI...");
+      
+      // Use the selected model's generateStream method
+      await model.generateStream(contextPrompt, addToken, {
+        temperature: 0.7,
+        maxOutputTokens: 4096
+      });
       
       console.log("Response completed");
       
@@ -316,9 +282,9 @@ export default function AIWebBuilder() {
       // Switch to preview tab to show changes
       setActiveTab('preview');
     } catch (error) {
-      console.error('Error calling AI:', error);
-      setApiError(`Failed to generate response: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      toast.error("Failed to generate response");
+      console.error('Error building website:', error);
+      setApiError(`Failed to generate website: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error("Failed to generate website");
       
       // Add error message
       const errorMessage = { 
@@ -385,33 +351,15 @@ export default function AIWebBuilder() {
         <div className="p-3 border-b border-border bg-muted/30">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium">Project ID: {projectId}</h3>
-            <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-              Demo Mode
-            </span>
           </div>
         </div>
 
         {/* API Error Alert */}
         {apiError && (
-          <Alert variant="destructive" className="m-2">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>API Error</AlertTitle>
-            <AlertDescription>
-              {apiError}
-              <p className="mt-2 text-sm">Using demo mode for security.</p>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Demo Mode Alert */}
-        {demoMode && (
-          <Alert className="m-2 border-blue-200 bg-blue-50">
-            <AlertTitle className="text-blue-800">Demo Mode Active</AlertTitle>
-            <AlertDescription className="text-blue-700">
-              Running in demo mode for security. API calls are simulated.
-            </AlertDescription>
-          </Alert>
+          <div className="p-4 bg-red-50 text-red-800 border border-red-200 rounded-md m-4">
+            <p>{apiError}</p>
+            <p className="mt-2">Please try again or contact support if the issue persists.</p>
+          </div>
         )}
 
         {/* Messages container */}
@@ -421,9 +369,9 @@ export default function AIWebBuilder() {
               <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
                 <span className="text-2xl">✨</span>
               </div>
-              <h2 className="text-xl font-semibold mb-2">Welcome to AI Website Builder</h2>
+              <h2 className="text-xl font-semibold mb-2">Welcome to Blossom AI Website Builder</h2>
               <p className="text-gray-500 mb-6">
-                Describe what you want to build, and I'll generate a complete website for you.
+                Describe what you want to build, and we'll generate a complete website for you.
               </p>
               <div className="w-full max-w-md bg-blue-50 p-3 rounded-lg text-sm text-blue-700">
                 <p className="font-medium mb-1">Try examples like:</p>
@@ -461,7 +409,7 @@ export default function AIWebBuilder() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Generating...
+                  Building...
                 </span>
               ) : (
                 <>
@@ -478,9 +426,6 @@ export default function AIWebBuilder() {
       <div className="w-2/3 flex flex-col">
         <div className="p-3 border-b border-border flex items-center justify-between">
           <h2 className="text-lg font-semibold">Live Preview</h2>
-          <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">
-            Demo Mode Active
-          </span>
         </div>
         
         <div className="flex-1 overflow-hidden p-4">

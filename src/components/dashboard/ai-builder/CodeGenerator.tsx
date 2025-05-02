@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -104,7 +103,7 @@ The application should be complete, functional, and ready to run without any add
     setStreamingResponse('');
     
     try {
-      // Get the Claude 3.7 Sonnet model
+      // Get the AI model
       const model = getSelectedModel();
       
       // Stream response from AI model
@@ -115,9 +114,9 @@ The application should be complete, functional, and ready to run without any add
         setStreamingResponse(fullResponse);
       };
       
-      toast.info("Generating your complete web application with Claude 3.7 Sonnet...");
+      toast.info("Blossom AI is building your web application...");
       
-      console.log("Sending prompt to Claude 3.7 Sonnet:", enhancePrompt(prompt).substring(0, 100) + "...");
+      console.log("Creating your application with Blossom AI...");
       
       // Call the API to generate code with enhanced prompt
       await model.generateStream(
@@ -135,7 +134,7 @@ The application should be complete, functional, and ready to run without any add
       // If no code blocks were found, show an error
       if (Object.keys(codeBlocks).length === 0) {
         console.error("No code blocks found in response:", fullResponse.substring(0, 500) + "...");
-        toast.error('No code blocks found in the AI response. Please try again with a more specific prompt.');
+        toast.error('Please try again with a more specific prompt.');
       } else {
         console.log(`Generated ${Object.keys(codeBlocks).length} files:`, Object.keys(codeBlocks));
         
@@ -158,11 +157,6 @@ The application should be complete, functional, and ready to run without any add
           <Sparkles className="h-5 w-5 text-blue-500 mr-2" />
           Generate Full Web Application
         </h2>
-        <div className="text-sm text-muted-foreground">
-          <span className="bg-blue-100 text-blue-800 py-1 px-2 rounded text-xs font-medium">
-            Claude 3.7 Sonnet
-          </span>
-        </div>
       </div>
       
       <Card className="p-4 bg-white dark:bg-gray-900">
@@ -186,7 +180,7 @@ The application should be complete, functional, and ready to run without any add
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Generating...
+                Building...
               </>
             ) : (
               <>
@@ -200,9 +194,9 @@ The application should be complete, functional, and ready to run without any add
       
       {streamingResponse && (
         <Card className="p-4 bg-gray-50 dark:bg-gray-800 overflow-auto max-h-[300px]">
-          <h3 className="font-medium mb-2">AI Generating Your Application:</h3>
+          <h3 className="font-medium mb-2">Blossom AI is building your application:</h3>
           <div className="whitespace-pre-wrap text-sm">
-            <span className="text-blue-600">Claude 3.7 Sonnet is creating files for your application...</span>
+            <span className="text-blue-600">Creating files for your application...</span>
             <div className="mt-2 pl-2 border-l-2 border-blue-300">
               {streamingResponse.length > 800 ? 
                 streamingResponse.substring(0, 250) + "... " + 
