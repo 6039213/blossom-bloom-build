@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Eye, Code, Upload, Send } from 'lucide-react';
@@ -28,10 +29,19 @@ interface AIResponse {
   npmChanges?: string[];
 }
 
+// Define message type with ID
+interface Message {
+  id?: string;
+  role: 'user' | 'assistant';
+  content: string;
+  edits?: FileEdit[];
+  npmChanges?: string[];
+}
+
 export default function AIWebBuilder() {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [prompt, setPrompt] = useState('');
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; edits?: FileEdit[]; npmChanges?: string[] }>>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState('');
   const [projectId, setProjectId] = useState<string>(uuidv4());
@@ -127,7 +137,7 @@ export default function AIWebBuilder() {
     const fixPrompt = `Fix deze fout in ${errorFile}: ${errorMessage}. Alleen deze file aanpassen, geen andere bestanden wijzigen.`;
     
     // Add the prompt to messages
-    const userMessage = { role: 'user' as const, content: fixPrompt };
+    const userMessage = { role: 'user' as const, content: fixPrompt, id: uuidv4() };
     setMessages(prev => [...prev, userMessage]);
     
     // Auto-submit this prompt
@@ -188,7 +198,7 @@ export default function AIWebBuilder() {
   
   const processPrompt = async (promptText: string) => {
     // Add user message
-    const userMessage = { role: 'user' as const, content: promptText };
+    const userMessage = { role: 'user' as const, content: promptText, id: uuidv4() };
     setMessages(prev => [...prev, userMessage]);
     
     // Clear input if this was from the input field
@@ -283,7 +293,8 @@ export default function AIWebBuilder() {
         role: 'assistant' as const,
         content: fullResponse,
         edits: fileEdits,
-        npmChanges
+        npmChanges,
+        id: assistantMessageId
       };
       
       setMessages(prev => 
@@ -306,7 +317,8 @@ export default function AIWebBuilder() {
       // Add error message
       const errorMessage = { 
         role: 'assistant' as const, 
-        content: `Sorry, an error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`
+        content: `Sorry, an error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        id: uuidv4()
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {

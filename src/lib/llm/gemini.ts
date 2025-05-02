@@ -1,6 +1,7 @@
 
 import { GEMINI_API_KEY } from '@/lib/constants';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getSelectedModel } from '@/lib/llm/modelSelection';
 
 // Initialize the Generative AI with the API key
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -14,8 +15,139 @@ const extractDiff = (text: string): string => {
   return '';
 };
 
-// Stream generator for Gemini API
+// Stream generator for Claude / Gemini API
 export async function* geminiStream(
+  prompt: string,
+  onToken: (token: string) => void
+) {
+  const modelProvider = getSelectedModel();
+  
+  try {
+    // Try Claude first if selected
+    if (modelProvider.name === 'claude') {
+      const modelResult = await streamFromClaude(prompt, onToken);
+      if (modelResult) {
+        yield* modelResult;
+        return;
+      }
+    }
+    
+    // Default to Gemini or fallback to Gemini
+    yield* streamFromGemini(prompt, onToken);
+  } catch (error) {
+    console.error("Error in AI stream:", error);
+    onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    
+    // Final yield to indicate completion even with error
+    yield { done: true, filesChanged: [], error: true };
+  }
+}
+
+// Stream generator for Claude API
+async function* streamFromClaude(
+  prompt: string,
+  onToken: (token: string) => void
+) {
+  const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  
+  if (!ANTHROPIC_API_KEY) {
+    console.warn("No Anthropic API key found, falling back to Gemini");
+    return null;
+  }
+  
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: "claude-3-7-sonnet-20250219",
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 4096,
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Anthropic API error: ${errorData.error?.message || response.statusText}`);
+    }
+
+    let diff = '';
+    const filesChanged: string[] = [];
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonString = line.slice(6);
+            
+            // End of stream marker
+            if (jsonString === "[DONE]") break;
+            
+            try {
+              const data = JSON.parse(jsonString);
+              
+              // Extract the content delta if it exists
+              if (data.type === 'content_block_delta' && data.delta?.text) {
+                const text = data.delta.text;
+                onToken(text);
+                diff += text;
+                
+                // Check for file changes
+                if (text.includes('// FILE:') || text.includes('```')) {
+                  // Extract filename from content like "// FILE: src/path/to/file.tsx"
+                  const fileRegex = /\/\/ FILE: ([^\n]+)/g;
+                  let match;
+                  while ((match = fileRegex.exec(text)) !== null) {
+                    filesChanged.push(match[1]);
+                  }
+                  
+                  // Also check for ```typescript filename or ```tsx filename patterns
+                  const codeBlockRegex = /```(?:typescript|tsx|jsx|js) ([^\n]+)/g;
+                  while ((match = codeBlockRegex.exec(text)) !== null) {
+                    filesChanged.push(match[1]);
+                  }
+                }
+                
+                // Yield the extracted diff and changed files
+                yield { diff: extractDiff(text), filesChanged };
+              }
+            } catch (e) {
+              console.error('Error parsing SSE data:', e);
+            }
+          }
+        }
+      }
+    }
+    
+    // Final yield to indicate completion
+    yield { done: true, filesChanged };
+  } catch (error) {
+    console.error("Error streaming from Claude:", error);
+    onToken(`Error connecting to Claude: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    
+    // Fall back to Gemini
+    console.log("Falling back to Gemini...");
+    return null;
+  }
+}
+
+// Stream generator for Gemini API (original implementation)
+async function* streamFromGemini(
   prompt: string,
   onToken: (token: string) => void
 ) {

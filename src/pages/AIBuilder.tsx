@@ -2,11 +2,24 @@
 import { useEffect } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIWebBuilder from '@/components/dashboard/AIWebBuilder';
+import { toast } from 'sonner';
 
 export default function AIBuilder() {
   // Page title effect
   useEffect(() => {
     document.title = "Blossom AI Builder";
+    
+    // Check for API keys
+    const anthropicKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    
+    if (!anthropicKey && !geminiKey) {
+      toast.warning("No AI API keys configured. Please add either ANTHROPIC_API_KEY or GEMINI_API_KEY to use the AI builder.");
+    } else if (anthropicKey) {
+      toast.success("Using Claude 3.7 Sonnet for AI generation");
+    } else {
+      toast.success("Using Gemini 2.5 Flash for AI generation");
+    }
   }, []);
 
   return (
@@ -19,7 +32,7 @@ export default function AIBuilder() {
         <header className="bg-white dark:bg-gray-900 border-b border-border p-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">AI Website Builder</h1>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Powered by Gemini</span>
+            <span className="text-sm text-muted-foreground">Powered by Claude 3.7 Sonnet & Gemini</span>
           </div>
         </header>
         
