@@ -7,29 +7,55 @@ import { getAvailableModels, setSelectedModel } from '@/lib/llm/modelSelection';
 
 export default function AIBuilder() {
   const [availableModels, setAvailableModels] = useState<any[]>([]);
+  const [isModelsLoaded, setIsModelsLoaded] = useState(false);
   
-  // Page title effect
+  // Page title effect and model initialization
   useEffect(() => {
     document.title = "Blossom AI Builder";
     
-    // Check for API keys
-    const anthropicKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    
-    if (!anthropicKey && !geminiKey) {
-      toast.warning("No AI API keys configured. Please add VITE_ANTHROPIC_API_KEY to use the AI builder.");
-    } else if (anthropicKey) {
-      setSelectedModel('claude');
-      toast.success("Using Claude 3.7 Sonnet for AI generation");
-    } else if (geminiKey) {
-      setSelectedModel('gemini');
-      toast.info("Using Gemini 2.5 Flash for AI generation (Claude is recommended)");
+    try {
+      // Check for API keys
+      const anthropicKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+      const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      
+      if (!anthropicKey && !geminiKey) {
+        toast.warning("No AI API keys configured. Please add VITE_ANTHROPIC_API_KEY to use the AI builder.");
+      } else if (anthropicKey) {
+        setSelectedModel('claude');
+        toast.success("Using Claude 3.7 Sonnet for AI generation");
+      } else if (geminiKey) {
+        setSelectedModel('gemini');
+        toast.info("Using Gemini 2.5 Flash for AI generation (Claude is recommended)");
+      }
+      
+      // Get available models
+      const models = getAvailableModels();
+      setAvailableModels(models);
+      setIsModelsLoaded(true);
+    } catch (error) {
+      console.error('Error initializing models:', error);
+      // Fallback to default models
+      setAvailableModels([{
+        id: 'claude',
+        name: 'Claude 3.7 Sonnet',
+        provider: 'Anthropic',
+        available: false
+      }]);
+      setIsModelsLoaded(true);
     }
-    
-    // Get available models
-    const models = getAvailableModels();
-    setAvailableModels(models);
   }, []);
+
+  // Wait for models to load before rendering the full UI
+  if (!isModelsLoaded) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading AI models...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

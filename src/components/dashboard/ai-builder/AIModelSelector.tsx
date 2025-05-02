@@ -24,30 +24,58 @@ interface AIModelSelectorProps {
 
 export default function AIModelSelector({ className, selectedModel, onModelChange }: AIModelSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const [models, setModels] = React.useState<any[]>([]);
+  const [models, setModels] = React.useState<Array<{
+    id: string;
+    name: string;
+    provider: string;
+    available: boolean;
+  }>>([]);
   
   // Load models on component mount
   React.useEffect(() => {
-    const availableModels = getAvailableModels();
-    setModels(availableModels);
+    try {
+      const availableModels = getAvailableModels();
+      // Make sure we have at least one model
+      setModels(availableModels.length > 0 ? availableModels : [{
+        id: 'claude',
+        name: 'Claude 3.7 Sonnet',
+        provider: 'Anthropic',
+        available: false
+      }]);
+    } catch (error) {
+      console.error('Error loading models:', error);
+      // Fallback to a default model
+      setModels([{
+        id: 'claude',
+        name: 'Claude 3.7 Sonnet',
+        provider: 'Anthropic',
+        available: false
+      }]);
+    }
   }, []);
   
   const handleModelChange = (modelId: string) => {
-    setSelectedModel(modelId as 'claude' | 'gemini');
-    setOpen(false);
-    
-    if (onModelChange) {
-      onModelChange(modelId);
+    try {
+      setSelectedModel(modelId as 'claude' | 'gemini');
+      setOpen(false);
+      
+      if (onModelChange) {
+        onModelChange(modelId);
+      }
+    } catch (error) {
+      console.error('Error changing model:', error);
     }
   };
 
   // Find the current model display name
-  const currentModel = models.find(m => m.id === selectedModel) || { 
-    name: selectedModel === 'claude' ? 'Claude 3.7 Sonnet' : 'Select model',
-    id: selectedModel 
-  };
+  const currentModel = React.useMemo(() => {
+    return models.find(m => m.id === selectedModel) || { 
+      name: selectedModel === 'claude' ? 'Claude 3.7 Sonnet' : 'Select model',
+      id: selectedModel 
+    };
+  }, [models, selectedModel]);
 
-  // Ensure we always have something to render, even before models are loaded
+  // Show loading state if models aren't loaded yet
   if (models.length === 0) {
     return (
       <Button
