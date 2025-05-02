@@ -18,7 +18,7 @@ export default function EmptyStateView({ selectedTemplate }: EmptyStateViewProps
         <p className="text-muted-foreground mb-4 text-sm">
           {selectedTemplate 
             ? "Customize your website by entering a detailed prompt or use the default template prompt."
-            : "Enter a description of the website you want to build in the prompt field."}
+            : "Describe the website you want to build in the prompt field."}
         </p>
         <div className="text-left space-y-2 bg-muted p-4 rounded-lg text-sm">
           <h4 className="font-medium">Your generated website will appear here</h4>
