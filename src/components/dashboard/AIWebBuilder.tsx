@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Upload, Send } from 'lucide-react';
@@ -51,7 +52,7 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
   const [streamingResponse, setStreamingResponse] = useState('');
   const [projectId, setProjectId] = useState<string>(uuidv4());
   const [projectName, setProjectName] = useState<string>("Nieuw Project");
-  const [selectedModel, setSelectedModel] = useState(initialModel);
+  const [selectedModel, setSelectedModel] = useState(initialModel || 'claude');
   
   // File system state
   const [files, setFiles] = useState<Record<string, string>>({
@@ -79,6 +80,10 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
 
   // Handle model change
   const handleModelChange = (model: string) => {
+    if (!model) {
+      console.warn("Invalid model selection");
+      return;
+    }
     setSelectedModel(model);
     toast.success(`Now using ${model === 'claude' ? 'Claude 3.7 Sonnet' : 'Gemini 2.5 Flash'}`);
   };
@@ -261,6 +266,9 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
       
       // Get the selected AI model
       const model = getSelectedModel();
+      if (!model) {
+        throw new Error("No AI model available");
+      }
       
       // Stream response from the model
       let fullResponse = '';

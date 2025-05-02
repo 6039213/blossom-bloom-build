@@ -10,6 +10,7 @@ export default function AIBuilder() {
   const [isModelsLoaded, setIsModelsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedModel, setSelectedModelState] = useState<string>('claude');
+  const [error, setError] = useState<string | null>(null);
   
   // Page title effect and model initialization
   useEffect(() => {
@@ -26,6 +27,7 @@ export default function AIBuilder() {
         
         if (!anthropicKey && !geminiKey) {
           toast.warning("No AI API keys configured. Please add VITE_ANTHROPIC_API_KEY to use the AI builder.");
+          setError("No API keys configured");
         } else if (anthropicKey) {
           initialModel = 'claude';
           setSelectedModel('claude');
@@ -54,6 +56,7 @@ export default function AIBuilder() {
         }
       } catch (error) {
         console.error('Error initializing models:', error);
+        setError("Failed to initialize AI models");
         // Fallback to default models
         setAvailableModels([{
           id: 'claude',
@@ -77,6 +80,23 @@ export default function AIBuilder() {
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading AI models...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="text-center p-6 max-w-md">
+          <div className="bg-red-500 text-white p-2 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-6 w-6">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold mb-2">AI Configuration Error</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <p className="text-sm">To fix this issue, please check your .env file and add the required API keys.</p>
         </div>
       </div>
     );

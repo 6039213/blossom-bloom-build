@@ -120,6 +120,20 @@ export default function AIModelSelector({
     );
   }
 
+  // Make sure we have models before rendering the popover
+  if (!models || models.length === 0) {
+    return (
+      <Button
+        variant="outline"
+        className={cn("flex justify-between w-[220px] text-sm", className)}
+        disabled
+      >
+        No models available
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    );
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -137,7 +151,7 @@ export default function AIModelSelector({
         <Command>
           <CommandEmpty>No AI models found.</CommandEmpty>
           <CommandGroup>
-            {models && models.map((model) => (
+            {models.map((model) => (
               <CommandItem
                 key={model.id}
                 value={model.id}
