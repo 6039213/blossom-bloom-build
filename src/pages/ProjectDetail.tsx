@@ -1,307 +1,106 @@
-import { useState, useEffect } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useProjectStore } from '@/stores/projectStore';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
-  Download,
-  Copy,
-  Code,
-  Eye,
-  ArrowLeft,
-  Save,
-  Trash2,
-  ExternalLink,
-  Smartphone,
-  Tablet,
-  Monitor,
-} from 'lucide-react';
-import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
-import { useAuth } from '@/contexts/AuthContext';
-import { 
-  SandpackProvider, 
-  SandpackLayout, 
-  SandpackPreview,
-  SandpackFileExplorer,
-} from '@codesandbox/sandpack-react';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import SandpackCustomCodeEditor from '@/components/dashboard/SandpackCustomCodeEditor';
+import { Save, Trash2, FileCode, MessageSquare, Settings as SettingsIcon } from 'lucide-react';
+import { FileSystemItem } from '@/components/dashboard/FileExplorer';
+import { buildFileTree } from '@/utils/fileStructureUtils';
 
-interface ProjectFile {
-  code: string;
-}
-
-interface ProjectFiles {
-  [filePath: string]: ProjectFile;
-}
-
-const defaultScssVariables = `
-$primary-color: #f59e0b;
-$secondary-color: #3b82f6;
-$text-color: #374151;
-$background-color: #ffffff;
-$accent-color: #10b981;
-$font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-$border-radius: 0.375rem;
-$box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-$transition-duration: 0.15s;
-`;
+type ProjectDetailParams = {
+  id: string;
+};
 
 export default function ProjectDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<ProjectDetailParams>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { getProject, updateProject, deleteProject } = useProjectStore();
+  const { projects, updateProject, deleteProject } = useProjectStore();
   
-  const [isLoading, setIsLoading] = useState(true);
-  const [projectFiles, setProjectFiles] = useState<ProjectFiles>({});
-  const [projectData, setProjectData] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('preview');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [viewportSize, setViewportSize] = useState('desktop');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
-  const getProjectDependencies = (files: ProjectFiles) => {
-    const dependencies = {
-      "react": "^18.2.0",
-      "react-dom": "^18.2.0",
-      "typescript": "^5.0.4"
-    };
-    
-    const allCode = Object.values(files).map(file => file.code).join(' ');
-    
-    if (allCode.includes('react-router-dom')) {
-      dependencies["react-router-dom"] = "^6.15.0";
-    }
-    
-    if (allCode.includes('.scss')) {
-      dependencies["sass"] = "^1.64.2";
-    }
-    
-    if (allCode.includes('axios')) {
-      dependencies["axios"] = "^1.4.0";
-    }
-    
-    return dependencies;
-  };
+  // Local state for the project
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [activeTab, setActiveTab] = useState('files');
+  const [fileTree, setFileTree] = useState<FileSystemItem[]>([]);
 
-  const fixScssImports = (files: ProjectFiles): ProjectFiles => {
-    const updatedFiles = { ...files };
-    
-    if (!Object.keys(updatedFiles).some(path => path.includes('variables.scss'))) {
-      updatedFiles['/src/styles/variables.scss'] = { code: defaultScssVariables };
-    }
+  // Get the project from the store
+  const project = projects.find(p => p.id === id);
 
-    Object.keys(updatedFiles).forEach(filePath => {
-      if (filePath.endsWith('.scss') || filePath.endsWith('.sass')) {
-        if (!filePath.includes('variables.scss')) {
-          const fileContent = updatedFiles[filePath].code;
-          
-          if (!fileContent.includes('@import') || !fileContent.includes('variables.scss')) {
-            const pathSegments = filePath.split('/').filter(Boolean);
-            pathSegments.pop();
-            
-            let relativePath = '';
-            for (let i = 0; i < pathSegments.length - 1; i++) {
-              if (pathSegments[i] !== 'styles') {
-                relativePath += '../';
-              }
-            }
-            
-            updatedFiles[filePath] = { 
-              code: `@import '${relativePath}styles/variables.scss';\n\n${fileContent}`
-            };
-          }
-        }
-      }
-    });
-    
-    return updatedFiles;
-  };
-  
+  // When the project changes, update the local state
   useEffect(() => {
-    const loadProject = async () => {
-      if (!id) return;
+    if (project) {
+      setName(project.name);
+      setDescription(project.description);
       
-      try {
-        setIsLoading(true);
-        const project = await getProject(id);
-        
-        if (!project) {
-          toast.error("Project not found");
-          navigate('/dashboard/projects');
-          return;
-        }
-        
-        setProjectData(project);
-        
-        if (project.code) {
-          try {
-            const parsedFiles = JSON.parse(project.code);
-            const fixedFiles = fixScssImports(parsedFiles);
-            setProjectFiles(fixedFiles);
-          } catch (error) {
-            console.error("Failed to parse project code:", error);
-            toast.error("Failed to load project code");
-          }
-        }
-      } catch (error) {
-        console.error("Error loading project:", error);
-        toast.error("Failed to load project");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    if (user) {
-      loadProject();
-    } else {
-      navigate('/auth');
-    }
-  }, [id, user, navigate, getProject]);
-  
-  const handleSaveProject = async () => {
-    if (!projectData) return;
-    
-    try {
-      await updateProject(projectData.id, {
-        status: projectData.status as any,
-        // Don't include code directly here as it's not in the interface
-        // Instead, add a custom method to handle this special case
-      });
-      
-      // Special handling for code separately
-      if (projectData && projectFiles) {
-        const project = get().projects.find(p => p.id === projectData.id);
-        if (project) {
-          project.code = JSON.stringify(projectFiles);
-        }
-      }
-      
-      toast.success("Project saved successfully");
-    } catch (error) {
-      console.error("Error saving project:", error);
-      toast.error("Failed to save project");
-    }
-  };
-  
-  const handleDeleteProject = async () => {
-    if (!projectData) return;
-    
-    try {
-      await deleteProject(projectData.id);
-      toast.success("Project deleted successfully");
-      navigate('/dashboard/projects');
-    } catch (error) {
-      console.error("Error deleting project:", error);
-      toast.error("Failed to delete project");
-    }
-  };
-
-  const handleCodeChange = (updatedFiles: ProjectFiles) => {
-    setProjectFiles(updatedFiles);
-  };
-  
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(JSON.stringify(projectFiles, null, 2));
-    toast.success("Code copied to clipboard");
-  };
-  
-  const handleDownloadCode = () => {
-    const blob = new Blob([JSON.stringify(projectFiles, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${projectData?.title || 'project'}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("Code downloaded successfully");
-  };
-
-  const handleOpenInNewTab = () => {
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${projectData?.title || 'Project Preview'}</title>
-        <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-        <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-        <style>
-          body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
-          iframe { width: 100%; height: 100%; border: none; }
-        </style>
-      </head>
-      <body>
-        <div id="sandbox-container"></div>
-        <script type="module">
-          const iframe = document.createElement('iframe');
-          iframe.style.width = '100%';
-          iframe.style.height = '100%';
-          iframe.style.border = 'none';
-          document.getElementById('sandbox-container').appendChild(iframe);
+      // Build file tree if there are files
+      if (project.files && project.files.length > 0) {
+        try {
+          // Convert project files to a Record<string, string> format for the file tree builder
+          const filesRecord: Record<string, string> = {};
+          project.files.forEach(file => {
+            filesRecord[file.path] = file.content;
+          });
           
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          doc.open();
-          doc.write('<html><head><title>Preview</title><style>body{margin:0;padding:20px;font-family:sans-serif;}</style></head><body><h1>Preview Mode</h1><p>This is a preview of your project: ${projectData?.title || 'Untitled Project'}</p></body></html>');
-          doc.close();
-        </script>
-      </body>
-      </html>
-    `;
-
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    URL.revokeObjectURL(url);
-  };
-
-  const getViewportClasses = () => {
-    switch(viewportSize) {
-      case 'mobile':
-        return 'w-[320px] mx-auto border border-border rounded-lg shadow-lg';
-      case 'tablet':
-        return 'w-[768px] mx-auto border border-border rounded-lg shadow-lg';
-      case 'desktop':
-      default:
-        return 'w-full';
+          const tree = buildFileTree(filesRecord);
+          setFileTree(tree);
+        } catch (error) {
+          console.error("Error building file tree:", error);
+        }
+      }
     }
-  };
-  
-  if (isLoading) {
+  }, [project]);
+
+  if (!project) {
     return (
-      <div className="flex h-screen overflow-hidden bg-background">
-        <div className="hidden md:block md:w-64 h-full">
-          <DashboardSidebar />
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p>Loading project...</p>
-          </div>
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Project Not Found</h2>
+          <p className="mb-4">The project you're looking for doesn't exist or has been deleted.</p>
+          <Button onClick={() => navigate('/dashboard/projects')}>
+            Back to Projects
+          </Button>
         </div>
       </div>
     );
   }
+
+  const handleSaveChanges = () => {
+    try {
+      updateProject(project.id, {
+        name,
+        description,
+      });
+      toast.success("Project updated successfully");
+    } catch (error) {
+      toast.error("Failed to update project");
+      console.error("Error updating project:", error);
+    }
+  };
+
+  const handleDeleteProject = () => {
+    try {
+      deleteProject(project.id);
+      toast.success("Project deleted successfully");
+      navigate('/dashboard/projects');
+    } catch (error) {
+      toast.error("Failed to delete project");
+      console.error("Error deleting project:", error);
+    }
+  };
+
+  // Get chat message count
+  const chatCount = project.chat ? project.chat.length : 0;
   
+  // Get file count
+  const fileCount = project.files ? project.files.length : 0;
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <div className="hidden md:block md:w-64 h-full">
@@ -311,176 +110,205 @@ export default function ProjectDetail() {
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <header className="bg-white dark:bg-gray-900 border-b border-border p-4 sticky top-0 z-10">
           <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => navigate('/dashboard/projects')}
-                className="mr-4"
+            {isEditingName ? (
+              <div className="flex items-center gap-2">
+                <Input 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-64"
+                  autoFocus
+                />
+                <Button size="sm" onClick={() => {
+                  setIsEditingName(false);
+                  handleSaveChanges();
+                }}>
+                  <Save className="h-4 w-4 mr-1" />
+                  Save
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => {
+                    setName(project.name);
+                    setIsEditingName(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <h1 
+                className="text-2xl font-bold cursor-pointer hover:text-primary truncate"
+                onClick={() => setIsEditingName(true)}
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              <h1 className="text-2xl font-bold">{projectData?.title || 'Project Details'}</h1>
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
+                {name || 'Unnamed Project'}
+              </h1>
+            )}
+            
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={handleDeleteProject}>
+                <Trash2 className="h-4 w-4 mr-1" />
                 Delete
               </Button>
-              <Button 
-                variant="default" 
-                size="sm"
-                onClick={handleSaveProject}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
+              <Button onClick={() => navigate(`/dashboard/ai-builder`)}>
+                Edit Project
               </Button>
             </div>
           </div>
         </header>
         
-        <main className="flex-1 overflow-hidden p-4">
-          {Object.keys(projectFiles).length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center max-w-md">
-                <p className="text-lg mb-4">This project doesn't have any code yet.</p>
-                <Button onClick={() => navigate('/dashboard/ai-builder')}>
-                  Create with AI Builder
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="max-w-full mx-auto h-full flex flex-col">
-              <Tabs 
-                value={activeTab} 
-                onValueChange={setActiveTab} 
-                className="w-full h-full flex flex-col"
-              >
-                <div className="flex items-center justify-between w-full mb-2">
-                  <div className="flex items-center gap-2">
-                    <TabsList>
-                      <TabsTrigger value="preview" className="flex items-center">
-                        <Eye className="h-3 w-3 mr-1" />
-                        Preview
-                      </TabsTrigger>
-                      <TabsTrigger value="code" className="flex items-center">
-                        <Code className="h-3 w-3 mr-1" />
-                        Code
-                      </TabsTrigger>
-                    </TabsList>
-                    
-                    {activeTab === 'preview' && (
-                      <ToggleGroup type="single" value={viewportSize} onValueChange={(value) => value && setViewportSize(value)}>
-                        <ToggleGroupItem value="mobile" aria-label="Mobile view">
-                          <Smartphone className="h-3 w-3" />
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="tablet" aria-label="Tablet view">
-                          <Tablet className="h-3 w-3" />
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="desktop" aria-label="Desktop view">
-                          <Monitor className="h-3 w-3" />
-                        </ToggleGroupItem>
-                      </ToggleGroup>
-                    )}
-                  </div>
-                  
-                  <div className="flex space-x-1">
-                    {activeTab === 'preview' && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleOpenInNewTab}
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        New Tab
-                      </Button>
-                    )}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleCopyCode}
+        <main className="flex-1 overflow-auto p-6">
+          <div className="space-y-6">
+            <Card className="p-4">
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-medium mb-2 flex items-center">
+                    <SettingsIcon className="h-4 w-4 mr-2" />
+                    Project Details
+                  </h2>
+                  {isEditingDescription ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="min-h-20"
+                        placeholder="Enter project description..."
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => {
+                          setIsEditingDescription(false);
+                          handleSaveChanges();
+                        }}>
+                          <Save className="h-4 w-4 mr-1" />
+                          Save
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            setDescription(project.description);
+                            setIsEditingDescription(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p 
+                      className="text-gray-600 dark:text-gray-400 cursor-pointer hover:text-primary"
+                      onClick={() => setIsEditingDescription(true)}
                     >
-                      <Copy className="h-3 w-3 mr-1" />
-                      Copy Code
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleDownloadCode}
-                    >
-                      <Download className="h-3 w-3 mr-1" />
-                      Download
-                    </Button>
-                  </div>
+                      {description || 'No description. Click to add one.'}
+                    </p>
+                  )}
                 </div>
                 
-                <div className="flex-1 overflow-hidden border border-border rounded-lg">
-                  <TabsContent value="preview" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col">
-                    <div className={`h-full overflow-auto transition-all duration-300 ${getViewportClasses()}`}>
-                      <SandpackProvider
-                        template="react-ts"
-                        theme="auto"
-                        files={projectFiles}
-                        customSetup={{
-                          dependencies: getProjectDependencies(projectFiles),
-                        }}
-                      >
-                        <SandpackLayout className="h-full">
-                          <SandpackPreview
-                            showRefreshButton
-                            className="flex-grow h-full"
-                          />
-                        </SandpackLayout>
-                      </SandpackProvider>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="code" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
-                    <SandpackProvider
-                      template="react-ts"
-                      theme="auto"
-                      files={projectFiles}
-                      customSetup={{
-                        dependencies: getProjectDependencies(projectFiles),
-                      }}
-                    >
-                      <SandpackLayout className="h-full">
-                        <SandpackFileExplorer className="min-w-[180px]" />
-                        <SandpackCustomCodeEditor onCodeChange={handleCodeChange} />
-                      </SandpackLayout>
-                    </SandpackProvider>
-                  </TabsContent>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1 border rounded-md p-3">
+                    <div className="text-sm font-medium mb-1">Created</div>
+                    <div>{new Date(project.createdAt).toLocaleString()}</div>
+                  </div>
+                  <div className="flex-1 border rounded-md p-3">
+                    <div className="text-sm font-medium mb-1">Last Updated</div>
+                    <div>{new Date(project.updatedAt).toLocaleString()}</div>
+                  </div>
                 </div>
-              </Tabs>
-            </div>
-          )}
+              </div>
+            </Card>
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList className="grid grid-cols-2">
+                <TabsTrigger value="files" className="flex items-center">
+                  <FileCode className="h-4 w-4 mr-2" />
+                  Files ({fileCount})
+                </TabsTrigger>
+                <TabsTrigger value="chat" className="flex items-center">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Chat History ({chatCount})
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="files">
+                <Card className="p-4">
+                  {fileCount > 0 ? (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">Project Files</h3>
+                      <div className="border rounded-md p-2 max-h-96 overflow-auto">
+                        {/* File tree would go here */}
+                        <pre className="text-xs">{JSON.stringify(fileTree, null, 2)}</pre>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <FileCode className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+                      <h3 className="text-lg font-medium">No Files Yet</h3>
+                      <p className="text-gray-500 mt-1">
+                        This project doesn't have any files yet.
+                      </p>
+                      <Button 
+                        onClick={() => navigate(`/dashboard/ai-builder`)}
+                        className="mt-4"
+                      >
+                        Generate Files with AI
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="chat">
+                <Card className="p-4">
+                  {chatCount > 0 ? (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">Chat History</h3>
+                      <div className="space-y-4">
+                        {project.chat.map((message, index) => (
+                          <div 
+                            key={message.id || index}
+                            className={`p-3 rounded-lg ${
+                              message.role === 'user' 
+                                ? 'bg-blue-50 ml-12' 
+                                : 'bg-gray-50 mr-12'
+                            }`}
+                          >
+                            <div className="font-medium">
+                              {message.role === 'user' ? 'You' : 'AI Assistant'}
+                            </div>
+                            <div className="mt-1 whitespace-pre-wrap">
+                              {message.content.length > 300 
+                                ? `${message.content.substring(0, 300)}...` 
+                                : message.content
+                              }
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {new Date(message.timestamp).toLocaleString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <MessageSquare className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+                      <h3 className="text-lg font-medium">No Chat History</h3>
+                      <p className="text-gray-500 mt-1">
+                        You haven't chatted with the AI assistant about this project yet.
+                      </p>
+                      <Button 
+                        onClick={() => navigate(`/dashboard/ai-builder`)}
+                        className="mt-4"
+                      >
+                        Start AI Chat
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
         </main>
       </div>
-      
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this project?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete your
-              project and remove all its data from our servers.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteProject}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

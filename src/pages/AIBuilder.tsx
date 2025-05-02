@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
@@ -7,7 +8,7 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger 
 } from '@/components/ui/tabs';
 import { 
-  Settings, Save, ExternalLink, Sparkles, AlertCircle
+  Save, ExternalLink, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -41,16 +42,11 @@ export default function AIBuilder() {
   const [activeTab, setActiveTab] = useState('chat');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [apiKeySet, setApiKeySet] = useState(false);
   const [projectName, setProjectName] = useState('New Project');
   const [projectNameEditing, setProjectNameEditing] = useState(false);
   
-  // Check if Claude API key is set
+  // Load existing project or create new one
   useEffect(() => {
-    const key = localStorage.getItem('VITE_CLAUDE_API_KEY');
-    setApiKeySet(!!key);
-    
-    // Load existing project or create new one
     const project = getCurrentProject();
     if (project) {
       setProjectName(project.name);
@@ -67,12 +63,6 @@ export default function AIBuilder() {
   
   // Handle sending messages to Claude
   const handleSendMessage = async (content: string) => {
-    if (!apiKeySet) {
-      toast.error("Please set your Claude API key in API Settings");
-      setError("No API key found. Please add your Claude API key in API Settings.");
-      return;
-    }
-    
     try {
       setIsProcessing(true);
       setError(null);
@@ -315,32 +305,15 @@ IMPORTANT: Always provide full, complete files that are ready to use, not snippe
                 All Projects
               </Button>
             </Link>
-            <Link to="/settings/api">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className={`flex items-center gap-1 ${!apiKeySet ? 'text-red-600 border-red-600' : ''}`}
-              >
-                <Settings className="h-4 w-4" />
-                {apiKeySet ? 'API Settings' : 'Set API Key'}
-              </Button>
-            </Link>
           </div>
         </header>
         
-        {!apiKeySet && (
+        {error && (
           <div className="bg-red-50 p-3 border-b border-red-200">
             <div className="flex items-start gap-2 text-red-800">
-              <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium">API Key Required</p>
-                <p className="text-sm">
-                  To use the AI Builder, you need to set your Claude API key. Go to{' '}
-                  <Link to="/settings/api" className="font-medium underline">
-                    API Settings
-                  </Link>{' '}
-                  to set your key.
-                </p>
+                <p className="font-medium">Error</p>
+                <p className="text-sm">{error}</p>
               </div>
             </div>
           </div>

@@ -5,66 +5,66 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 // Import pages
 import Index from './pages/Index';
 import Dashboard from './pages/Dashboard';
-import Features from './pages/Features'; 
+import FeaturesPage from './pages/FeaturesPage';
 import Pricing from './pages/Pricing';
 import Auth from './pages/Auth';
-import Team from './pages/Team';
+import Team from './pages/TeamPage';
 import Settings from './pages/Settings';
-import Help from './pages/Help';
+import Help from './pages/HelpPage';
 import NotFound from './pages/NotFound';
-import APISettings from './pages/APISettings';
 import AIBuilder from './pages/AIBuilder';
-import Projects from './pages/Projects';
+import ProjectsPage from './pages/ProjectsPage';
+import ProjectDetail from './pages/ProjectDetail';
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Index />,
+    element: <Index />
   },
   {
     path: '/dashboard',
-    element: <Dashboard />,
+    element: <Dashboard />
   },
   {
     path: '/dashboard/ai-builder',
-    element: <AIBuilder />,
+    element: <AIBuilder />
   },
   {
     path: '/dashboard/projects',
-    element: <Projects />,
+    element: <ProjectsPage />
+  },
+  {
+    path: '/dashboard/projects/:id',
+    element: <ProjectDetail />
   },
   {
     path: '/dashboard/help',
-    element: <Help />,
+    element: <Help />
   },
   {
     path: '/features',
-    element: <Features />,
+    element: <FeaturesPage />
   },
   {
     path: '/pricing',
-    element: <Pricing />,
+    element: <Pricing />
   },
   {
     path: '/auth',
-    element: <Auth />,
+    element: <Auth />
   },
   {
     path: '/team',
-    element: <Team />,
+    element: <Team />
   },
   {
     path: '/settings',
-    element: <Settings />,
-  },
-  {
-    path: '/settings/api',
-    element: <APISettings />,
+    element: <Settings />
   },
   {
     path: '*',
-    element: <NotFound />,
-  },
+    element: <NotFound />
+  }
 ]);
 
 export default function AppRoutes() {
