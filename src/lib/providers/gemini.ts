@@ -1,4 +1,3 @@
-
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { LLMProvider } from "../types";
 
@@ -30,6 +29,41 @@ export const geminiProvider: LLMProvider = {
     } catch (error) {
       console.error("Error streaming from Gemini:", error);
       opts.onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+  
+  async generateStream(prompt: string, onToken: (token: string) => void, options = {}) {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview" });
+    
+    try {
+      const generationConfig = {
+        temperature: options?.temperature || 0.7,
+        maxOutputTokens: options?.maxOutputTokens || 2048,
+      };
+      
+      const result = await model.generateContentStream({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig
+      });
+      
+      // Process each chunk from the stream directly
+      for await (const chunk of result.stream) {
+        const textContent = chunk.text();
+        if (textContent) {
+          onToken(textContent);
+        }
+      }
+      
+      // Return completed
+      return { 
+        completed: true,
+        model: "gemini-2.5-flash-preview"
+      };
+      
+    } catch (error) {
+      console.error("Error streaming from Gemini:", error);
+      onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
     }
   }
 };

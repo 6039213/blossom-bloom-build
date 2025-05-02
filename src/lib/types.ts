@@ -7,4 +7,9 @@ export interface LLMProvider {
     model?: string;
     onToken: (token: string) => void;
   }) => Promise<void>;
+  generateStream: (
+    prompt: string, 
+    onToken: (token: string) => void, 
+    options?: { temperature?: number; maxOutputTokens?: number }
+  ) => Promise<any>;
 }

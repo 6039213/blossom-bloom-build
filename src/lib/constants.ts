@@ -34,9 +34,9 @@ export const MODEL_LIST = [
 // Default AI model
 export const DEFAULT_MODEL = 'claude';
 
-// Pricing plans
-export const PLANS = [
-  {
+// Pricing plans - change from array to object with named properties
+export const PLANS = {
+  FREE: {
     name: 'Free',
     price: 0,
     description: 'Get started with basic features',
@@ -49,7 +49,7 @@ export const PLANS = [
     highlight: false,
     buttonText: 'Get Started'
   },
-  {
+  STANDARD: {
     name: 'Pro',
     price: 19,
     description: 'For professionals and small teams',
@@ -64,7 +64,7 @@ export const PLANS = [
     highlight: true,
     buttonText: 'Upgrade to Pro'
   },
-  {
+  PREMIUM: {
     name: 'Enterprise',
     price: 49,
     description: 'For businesses with custom needs',
@@ -79,4 +79,7 @@ export const PLANS = [
     highlight: false,
     buttonText: 'Contact Sales'
   }
-];
+};
+
+// For backward compatibility, also export PLANS as an array
+export const PLANS_ARRAY = [PLANS.FREE, PLANS.STANDARD, PLANS.PREMIUM];
