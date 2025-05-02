@@ -24,7 +24,13 @@ interface AIModelSelectorProps {
 
 export default function AIModelSelector({ className, selectedModel, onModelChange }: AIModelSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const models = getAvailableModels();
+  const [models, setModels] = React.useState<any[]>([]);
+  
+  // Load models on component mount
+  React.useEffect(() => {
+    const availableModels = getAvailableModels();
+    setModels(availableModels);
+  }, []);
   
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId as 'claude' | 'gemini');
@@ -36,7 +42,23 @@ export default function AIModelSelector({ className, selectedModel, onModelChang
   };
 
   // Find the current model display name
-  const currentModel = models.find(m => m.id === selectedModel) || models[0];
+  const currentModel = models.find(m => m.id === selectedModel) || { 
+    name: selectedModel === 'claude' ? 'Claude 3.7 Sonnet' : 'Select model',
+    id: selectedModel 
+  };
+
+  // Ensure we always have something to render, even before models are loaded
+  if (models.length === 0) {
+    return (
+      <Button
+        variant="outline"
+        className={cn("flex justify-between w-[220px] text-sm", className)}
+      >
+        {selectedModel === 'claude' ? 'Claude 3.7 Sonnet' : 'Loading models...'}
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
