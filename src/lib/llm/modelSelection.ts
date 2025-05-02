@@ -6,7 +6,7 @@ import type { LLMProvider } from '../types';
 // Default to Claude if API key is available, otherwise fallback to Gemini
 let selectedProvider: LLMProvider = anthropicProvider;
 
-// Check if Anthropic API key is available - always true now with hardcoded key
+// Check if Anthropic API key is available - we now have a hardcoded key
 const hasAnthropicKey = () => {
   return true;
 };
@@ -22,7 +22,6 @@ if (!hasAnthropicKey() && hasGeminiKey()) {
 }
 
 export const setSelectedModel = (provider: 'gemini' | 'claude') => {
-  // Since we now always have a Claude key, we'll allow switching regardless
   selectedProvider = provider === 'claude' ? anthropicProvider : geminiProvider;
 };
 

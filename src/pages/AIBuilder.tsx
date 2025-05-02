@@ -33,6 +33,7 @@ export default function AIBuilder() {
         toast.success("Using Claude 3.7 Sonnet for AI generation");
       } catch (error) {
         console.error('Error initializing models:', error);
+        setError('Failed to initialize AI models. Using default configuration.');
       } finally {
         setIsModelsLoaded(true);
         setIsLoading(false);
@@ -73,6 +74,12 @@ export default function AIBuilder() {
         </header>
         
         <main className="flex-1 overflow-hidden">
+          {error ? (
+            <div className="p-4 bg-red-50 text-red-800 border border-red-200 rounded-md m-4">
+              <p>{error}</p>
+              <p className="mt-2">The application will continue with limited functionality.</p>
+            </div>
+          ) : null}
           <AIWebBuilder selectedModel={selectedModel} />
         </main>
       </div>

@@ -43,7 +43,7 @@ export default function AIModelSelector({
         setLoading(true);
         const availableModels = getAvailableModels();
         
-        // Make sure we have at least one model
+        // Make sure we have models before setting state
         if (availableModels && availableModels.length > 0) {
           setModels(availableModels);
         } else {
