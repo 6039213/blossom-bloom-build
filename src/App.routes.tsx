@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 
 // Import pages
 import Index from './pages/Index';
@@ -68,5 +69,9 @@ const router = createBrowserRouter([
 ]);
 
 export default function AppRoutes() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }
