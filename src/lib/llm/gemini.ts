@@ -3,8 +3,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getSelectedModel } from '@/lib/llm/modelSelection';
 import { ANTHROPIC_API_KEY, GEMINI_API_KEY } from '@/lib/constants';
 
-// Initialize the Generative AI with the API key
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+// Initialize the Generative AI with the API key (even though we're always preferring Claude)
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 // Stream generator for Claude / Gemini API
 export async function* geminiStream(
@@ -23,8 +23,13 @@ export async function* geminiStream(
       }
     }
     
-    // Only use Gemini if specifically selected or Claude failed
-    yield* streamFromGemini(prompt, onToken);
+    // Only use Gemini as fallback if specifically selected or Claude failed
+    // Note: In this version of the app, we're only using Claude so this is just for error handling
+    if (genAI) {
+      yield* streamFromGemini(prompt, onToken);
+    } else {
+      throw new Error("No AI model available");
+    }
   } catch (error) {
     console.error("Error in AI stream:", error);
     onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -134,6 +139,7 @@ async function* streamFromClaude(
 }
 
 // Stream generator for Gemini API (original implementation)
+// Note: This function is kept for backward compatibility but won't be used in practice
 async function* streamFromGemini(
   prompt: string,
   onToken: (token: string) => void
@@ -141,8 +147,8 @@ async function* streamFromGemini(
   // Use constant from lib/constants
   const apiKey = GEMINI_API_KEY;
   
-  if (!apiKey) {
-    onToken("Error: No Gemini API key found. Please add a VITE_GEMINI_API_KEY to your environment variables.");
+  if (!apiKey || !genAI) {
+    onToken("Error: No Gemini API key found. Using Claude instead.");
     yield { done: true, filesChanged: [], error: true };
     return;
   }
