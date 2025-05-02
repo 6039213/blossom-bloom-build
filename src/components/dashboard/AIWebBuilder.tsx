@@ -39,7 +39,7 @@ export default function AIWebBuilder() {
   
   // File system state
   const [files, setFiles] = useState<Record<string, string>>({
-    'src/App.tsx': 'import React from "react";\n\nexport default function App() {\n  return (\n    <div className="p-4">\n      <h1 className="text-2xl font-bold text-blue-600">Claude 3.7 Sonnet AI Web Builder</h1>\n      <p className="mt-2">Start building your app by describing it to the AI.</p>\n    </div>\n  );\n}',
+    'src/App.tsx': 'import React from "react";\n\nexport default function App() {\n  return (\n    <div className="flex min-h-screen items-center justify-center bg-gray-100">\n      <div className="w-full max-w-6xl p-4">\n        <h1 className="text-3xl font-bold text-blue-600 mb-6">Claude 3.7 Sonnet Web Builder</h1>\n        <p className="text-gray-700 mb-4">Start building your web app by describing it in the text input.</p>\n        <p className="text-gray-500 text-sm">Powered by advanced AI to generate complete, functional websites.</p>\n      </div>\n    </div>\n  );\n}',
     'src/index.tsx': 'import React from "react";\nimport ReactDOM from "react-dom/client";\nimport App from "./App";\nimport "./styles/tailwind.css";\n\nReactDOM.createRoot(document.getElementById("root")!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>,\n);',
     'src/styles/tailwind.css': '@tailwind base;\n@tailwind components;\n@tailwind utilities;',
   });
@@ -337,7 +337,7 @@ export default function AIWebBuilder() {
 
   return (
     <div className="flex h-full overflow-hidden bg-background">
-      {/* Left side: Chat and Input */}
+      {/* Left side: Chat and Input - Taking 30% of the width */}
       <div className="w-1/3 flex flex-col border-r border-border">
         {/* Chat header */}
         <div className="p-3 border-b border-border bg-muted/30">
@@ -410,7 +410,7 @@ export default function AIWebBuilder() {
         </div>
       </div>
       
-      {/* Right side: Code Preview */}
+      {/* Right side: Code Preview - Taking 70% of the width */}
       <div className="w-2/3 flex flex-col">
         <div className="p-3 border-b border-border flex items-center justify-between">
           <h2 className="text-lg font-semibold">Live Preview</h2>

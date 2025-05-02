@@ -16,7 +16,12 @@ export const anthropicProvider: LLMProvider = {
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
           'content-type': 'application/json',
+          // Add CORS headers
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Api-Key, Anthropic-Version',
         },
+        mode: 'cors', // Set mode to cors
         body: JSON.stringify({
           model: "claude-3-7-sonnet-20250219",
           messages: opts.messages.map((m: any) => ({ 
@@ -89,7 +94,11 @@ export const anthropicProvider: LLMProvider = {
       let tokens = 0;
       console.log("Starting Claude 3.7 Sonnet API call...");
       
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      // Create a proxy URL to avoid CORS issues
+      // We'll use Cloudflare Workers as a proxy to handle the CORS issues
+      const proxyUrl = 'https://claude-proxy.lovable-worker.workers.dev/v1/messages';
+      
+      const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: {
           'x-api-key': apiKey,
@@ -106,7 +115,7 @@ export const anthropicProvider: LLMProvider = {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(`Anthropic API error: ${errorData.error?.message || response.statusText}`);
       }
 

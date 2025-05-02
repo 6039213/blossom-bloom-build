@@ -48,7 +48,10 @@ async function* streamFromClaude(
   const apiKey = ANTHROPIC_API_KEY;
   
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Create a proxy URL to avoid CORS issues
+    const proxyUrl = 'https://claude-proxy.lovable-worker.workers.dev/v1/messages';
+    
+    const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
