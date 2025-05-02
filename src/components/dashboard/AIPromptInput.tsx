@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Send, XCircle, Upload, ImagePlus } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { GEMINI_API_KEY } from '@/lib/constants';
 
 interface AIPromptInputProps {
   onSubmit: (prompt: string) => void;
@@ -48,12 +47,7 @@ export default function AIPromptInput({
     e.preventDefault();
     
     if (!prompt.trim() && uploadedFiles.length === 0) {
-      toast.error("Please enter a prompt or upload files");
-      return;
-    }
-    
-    if (!GEMINI_API_KEY) {
-      toast.error("Gemini API key is not configured");
+      toast.error("Please enter a prompt");
       return;
     }
     
@@ -181,7 +175,7 @@ export default function AIPromptInput({
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-sm font-medium">What would you like to build?</h3>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-blossom-600">Using Gemini 2.5 Flash</span>
+          <span className="text-xs font-medium text-blossom-600">Using Claude 3.7 Sonnet</span>
         </div>
       </div>
       

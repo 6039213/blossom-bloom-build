@@ -134,7 +134,7 @@ export default function CodePreview({
         <div className="flex-1 overflow-hidden border border-border rounded-lg">
           <TabsContent value="preview" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col">
             <div className={`h-full w-full overflow-auto transition-all duration-300 ${getViewportClasses()}`}>
-              {Object.keys(projectFiles).length > 0 && (
+              {Object.keys(projectFiles).length > 0 ? (
                 <SandpackProvider
                   template="react-ts"
                   theme="auto"
@@ -180,6 +180,16 @@ export default function CodePreview({
                     />
                   </SandpackLayout>
                 </SandpackProvider>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                  <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                    <span className="text-2xl">✨</span>
+                  </div>
+                  <h2 className="text-xl font-semibold mb-2">Welcome to AI Website Builder</h2>
+                  <p className="text-gray-500 max-w-md mx-auto">
+                    Describe what you want to build in the text input on the left side, and Claude 3.7 Sonnet will generate a complete website for you.
+                  </p>
+                </div>
               )}
             </div>
           </TabsContent>

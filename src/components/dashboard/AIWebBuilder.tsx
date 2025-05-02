@@ -1,21 +1,17 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Send } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import ChatMessages from './ChatMessages';
-import FileExplorer, { FileSystemItem } from './FileExplorer';
-import { buildFileTree } from '@/utils/fileStructureUtils';
+import { v4 as uuidv4 } from 'uuid';
+import { getSelectedModel } from '@/lib/llm/modelSelection';
 import CodePreview from './ai-builder/CodePreview';
 import ErrorDetectionHandler from './ai-builder/ErrorDetectionHandler';
 import { detectProjectType } from './ai-builder/utils';
 import { ProjectFiles } from './ai-builder/types';
-import { v4 as uuidv4 } from 'uuid';
-import { getSelectedModel } from '@/lib/llm/modelSelection';
-import EmptyStateView from './ai-builder/EmptyStateView';
-import CodeGenerator from './ai-builder/CodeGenerator';
+import { buildFileTree } from '@/utils/fileStructureUtils';
+import { FileSystemItem } from './FileExplorer';
 
 // Define types for our AI response
 interface FileEdit {
@@ -33,16 +29,12 @@ interface Message {
   npmChanges?: string[];
 }
 
-interface AIWebBuilderProps {
-  selectedModel?: string;
-}
-
-export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }: AIWebBuilderProps) {
+export default function AIWebBuilder() {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [projectId] = useState<string>(uuidv4());
+  const [projectId] = useState<string>(uuidv4().substring(0, 6));
   const [projectName, setProjectName] = useState<string>("New Project");
   
   // File system state
@@ -55,35 +47,12 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
   // File tree state
   const [fileTree, setFileTree] = useState<FileSystemItem[]>([]);
   const [activeFile, setActiveFile] = useState<string | null>('src/App.tsx');
-  const [openFiles, setOpenFiles] = useState<string[]>(['src/App.tsx']);
   const [projectFiles, setProjectFiles] = useState<ProjectFiles>({});
   const [viewportSize, setViewportSize] = useState('desktop');
   const [detectedType, setDetectedType] = useState<string | null>('react');
   const [runtimeError, setRuntimeError] = useState<{ message: string; file?: string } | null>(null);
-  const [hasGeneratedContent, setHasGeneratedContent] = useState(false);
+  const [streamingResponse, setStreamingResponse] = useState('');
 
-  // Handle code generation from CodeGenerator component
-  const handleCodeGeneration = (generatedFiles: Record<string, string>) => {
-    // Update the files with the generated code
-    setFiles(generatedFiles);
-    
-    // Mark that we have generated content
-    setHasGeneratedContent(true);
-    
-    // Set the first file as active
-    const fileNames = Object.keys(generatedFiles);
-    if (fileNames.length > 0) {
-      const mainFile = fileNames.find(f => f.includes('App.tsx') || f.includes('index.tsx')) || fileNames[0];
-      setActiveFile(mainFile);
-      setOpenFiles([mainFile]);
-    }
-    
-    // Switch to preview tab
-    setActiveTab('preview');
-    
-    console.log("Generated files:", Object.keys(generatedFiles));
-  };
-  
   // Update project files when files change
   useEffect(() => {
     const formattedFiles: ProjectFiles = {};
@@ -99,51 +68,13 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
 
   // Update file tree when files change
   useEffect(() => {
-    const tree = buildFileTree(files);
-    setFileTree(tree);
+    try {
+      const tree = buildFileTree(files);
+      setFileTree(tree);
+    } catch (error) {
+      console.error("Error building file tree:", error);
+    }
   }, [files]);
-
-  const handleFileSelect = (path: string) => {
-    setActiveFile(path);
-    
-    // Add to open files if not already open
-    if (!openFiles.includes(path)) {
-      setOpenFiles(prev => [...prev, path]);
-    }
-  };
-
-  const handleTabChange = (path: string) => {
-    setActiveFile(path);
-  };
-  
-  const handleTabClose = (path: string) => {
-    // Remove from open files
-    const newOpenFiles = openFiles.filter(file => file !== path);
-    setOpenFiles(newOpenFiles);
-    
-    // Set a new active file if the closed one was active
-    if (activeFile === path && newOpenFiles.length > 0) {
-      setActiveFile(newOpenFiles[newOpenFiles.length - 1]);
-    } else if (newOpenFiles.length === 0) {
-      setActiveFile(null);
-    }
-  };
-
-  const handleContentChange = (path: string, content: string) => {
-    setFiles(prev => ({
-      ...prev,
-      [path]: content
-    }));
-  };
-  
-  const handleProjectFilesChange = (newProjectFiles: ProjectFiles) => {
-    // Update the files state from the editor
-    const newFiles: Record<string, string> = {};
-    Object.entries(newProjectFiles).forEach(([path, { code }]) => {
-      newFiles[path] = code;
-    });
-    setFiles(newFiles);
-  };
 
   const handleRuntimeError = (error: { message: string; file?: string } | null) => {
     setRuntimeError(error);
@@ -230,6 +161,7 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
     
     // Call AI service
     setIsLoading(true);
+    setStreamingResponse('');
     
     try {
       // Create a message to show while streaming
@@ -271,6 +203,7 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
       let fullResponse = '';
       const addToken = (token: string) => {
         fullResponse += token;
+        setStreamingResponse(fullResponse);
         
         // Update the streaming message in the messages list
         setMessages(prev => 
@@ -315,12 +248,8 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
           const newFile = fileEdits.find(edit => edit.action === 'create')?.file;
           if (newFile) {
             setActiveFile(newFile);
-            setOpenFiles(prev => [...prev, newFile]);
           }
         }
-        
-        // Set flag that we have generated content
-        setHasGeneratedContent(true);
       }
       
       // Update the final assistant message with edits info
@@ -368,49 +297,98 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
     }
   };
 
+  // Function to render message bubbles
+  const renderMessages = () => {
+    return messages.map((message) => (
+      <div 
+        key={message.id || Math.random()} 
+        className={`mb-4 ${message.role === 'user' ? 'text-right' : 'text-left'}`}
+      >
+        <div 
+          className={`inline-block max-w-[85%] rounded-lg p-3 ${
+            message.role === 'user' 
+            ? 'bg-blue-100 text-blue-900' 
+            : 'bg-gray-100 text-gray-900'
+          }`}
+        >
+          <div className="whitespace-pre-wrap">
+            {/* Limit visible content length and add View More button for long messages */}
+            {message.content.length > 500 
+              ? `${message.content.substring(0, 500)}... `
+              : message.content}
+          </div>
+          
+          {message.edits && message.edits.length > 0 && (
+            <div className="mt-2 text-sm">
+              <p className="font-medium">Files modified:</p>
+              <ul className="list-disc list-inside">
+                {message.edits.map((edit, i) => (
+                  <li key={i} className="text-xs">
+                    {edit.action === 'create' ? 'Created' : edit.action === 'replace' ? 'Updated' : 'Deleted'}: {edit.file}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    ));
+  };
+
   return (
     <div className="flex h-full overflow-hidden bg-background">
-      {/* Chat section (left ~25%) */}
-      <div className="w-1/4 flex flex-col border-r border-border">
+      {/* Left side: Chat and Input */}
+      <div className="w-1/3 flex flex-col border-r border-border">
         {/* Chat header */}
         <div className="p-3 border-b border-border bg-muted/30">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">{projectName}</h3>
-            <span className="text-xs text-muted-foreground">Project ID: {projectId.substring(0, 6)}</span>
+            <h3 className="text-sm font-medium">Project ID: {projectId}</h3>
+            <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+              Claude 3.7 Sonnet
+            </span>
           </div>
         </div>
 
         {/* Messages container */}
         <div className="flex-1 overflow-y-auto p-4">
-          <ChatMessages 
-            messages={messages} 
-            isLoading={isLoading} 
-          />
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-6">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                <span className="text-2xl">✨</span>
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Welcome to AI Website Builder</h2>
+              <p className="text-gray-500 mb-6">
+                Describe what you want to build, and I'll generate a complete website for you.
+              </p>
+              <div className="w-full max-w-md bg-blue-50 p-3 rounded-lg text-sm text-blue-700">
+                <p className="font-medium mb-1">Try examples like:</p>
+                <ul className="list-disc list-inside space-y-1 text-left">
+                  <li>"Create a landing page for a vegan restaurant"</li>
+                  <li>"Build a portfolio site for a professional photographer"</li>
+                  <li>"Make a dashboard for a project management tool"</li>
+                </ul>
+              </div>
+            </div>
+          ) : (
+            renderMessages()
+          )}
         </div>
         
         {/* Input section */}
         <div className="border-t border-border p-4">
-          <div className="mb-3">
-            <div className="flex items-center">
-              <span className="px-3 py-1 rounded-md bg-blue-50 text-blue-700 text-sm flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                Using Claude 3.7 Sonnet
-              </span>
-            </div>
-          </div>
-          
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <Textarea 
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Describe changes you'd like to make to the code..."
+              placeholder="Describe the website or application you want to create in detail..."
               className="min-h-[120px] resize-none border-gray-200 focus:border-blue-500"
               disabled={isLoading}
             />
             <Button 
               type="submit"
-              className="bg-blue-500 hover:bg-blue-600 text-white"
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white"
               disabled={!prompt.trim() || isLoading}
             >
               {isLoading ? (
@@ -424,7 +402,7 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
               ) : (
                 <>
                   <Send className="w-4 h-4 mr-2" />
-                  Generate
+                  Generate Web App
                 </>
               )}
             </Button>
@@ -432,37 +410,26 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
         </div>
       </div>
       
-      {/* File explorer (middle) */}
-      <div className="w-1/6 flex flex-col">
-        <FileExplorer 
-          files={fileTree} 
-          activeFile={activeFile}
-          onFileSelect={handleFileSelect}
-        />
-      </div>
-      
-      {/* Code Editor / Preview section */}
-      <div className="w-7/12 flex flex-col">
-        {/* Content area */}
+      {/* Right side: Code Preview */}
+      <div className="w-2/3 flex flex-col">
+        <div className="p-3 border-b border-border flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Live Preview</h2>
+          <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">
+            Powered by Claude 3.7 Sonnet
+          </span>
+        </div>
+        
         <div className="flex-1 overflow-hidden p-4">
-          {!hasGeneratedContent ? (
-            <CodeGenerator 
-              onCodeGenerated={handleCodeGeneration}
-              initialPrompt=""
-            />
-          ) : (
-            <CodePreview 
-              projectFiles={projectFiles}
-              activeTab={activeTab} 
-              setActiveTab={(val) => setActiveTab(val as 'preview' | 'code')}
-              activeFile={activeFile || ''}
-              viewportSize={viewportSize}
-              setViewportSize={setViewportSize}
-              detectedType={detectedType}
-              onDetectError={handleRuntimeError}
-              onCodeChange={handleProjectFilesChange}
-            />
-          )}
+          <CodePreview 
+            projectFiles={projectFiles}
+            activeTab={activeTab} 
+            setActiveTab={(val) => setActiveTab(val as 'preview' | 'code')}
+            activeFile={activeFile || ''}
+            viewportSize={viewportSize}
+            setViewportSize={setViewportSize}
+            detectedType={detectedType}
+            onDetectError={handleRuntimeError}
+          />
         </div>
 
         {/* Show runtime error at the bottom of the page */}

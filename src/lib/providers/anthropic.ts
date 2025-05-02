@@ -1,7 +1,7 @@
 
 import type { LLMProvider } from "../types";
 
-// Always use the hardcoded API key
+// Always use the hardcoded API key - no ENV references
 const apiKey = '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';
 
 export const anthropicProvider: LLMProvider = {
