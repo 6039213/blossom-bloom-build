@@ -198,7 +198,7 @@ export default function CodePreview({
             {Object.keys(projectFiles).length > 0 && (
               <SandpackProvider
                 template="react-ts"
-                theme="vs-code"
+                theme="dark"
                 files={projectFiles}
                 customSetup={{
                   dependencies: getProjectDependencies(projectFiles, detectedType, projectTemplates),
