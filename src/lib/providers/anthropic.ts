@@ -1,7 +1,21 @@
-
 import type { LLMProvider } from "../types";
 
-const apiKey = import.meta.env.VITE_CLAUDE_API_KEY || '';
+// Try to get API key from various sources with priority
+const getApiKey = () => {
+  // First try localStorage
+  const localStorageKey = localStorage.getItem('VITE_CLAUDE_API_KEY');
+  if (localStorageKey) return localStorageKey;
+  
+  // Then try import.meta.env
+  const envKey = import.meta.env.VITE_CLAUDE_API_KEY;
+  if (envKey) return envKey;
+  
+  // Finally, return empty string if nothing found
+  return '';
+};
+
+// Get API key
+const apiKey = getApiKey();
 const modelName = import.meta.env.VITE_CLAUDE_MODEL || 'claude-3-7-sonnet-20250219';
 
 export const callClaude = async (prompt: string) => {
@@ -70,8 +84,9 @@ export const anthropicProvider: LLMProvider = {
       onToken("Blossom is building your application...");
       
       // Make the API call
-      if (!apiKey) {
-        onToken("\nError: API key is not set. Please add your Claude API key in project settings.");
+      const currentApiKey = getApiKey();
+      if (!currentApiKey) {
+        onToken("\nError: API key is not set. Please add your Claude API key in API Settings.");
         return {
           tokens: 0,
           creditsUsed: 0,
@@ -83,7 +98,7 @@ export const anthropicProvider: LLMProvider = {
       const response = await fetch("https://claude-proxy.lovable-worker.workers.dev/v1/messages", {
         method: "POST",
         headers: {
-          "x-api-key": apiKey,
+          "x-api-key": currentApiKey,
           "anthropic-version": "2023-06-01",
           "content-type": "application/json",
         },

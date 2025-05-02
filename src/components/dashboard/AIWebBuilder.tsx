@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Settings } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -13,6 +12,7 @@ import { ProjectFiles } from './ai-builder/types';
 import { buildFileTree } from '@/utils/fileStructureUtils';
 import { FileSystemItem } from './FileExplorer';
 import { parseClaudeOutput, FileDefinition, convertToProjectFiles } from '@/utils/fileSystemParser';
+import { Link } from 'react-router-dom';
 
 // Define types for our AI response
 interface FileEdit {
@@ -56,6 +56,15 @@ export default function AIWebBuilder() {
   const [runtimeError, setRuntimeError] = useState<{ message: string; file?: string } | null>(null);
   const [streamingResponse, setStreamingResponse] = useState('');
   const [generatedFiles, setGeneratedFiles] = useState<FileDefinition[]>([]);
+
+  // Check if API key is set
+  const [apiKeySet, setApiKeySet] = useState<boolean>(false);
+  
+  useEffect(() => {
+    // Check for API key in localStorage
+    const apiKey = localStorage.getItem('VITE_CLAUDE_API_KEY') || import.meta.env.VITE_CLAUDE_API_KEY;
+    setApiKeySet(!!apiKey);
+  }, []);
 
   // Update project files when files change
   useEffect(() => {
@@ -163,6 +172,22 @@ export default function AIWebBuilder() {
         ...prev, 
         { role: 'assistant', content: '', id: assistantMessageId }
       ]);
+      
+      // Check if API key is available
+      const apiKey = localStorage.getItem('VITE_CLAUDE_API_KEY') || import.meta.env.VITE_CLAUDE_API_KEY;
+      if (!apiKey) {
+        const noApiKeyMessage = "No API key found. Please add your Anthropic API key in API Settings.";
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === assistantMessageId 
+              ? { ...msg, content: noApiKeyMessage } 
+              : msg
+          )
+        );
+        setIsLoading(false);
+        setApiError(noApiKeyMessage);
+        throw new Error(noApiKeyMessage);
+      }
       
       // Generate response
       let fullResponse = '';
@@ -310,6 +335,13 @@ export default function AIWebBuilder() {
         <div className="p-3 border-b border-border bg-muted/30">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium">Project ID: {projectId}</h3>
+            <Link 
+              to="/settings/api" 
+              className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+            >
+              <Settings size={14} />
+              {apiKeySet ? 'API Settings' : 'Set API Key'}
+            </Link>
           </div>
         </div>
 
@@ -317,7 +349,18 @@ export default function AIWebBuilder() {
         {apiError && (
           <div className="p-4 bg-red-50 text-red-800 border border-red-200 rounded-md m-4">
             <p>{apiError}</p>
-            <p className="mt-2">Please try again or contact support if the issue persists.</p>
+            {!apiKeySet && (
+              <div className="mt-2">
+                <Link 
+                  to="/settings/api" 
+                  className="inline-flex items-center px-3 py-1.5 border border-red-300 text-red-800 bg-red-50 rounded-md text-sm font-medium hover:bg-red-100"
+                >
+                  <Settings size={14} className="mr-1" />
+                  Set API Key
+                </Link>
+              </div>
+            )}
+            <p className="mt-2 text-sm">Please try again or contact support if the issue persists.</p>
           </div>
         )}
 
@@ -332,6 +375,23 @@ export default function AIWebBuilder() {
               <p className="text-gray-500 mb-6">
                 Describe what you want to build, and we'll generate a complete website for you.
               </p>
+              {!apiKeySet && (
+                <div className="w-full max-w-md bg-amber-50 border border-amber-200 p-4 rounded-lg text-amber-700 mb-6">
+                  <p className="font-medium flex items-center gap-2 mb-2">
+                    <Settings size={16} />
+                    API Key Required
+                  </p>
+                  <p className="mb-3 text-sm">
+                    You need to set up your Anthropic API key before generating websites.
+                  </p>
+                  <Link 
+                    to="/settings/api" 
+                    className="inline-flex items-center px-3 py-1.5 bg-amber-100 border border-amber-300 rounded-md text-sm font-medium hover:bg-amber-200"
+                  >
+                    Set API Key
+                  </Link>
+                </div>
+              )}
               <div className="w-full max-w-md bg-blue-50 p-3 rounded-lg text-sm text-blue-700">
                 <p className="font-medium mb-1">Try examples like:</p>
                 <ul className="list-disc list-inside space-y-1 text-left">
@@ -353,14 +413,16 @@ export default function AIWebBuilder() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Describe the website or application you want to create in detail..."
+              placeholder={apiKeySet ? 
+                "Describe the website or application you want to create in detail..." : 
+                "Please set your API key before generating websites..."}
               className="min-h-[120px] resize-none border-gray-200 focus:border-blue-500"
-              disabled={isLoading}
+              disabled={isLoading || !apiKeySet}
             />
             <Button 
               type="submit"
               className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-              disabled={!prompt.trim() || isLoading}
+              disabled={!prompt.trim() || isLoading || !apiKeySet}
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
