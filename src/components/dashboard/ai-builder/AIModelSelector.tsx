@@ -24,6 +24,7 @@ interface AIModelSelectorProps {
 
 export default function AIModelSelector({ className, selectedModel, onModelChange }: AIModelSelectorProps) {
   const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
   const [models, setModels] = React.useState<Array<{
     id: string;
     name: string;
@@ -34,14 +35,21 @@ export default function AIModelSelector({ className, selectedModel, onModelChang
   // Load models on component mount
   React.useEffect(() => {
     try {
+      setLoading(true);
       const availableModels = getAvailableModels();
+      
       // Make sure we have at least one model
-      setModels(availableModels.length > 0 ? availableModels : [{
-        id: 'claude',
-        name: 'Claude 3.7 Sonnet',
-        provider: 'Anthropic',
-        available: false
-      }]);
+      if (availableModels && availableModels.length > 0) {
+        setModels(availableModels);
+      } else {
+        // Fallback to a default model if no models are available
+        setModels([{
+          id: 'claude',
+          name: 'Claude 3.7 Sonnet',
+          provider: 'Anthropic',
+          available: false
+        }]);
+      }
     } catch (error) {
       console.error('Error loading models:', error);
       // Fallback to a default model
@@ -51,6 +59,8 @@ export default function AIModelSelector({ className, selectedModel, onModelChang
         provider: 'Anthropic',
         available: false
       }]);
+    } finally {
+      setLoading(false);
     }
   }, []);
   
@@ -70,19 +80,39 @@ export default function AIModelSelector({ className, selectedModel, onModelChang
   // Find the current model display name
   const currentModel = React.useMemo(() => {
     return models.find(m => m.id === selectedModel) || { 
-      name: selectedModel === 'claude' ? 'Claude 3.7 Sonnet' : 'Select model',
+      name: selectedModel === 'claude' ? 'Claude 3.7 Sonnet' : 'Gemini 2.5 Flash',
       id: selectedModel 
     };
   }, [models, selectedModel]);
 
   // Show loading state if models aren't loaded yet
-  if (models.length === 0) {
+  if (loading) {
+    return (
+      <Button
+        variant="outline"
+        className={cn("flex justify-between w-[220px] text-sm", className)}
+        disabled
+      >
+        <span className="flex items-center">
+          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Loading models...
+        </span>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    );
+  }
+
+  // Ensure models array is initialized
+  if (!models || models.length === 0) {
     return (
       <Button
         variant="outline"
         className={cn("flex justify-between w-[220px] text-sm", className)}
       >
-        {selectedModel === 'claude' ? 'Claude 3.7 Sonnet' : 'Loading models...'}
+        {currentModel.name}
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </Button>
     );
