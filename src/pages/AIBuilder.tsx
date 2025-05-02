@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
@@ -144,8 +143,8 @@ IMPORTANT: Always provide full, complete files that are ready to use, not snippe
     }
   };
   
-  // Handle file uploads
-  const handleFileUpload = async (files: File[]) => {
+  // Fix the handleFileUpload function to have the correct return type
+  const handleFileUpload = async (files: File[]): Promise<void> => {
     try {
       setIsProcessing(true);
       
@@ -177,8 +176,6 @@ IMPORTANT: Always provide full, complete files that are ready to use, not snippe
       });
       
       toast.success(`Uploaded ${files.length} file(s)`);
-      
-      return uploadedFiles;
     } catch (error) {
       console.error("Error uploading files:", error);
       toast.error("Failed to upload files");

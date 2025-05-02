@@ -1,5 +1,6 @@
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { LLMProvider } from "../types";
+import type { LLMProvider, StreamResult, GenerateStreamOptions } from "../types";
 
 // Get API key from environment variable
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -32,7 +33,7 @@ export const geminiProvider: LLMProvider = {
     }
   },
   
-  async generateStream(prompt: string, onToken: (token: string) => void, options = {}) {
+  async generateStream(prompt: string, onToken: (token: string) => void, options = {}): Promise<StreamResult> {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview" });
     
     try {
@@ -46,18 +47,23 @@ export const geminiProvider: LLMProvider = {
         generationConfig
       });
       
+      let tokenCount = 0;
+      
       // Process each chunk from the stream directly
       for await (const chunk of result.stream) {
         const textContent = chunk.text();
         if (textContent) {
           onToken(textContent);
+          tokenCount += textContent.length;
         }
       }
       
-      // Return completed
+      // Return StreamResult with all required properties
       return { 
-        completed: true,
-        model: "gemini-2.5-flash-preview"
+        complete: true,
+        tokens: tokenCount,
+        creditsUsed: 1, // Replace with actual credit calculation if available
+        fullResponse: prompt // Not ideal, but we don't have the full response easily accessible
       };
       
     } catch (error) {

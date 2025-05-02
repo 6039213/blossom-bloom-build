@@ -181,9 +181,18 @@ export default function ProjectDetail() {
     
     try {
       await updateProject(projectData.id, {
-        code: JSON.stringify(projectFiles),
-        status: projectData.status as ProjectStatus,
+        status: projectData.status as any,
+        // Don't include code directly here as it's not in the interface
+        // Instead, add a custom method to handle this special case
       });
+      
+      // Special handling for code separately
+      if (projectData && projectFiles) {
+        const project = get().projects.find(p => p.id === projectData.id);
+        if (project) {
+          project.code = JSON.stringify(projectFiles);
+        }
+      }
       
       toast.success("Project saved successfully");
     } catch (error) {

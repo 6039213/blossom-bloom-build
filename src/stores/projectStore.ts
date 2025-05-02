@@ -1,12 +1,19 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { Project, ProjectSummary, ChatMessage, FileContent, Permission } from '@/types/project';
 
+// Add ProjectStatus enum
+export enum ProjectStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+  ARCHIVED = 'archived'
+}
+
 interface ProjectState {
   projects: Project[];
   currentProjectId: string | null;
+  isLoading: boolean; // Add loading state
   
   // Selectors
   getCurrentProject: () => Project | undefined;
@@ -30,6 +37,10 @@ interface ProjectState {
   // Project export/import
   exportProject: (projectId: string) => string;
   importProject: (projectData: string) => string | null;
+  
+  // Additional methods needed based on errors
+  fetchProjects: () => void;
+  getProject: (id: string) => Promise<Project | null>;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -37,6 +48,7 @@ export const useProjectStore = create<ProjectState>()(
     (set, get) => ({
       projects: [],
       currentProjectId: null,
+      isLoading: false,
       
       getCurrentProject: () => {
         const { projects, currentProjectId } = get();
@@ -66,7 +78,9 @@ export const useProjectStore = create<ProjectState>()(
           createdAt: now,
           updatedAt: now,
           files: [],
-          chat: []
+          chat: [],
+          status: ProjectStatus.DRAFT,
+          code: '{}' // Add code property to store serialized project files
         };
         
         set(state => ({
@@ -228,6 +242,32 @@ export const useProjectStore = create<ProjectState>()(
           console.error('Failed to import project:', error);
           return null;
         }
+      },
+      
+      fetchProjects: () => {
+        set({ isLoading: true });
+        
+        // Simulate async operation
+        setTimeout(() => {
+          // Projects are already in state thanks to persist middleware
+          set({ isLoading: false });
+        }, 500);
+      },
+      
+      getProject: async (id: string) => {
+        // Set loading state
+        set({ isLoading: true });
+        
+        // Get project from state
+        const project = get().projects.find(p => p.id === id);
+        
+        // Simulate async operation
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Update loading state
+        set({ isLoading: false });
+        
+        return project || null;
       }
     }),
     {

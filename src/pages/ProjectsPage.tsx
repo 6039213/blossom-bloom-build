@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -34,19 +33,23 @@ export default function ProjectsPage() {
   
   const handleCreateProject = async (projectData: { title: string; description?: string }) => {
     try {
-      const newProject = await createProject({
-        ...projectData,
-        status: 'draft' as ProjectStatus,
-        description: projectData.description || ''
-      });
+      // Ensure we pass both required arguments: name and description
+      const projectId = createProject(
+        projectData.title, 
+        projectData.description || ''
+      );
       
       toast.success("New project created!");
       
       // Navigate to the AI builder to generate content for the new project
-      navigate(`/dashboard/projects/${newProject.id}`);
+      navigate(`/dashboard/projects/${projectId}`);
+      
+      // Return empty promise to match expected type
+      return Promise.resolve();
     } catch (error) {
       console.error("Error creating project:", error);
       toast.error("Failed to create project");
+      return Promise.reject(error);
     }
   };
   
@@ -64,8 +67,8 @@ export default function ProjectsPage() {
   };
   
   const filteredProjects = projects.filter((project) => 
-    project.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    (project.name || project.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (project.description || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
   
   return (
@@ -150,12 +153,12 @@ export default function ProjectsPage() {
                 <ProjectCard 
                   key={project.id}
                   id={project.id}
-                  title={project.title}
+                  title={project.name || project.title || 'Unnamed Project'}
                   description={project.description || ''}
-                  lastEdited={new Date(project.updated_at).toLocaleString()}
+                  lastEdited={new Date(project.updatedAt).toLocaleString()}
                   status={project.status as any}
                   thumbnail={project.thumbnail || '/placeholder.svg'}
-                  onDelete={handleDeleteProject}
+                  onDelete={deleteProject}
                 />
               ))}
             </div>

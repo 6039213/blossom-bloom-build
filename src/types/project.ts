@@ -21,6 +21,9 @@ export interface Project {
   files: FileContent[];
   chat: ChatMessage[];
   thumbnail?: string;
+  status?: string;
+  title?: string;
+  code?: string; // Added code property
 }
 
 export interface ProjectSummary {
@@ -31,6 +34,8 @@ export interface ProjectSummary {
   updatedAt: Date;
   thumbnail?: string;
   fileCount: number;
+  title?: string;
+  status?: string;
 }
 
 export interface Permission {
