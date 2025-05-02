@@ -7,25 +7,38 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Sparkles, Send } from 'lucide-react';
 
-// Helper function to clean code blocks from AI responses
+// Enhanced helper function to clean code blocks from AI responses
 const extractCodeBlocks = (response: string) => {
   const codeBlocks: Record<string, string> = {};
   
-  // Extract code blocks with file names
-  const fileRegex = /```(?:typescript|jsx|tsx|js|html|css)(?: ([^\n]+))?\n([\s\S]*?)```/g;
-  let match;
-  while ((match = fileRegex.exec(response)) !== null) {
-    const fileName = match[1]?.trim() || `file-${Object.keys(codeBlocks).length + 1}.tsx`;
-    const codeContent = match[2];
-    codeBlocks[fileName] = codeContent;
-  }
+  // Extract code blocks with file names (multiple formats)
+  const formats = [
+    // Format: ```tsx src/components/Button.tsx
+    {
+      regex: /```(?:typescript|tsx|jsx|ts|js|html|css)(?: ([^\n]+))?\n([\s\S]*?)```/g,
+      fileNameIndex: 1,
+      codeIndex: 2
+    },
+    // Format: // FILE: src/components/Button.tsx
+    {
+      regex: /\/\/\s*FILE:\s*([^\n]+)\n([\s\S]*?)(?=\/\/\s*FILE:|$)/g,
+      fileNameIndex: 1,
+      codeIndex: 2
+    },
+    // Format: /* FILE: src/components/Button.tsx */
+    {
+      regex: /\/\*\s*FILE:\s*([^\n]+)\s*\*\/\n([\s\S]*?)(?=\/\*\s*FILE:|$)/g,
+      fileNameIndex: 1,
+      codeIndex: 2
+    }
+  ];
   
-  // If no files were found, also check for FILE: format
-  if (Object.keys(codeBlocks).length === 0) {
-    const fileBlockRegex = /\/\/\s*FILE:\s*([^\n]+)\n([\s\S]*?)(?=\/\/\s*FILE:|$)/g;
-    while ((match = fileBlockRegex.exec(response)) !== null) {
-      const fileName = match[1]?.trim();
-      const codeContent = match[2]?.trim();
+  // Try each format
+  for (const format of formats) {
+    let match;
+    while ((match = format.regex.exec(response)) !== null) {
+      const fileName = match[format.fileNameIndex]?.trim();
+      const codeContent = match[format.codeIndex]?.trim();
       
       if (fileName && codeContent) {
         codeBlocks[fileName] = codeContent;
@@ -41,13 +54,6 @@ interface CodeGeneratorProps {
   initialPrompt?: string;
 }
 
-interface StreamResponse {
-  diff?: string;
-  filesChanged: string[];
-  done?: boolean;
-  error?: boolean;
-}
-
 export const CodeGenerator = ({ onCodeGenerated, initialPrompt = '' }: CodeGeneratorProps) => {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -55,30 +61,36 @@ export const CodeGenerator = ({ onCodeGenerated, initialPrompt = '' }: CodeGener
   
   const enhancePrompt = (userPrompt: string) => {
     return `
-Create a complete, working React application (using TypeScript and Tailwind CSS) based on this description:
+I need you to create a professional, complete, and fully-functional React application using TypeScript and Tailwind CSS based on this description:
 
 "${userPrompt}"
 
-Follow these rules:
-1. Generate all necessary files with TypeScript (.tsx) for components
-2. Use modern React patterns and hooks
-3. Use Tailwind CSS for all styling
-4. Create reusable components
-5. Add comments to explain complex logic
-6. Ensure the application is responsive
-7. Include realistic placeholder content/data
+Guidelines:
+1. Generate ALL necessary files to make the application fully functional
+2. Use TypeScript (.tsx) for all React components
+3. Use modern React patterns (hooks, functional components)
+4. Implement proper TypeScript types and interfaces
+5. Use Tailwind CSS for all styling with responsive design
+6. Create reusable, well-structured components
+7. Add detailed comments explaining complex logic
+8. Include realistic placeholder content/data
+9. Ensure all code is production-ready and follows best practices
+10. Create a clean, professional UI based on modern design principles
 
-Format each file like:
+Format each file with clear headers:
+
 \`\`\`tsx src/components/ComponentName.tsx
-// Component code here
+// Component code here with imports, types, and full implementation
 \`\`\`
 
-or alternatively:
+Make sure to create:
+- All necessary component files (.tsx)
+- Any required utility/helper files (.ts)
+- CSS files if needed (though prefer Tailwind inline)
+- Type definition files
+- Main App.tsx and other core files
 
-// FILE: src/components/ComponentName.tsx
-// Component code here
-
-Make sure the application is complete and works without additional modification.
+The application should be complete, functional, and ready to run without any additional modifications.
     `;
   };
 
@@ -105,6 +117,8 @@ Make sure the application is complete and works without additional modification.
       
       toast.info("Generating your complete web application with Claude 3.7 Sonnet...");
       
+      console.log("Sending prompt to Claude 3.7 Sonnet:", enhancePrompt(prompt).substring(0, 100) + "...");
+      
       // Call the API to generate code with enhanced prompt
       await model.generateStream(
         enhancePrompt(prompt), 
@@ -120,8 +134,11 @@ Make sure the application is complete and works without additional modification.
       
       // If no code blocks were found, show an error
       if (Object.keys(codeBlocks).length === 0) {
+        console.error("No code blocks found in response:", fullResponse.substring(0, 500) + "...");
         toast.error('No code blocks found in the AI response. Please try again with a more specific prompt.');
       } else {
+        console.log(`Generated ${Object.keys(codeBlocks).length} files:`, Object.keys(codeBlocks));
+        
         // Pass the extracted code blocks to the parent component
         onCodeGenerated(codeBlocks);
         toast.success(`Generated ${Object.keys(codeBlocks).length} files for your application`);
@@ -152,7 +169,7 @@ Make sure the application is complete and works without additional modification.
         <Textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Describe the website or application you want to create in detail..."
+          placeholder="Describe the website or application you want to create in detail... (e.g., 'Create a modern e-commerce site for selling handmade jewelry with product listings, shopping cart, and checkout flow')"
           className="min-h-[120px] mb-4 resize-none"
           disabled={isGenerating}
         />
@@ -173,7 +190,7 @@ Make sure the application is complete and works without additional modification.
               </>
             ) : (
               <>
-                <Send className="h-4 w-4" />
+                <Send className="h-4 w-4 mr-2" />
                 Generate Web App
               </>
             )}
@@ -187,10 +204,13 @@ Make sure the application is complete and works without additional modification.
           <div className="whitespace-pre-wrap text-sm">
             <span className="text-blue-600">Claude 3.7 Sonnet is creating files for your application...</span>
             <div className="mt-2 pl-2 border-l-2 border-blue-300">
-              {streamingResponse.length > 500 ? 
-                streamingResponse.substring(0, 200) + "... " + 
-                streamingResponse.substring(streamingResponse.length - 300) : 
+              {streamingResponse.length > 800 ? 
+                streamingResponse.substring(0, 250) + "... " + 
+                streamingResponse.substring(streamingResponse.length - 550) : 
                 streamingResponse}
+              {isGenerating && (
+                <span className="animate-pulse">▌</span>
+              )}
             </div>
           </div>
         </Card>

@@ -18,14 +18,11 @@ export default function WebContainerPreview({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [serverUrl, setServerUrl] = useState('');
   
   useEffect(() => {
     // This simulates connecting to the WebContainer server URL
-    // In a real implementation, this would come from the WebContainer instance
     const timer = setTimeout(() => {
       setIsLoading(false);
-      setServerUrl('about:blank'); // This would be a real URL in production
     }, 1500);
     
     return () => clearTimeout(timer);
@@ -54,7 +51,7 @@ export default function WebContainerPreview({
   
   // Helper function to generate preview HTML
   const generatePreviewHTML = (files: Record<string, { code: string }>) => {
-    // Find the main HTML file or create a basic one
+    // Start with base HTML
     let htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -62,16 +59,18 @@ export default function WebContainerPreview({
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Web Preview</title>
+        <script src="https://cdn.tailwindcss.com"></script>
         <style>
-          body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; }
-          .container { max-width: 1200px; margin: 0 auto; }
+          body { font-family: system-ui, sans-serif; margin: 0; padding: 0; }
         </style>
       </head>
       <body>
-        <div class="container">
-          <h1>Preview</h1>
-          <p>Website preview is ready. In a real implementation, this would be rendered by the WebContainer.</p>
-        </div>
+        <div id="root"></div>
+        <script>
+          // Simplified React-like rendering for preview
+          const root = document.getElementById('root');
+          root.innerHTML = '<div class="p-4"><h1 class="text-xl font-bold">Preview Ready</h1><p>Your application code has been generated. Check the code tab to see the files.</p></div>';
+        </script>
       </body>
       </html>
     `;

@@ -1,34 +1,27 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Upload, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import ChatMessages from './ChatMessages';
 import FileExplorer, { FileSystemItem } from './FileExplorer';
-import MonacoEditor from './MonacoEditor';
-import { buildFileTree, createNewFile } from '@/utils/fileSystem';
+import { buildFileTree } from '@/utils/fileStructureUtils';
 import CodePreview from './ai-builder/CodePreview';
 import ErrorDetectionHandler from './ai-builder/ErrorDetectionHandler';
 import { detectProjectType } from './ai-builder/utils';
 import { ProjectFiles } from './ai-builder/types';
 import { v4 as uuidv4 } from 'uuid';
 import { getSelectedModel } from '@/lib/llm/modelSelection';
-import AIModelSelector from './ai-builder/AIModelSelector';
 import EmptyStateView from './ai-builder/EmptyStateView';
+import CodeGenerator from './ai-builder/CodeGenerator';
 
 // Define types for our AI response
 interface FileEdit {
   file: string;
   action: 'replace' | 'create' | 'delete';
   content: string;
-}
-
-interface AIResponse {
-  edits: FileEdit[];
-  message: string;
-  npmChanges?: string[];
 }
 
 // Define message type with ID
@@ -49,24 +42,15 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [streamingResponse, setStreamingResponse] = useState('');
-  const [projectId, setProjectId] = useState<string>(uuidv4());
-  const [projectName, setProjectName] = useState<string>("Nieuw Project");
-  const [selectedModel, setSelectedModel] = useState(initialModel || 'claude');
+  const [projectId] = useState<string>(uuidv4());
+  const [projectName, setProjectName] = useState<string>("New Project");
   
   // File system state
   const [files, setFiles] = useState<Record<string, string>>({
-    'src/App.tsx': 'import React from "react";\n\nexport default function App() {\n  return (\n    <div className="p-4">\n      <h1 className="text-2xl font-bold text-blue-600">Hello World</h1>\n      <p className="mt-2">Start building your app by describing it to the AI.</p>\n    </div>\n  );\n}',
+    'src/App.tsx': 'import React from "react";\n\nexport default function App() {\n  return (\n    <div className="p-4">\n      <h1 className="text-2xl font-bold text-blue-600">Claude 3.7 Sonnet AI Web Builder</h1>\n      <p className="mt-2">Start building your app by describing it to the AI.</p>\n    </div>\n  );\n}',
     'src/index.tsx': 'import React from "react";\nimport ReactDOM from "react-dom/client";\nimport App from "./App";\nimport "./styles/tailwind.css";\n\nReactDOM.createRoot(document.getElementById("root")!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>,\n);',
     'src/styles/tailwind.css': '@tailwind base;\n@tailwind components;\n@tailwind utilities;',
   });
-  
-  // Update selected model when the prop changes
-  useEffect(() => {
-    if (initialModel) {
-      setSelectedModel(initialModel);
-    }
-  }, [initialModel]);
   
   // File tree state
   const [fileTree, setFileTree] = useState<FileSystemItem[]>([]);
@@ -78,14 +62,26 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
   const [runtimeError, setRuntimeError] = useState<{ message: string; file?: string } | null>(null);
   const [hasGeneratedContent, setHasGeneratedContent] = useState(false);
 
-  // Handle model change
-  const handleModelChange = (model: string) => {
-    if (!model) {
-      console.warn("Invalid model selection");
-      return;
+  // Handle code generation from CodeGenerator component
+  const handleCodeGeneration = (generatedFiles: Record<string, string>) => {
+    // Update the files with the generated code
+    setFiles(generatedFiles);
+    
+    // Mark that we have generated content
+    setHasGeneratedContent(true);
+    
+    // Set the first file as active
+    const fileNames = Object.keys(generatedFiles);
+    if (fileNames.length > 0) {
+      const mainFile = fileNames.find(f => f.includes('App.tsx') || f.includes('index.tsx')) || fileNames[0];
+      setActiveFile(mainFile);
+      setOpenFiles([mainFile]);
     }
-    setSelectedModel(model);
-    toast.success(`Now using ${model === 'claude' ? 'Claude 3.7 Sonnet' : 'Gemini 2.5 Flash'}`);
+    
+    // Switch to preview tab
+    setActiveTab('preview');
+    
+    console.log("Generated files:", Object.keys(generatedFiles));
   };
   
   // Update project files when files change
@@ -160,7 +156,7 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
     const errorMessage = runtimeError.message || '';
     
     // Automatically generate a prompt to fix the error
-    const fixPrompt = `Fix deze fout in ${errorFile}: ${errorMessage}. Alleen deze file aanpassen, geen andere bestanden wijzigen.`;
+    const fixPrompt = `Fix this error in ${errorFile}: ${errorMessage}. Only modify this file, don't change other files.`;
     
     // Add the prompt to messages
     const userMessage = { role: 'user' as const, content: fixPrompt, id: uuidv4() };
@@ -234,7 +230,6 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
     
     // Call AI service
     setIsLoading(true);
-    setStreamingResponse('');
     
     try {
       // Create a message to show while streaming
@@ -247,6 +242,8 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
       // Add current files context to the prompt
       const filesList = Object.keys(files).map(path => `- ${path}`).join('\n');
       const contextPrompt = `
+      You are an AI web application builder specializing in React and Tailwind CSS.
+
       The user is building a website with these files:
       ${filesList}
       
@@ -264,17 +261,16 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
       Let me know which files you've created or modified.
       `;
       
-      // Get the selected AI model
+      // Get the Claude 3.7 Sonnet model
       const model = getSelectedModel();
       if (!model) {
-        throw new Error("No AI model available");
+        throw new Error("AI model not available");
       }
       
       // Stream response from the model
       let fullResponse = '';
       const addToken = (token: string) => {
         fullResponse += token;
-        setStreamingResponse(fullResponse);
         
         // Update the streaming message in the messages list
         setMessages(prev => 
@@ -286,11 +282,15 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
         );
       };
       
+      console.log("Sending prompt to Claude 3.7 Sonnet...");
+      
       // Use the selected model's generateStream method
       await model.generateStream(contextPrompt, addToken, {
         temperature: 0.7,
         maxOutputTokens: 4096
       });
+      
+      console.log("Claude 3.7 Sonnet response completed");
       
       // When stream is complete, parse the file edits from the response
       const { fileEdits, npmChanges } = parseFileEditsFromResponse(fullResponse);
@@ -358,7 +358,6 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
-      setStreamingResponse('');
     }
   };
 
@@ -389,13 +388,15 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
           />
         </div>
         
-        {/* Model selector and input section */}
+        {/* Input section */}
         <div className="border-t border-border p-4">
           <div className="mb-3">
-            <AIModelSelector 
-              selectedModel={selectedModel}
-              onModelChange={handleModelChange}
-            />
+            <div className="flex items-center">
+              <span className="px-3 py-1 rounded-md bg-blue-50 text-blue-700 text-sm flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                Using Claude 3.7 Sonnet
+              </span>
+            </div>
           </div>
           
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -403,41 +404,30 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Beschrijf de website die je wilt bouwen..."
+              placeholder="Describe changes you'd like to make to the code..."
               className="min-h-[120px] resize-none border-gray-200 focus:border-blue-500"
               disabled={isLoading}
             />
-            <div className="flex justify-between">
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="flex items-center gap-2"
-                disabled={isLoading}
-              >
-                <Upload className="w-4 h-4" />
-                Upload Files
-              </Button>
-              <Button 
-                type="submit"
-                className="bg-blue-500 hover:bg-blue-600 text-white"
-                disabled={!prompt.trim() || isLoading}
-              >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Genereren...
-                  </span>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Genereren
-                  </>
-                )}
-              </Button>
-            </div>
+            <Button 
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+              disabled={!prompt.trim() || isLoading}
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating...
+                </span>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Generate
+                </>
+              )}
+            </Button>
           </form>
         </div>
       </div>
@@ -456,7 +446,10 @@ export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }:
         {/* Content area */}
         <div className="flex-1 overflow-hidden p-4">
           {!hasGeneratedContent ? (
-            <EmptyStateView selectedTemplate={null} />
+            <CodeGenerator 
+              onCodeGenerated={handleCodeGeneration}
+              initialPrompt=""
+            />
           ) : (
             <CodePreview 
               projectFiles={projectFiles}

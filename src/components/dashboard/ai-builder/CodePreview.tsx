@@ -49,6 +49,7 @@ export default function CodePreview({
 }: CodePreviewProps) {
   const [error, setError] = useState<{ message: string; file?: string } | null>(null);
   const [isJsxFile, setIsJsxFile] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Check if active file is JSX/TSX to enable specific tooling
   useEffect(() => {
@@ -56,6 +57,15 @@ export default function CodePreview({
       setIsJsxFile(activeFile.endsWith('.jsx') || activeFile.endsWith('.tsx'));
     }
   }, [activeFile]);
+  
+  // Handle initial loading state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 800);
+    
+    return () => clearTimeout(timer);
+  }, []);
   
   // Get responsive viewport classes
   const getViewportClasses = () => {
@@ -90,6 +100,7 @@ export default function CodePreview({
       errorInfo.file = fileMatch[1];
     }
     
+    console.log("Preview error detected:", errorInfo);
     setError(errorInfo);
     if (onDetectError) onDetectError(errorInfo);
   };
@@ -159,6 +170,13 @@ export default function CodePreview({
                       showOpenInCodeSandbox={false}
                       showSandpackErrorOverlay={false}
                       onError={handleSandpackError}
+                      actionsChildren={
+                        <div className="flex items-center">
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
+                            Claude 3.7 Sonnet Generated
+                          </span>
+                        </div>
+                      }
                     />
                   </SandpackLayout>
                 </SandpackProvider>

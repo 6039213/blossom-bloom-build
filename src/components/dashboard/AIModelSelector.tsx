@@ -1,7 +1,5 @@
 
 import React from 'react';
-import { MODEL_LIST, DEFAULT_MODEL } from '@/lib/constants';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sparkles } from 'lucide-react';
 
 interface AIModelSelectorProps {
@@ -9,25 +7,17 @@ interface AIModelSelectorProps {
   onSelectModel: (model: string) => void;
 }
 
+// Simplified version that only shows Claude 3.7 Sonnet
 export default function AIModelSelector({ selectedModel, onSelectModel }: AIModelSelectorProps) {
   return (
     <div className="flex items-center gap-2">
       <div className="flex items-center gap-1">
-        <Sparkles className="h-4 w-4 text-blossom-500" />
+        <Sparkles className="h-4 w-4 text-blue-500" />
         <span className="text-sm font-medium">AI Model:</span>
       </div>
-      <Select value={selectedModel} onValueChange={onSelectModel}>
-        <SelectTrigger className="w-[180px] h-8 text-xs">
-          <SelectValue placeholder="Select a model" />
-        </SelectTrigger>
-        <SelectContent>
-          {MODEL_LIST.map((model) => (
-            <SelectItem key={model.name} value={model.name}>
-              {model.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="px-3 py-1 rounded-md bg-blue-50 text-blue-700 text-sm">
+        Claude 3.7 Sonnet
+      </div>
     </div>
   );
 }

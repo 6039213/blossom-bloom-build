@@ -1,8 +1,8 @@
 
 import type { LLMProvider } from "../types";
 
-// Get API key from environment variable or use the hardcoded key
-const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY || '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';
+// Always use the hardcoded API key
+const apiKey = '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';
 
 export const anthropicProvider: LLMProvider = {
   name: "claude",
@@ -87,6 +87,8 @@ export const anthropicProvider: LLMProvider = {
   async generateStream(prompt: string, onToken: (token: string) => void, options = {}) {
     try {
       let tokens = 0;
+      console.log("Starting Claude 3.7 Sonnet API call...");
+      
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -149,6 +151,7 @@ export const anthropicProvider: LLMProvider = {
         }
       }
       
+      console.log(`Claude 3.7 Sonnet response completed with ${tokens} tokens`);
       return {
         tokens,
         creditsUsed: tokens * 10, // 1 token = 10 credits

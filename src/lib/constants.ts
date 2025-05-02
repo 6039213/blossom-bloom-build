@@ -1,7 +1,6 @@
 
 // API Keys - hardcoded backup for Claude
-export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-export const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || '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';
+export const ANTHROPIC_API_KEY = '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';
 
 // Token limits and pricing
 export const ANTHROPIC_MAX_TOKENS = 4096;
@@ -25,11 +24,13 @@ When generating code:
 4. Structure the application logically with separate components
 5. Add detailed comments to help understand complex logic
 6. Ensure proper error handling and fallbacks
+7. Create a complete solution that works out of the box
+8. Use Shadcn UI components where appropriate
 
 Always aim to create a complete solution that works out of the box.
 `;
 
-// Available AI models - now only showing Claude 3.7 Sonnet
+// Available AI models - only showing Claude 3.7 Sonnet
 export const MODEL_LIST = [
   {
     name: 'claude',

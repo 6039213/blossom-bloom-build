@@ -3,44 +3,29 @@ import { useEffect, useState } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import AIWebBuilder from '@/components/dashboard/AIWebBuilder';
 import { toast } from 'sonner';
-import { getAvailableModels, setSelectedModel } from '@/lib/llm/modelSelection';
 
 export default function AIBuilder() {
-  const [availableModels, setAvailableModels] = useState<any[]>([]);
-  const [isModelsLoaded, setIsModelsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedModel, setSelectedModelState] = useState<string>('claude');
   const [error, setError] = useState<string | null>(null);
   
   // Page title effect and model initialization
   useEffect(() => {
     document.title = "Blossom AI Builder";
     
-    const initModels = async () => {
+    const initAI = async () => {
       setIsLoading(true);
       try {
-        // We're only using Claude 3.7 Sonnet
-        const initialModel = 'claude';
-        setSelectedModelState(initialModel);
-        setSelectedModel('claude');
-        
-        // Get available models (will only return Claude 3.7 Sonnet)
-        const models = getAvailableModels();
-        if (models && models.length > 0) {
-          setAvailableModels(models);
-        }
-        
+        // Using Claude 3.7 Sonnet only, no need for complex model selection
         toast.success("Using Claude 3.7 Sonnet for AI generation");
       } catch (error) {
-        console.error('Error initializing models:', error);
-        setError('Failed to initialize AI models. Using default configuration.');
+        console.error('Error initializing AI:', error);
+        setError('Failed to initialize AI. Using default configuration.');
       } finally {
-        setIsModelsLoaded(true);
         setIsLoading(false);
       }
     };
     
-    initModels();
+    initAI();
   }, []);
 
   // Wait for models to load before rendering the full UI
@@ -49,7 +34,7 @@ export default function AIBuilder() {
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading AI models...</p>
+          <p className="text-muted-foreground">Initializing Claude 3.7 Sonnet...</p>
         </div>
       </div>
     );
@@ -65,11 +50,9 @@ export default function AIBuilder() {
         <header className="bg-white dark:bg-gray-900 border-b border-border p-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">AI Website Builder</h1>
           <div className="flex items-center gap-2">
-            {isModelsLoaded && availableModels && availableModels.length > 0 && (
-              <span className="text-sm text-muted-foreground">
-                Powered by {availableModels[0]?.name || "Claude 3.7 Sonnet"}
-              </span>
-            )}
+            <span className="text-sm text-muted-foreground">
+              Powered by Claude 3.7 Sonnet
+            </span>
           </div>
         </header>
         
@@ -80,7 +63,7 @@ export default function AIBuilder() {
               <p className="mt-2">The application will continue with limited functionality.</p>
             </div>
           ) : null}
-          <AIWebBuilder selectedModel={selectedModel} />
+          <AIWebBuilder />
         </main>
       </div>
     </div>
