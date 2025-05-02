@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Send } from 'lucide-react';
+import { Send, AlertCircle } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import { detectProjectType } from './ai-builder/utils';
 import { ProjectFiles } from './ai-builder/types';
 import { buildFileTree } from '@/utils/fileStructureUtils';
 import { FileSystemItem } from './FileExplorer';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Define types for our AI response
 interface FileEdit {
@@ -34,6 +35,7 @@ export default function AIWebBuilder() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [projectId] = useState<string>(uuidv4().substring(0, 6));
   const [projectName, setProjectName] = useState<string>("New Project");
   
@@ -52,6 +54,7 @@ export default function AIWebBuilder() {
   const [detectedType, setDetectedType] = useState<string | null>('react');
   const [runtimeError, setRuntimeError] = useState<{ message: string; file?: string } | null>(null);
   const [streamingResponse, setStreamingResponse] = useState('');
+  const [demoMode, setDemoMode] = useState(true);
 
   // Update project files when files change
   useEffect(() => {
@@ -102,6 +105,9 @@ export default function AIWebBuilder() {
     
     if (!prompt.trim()) return;
     
+    // Clear any previous API errors
+    setApiError(null);
+    
     await processPrompt(prompt);
   };
 
@@ -149,6 +155,35 @@ export default function AIWebBuilder() {
     return { fileEdits, npmChanges };
   }, [files]);
   
+  // Handle AI generation in demo mode
+  const generateDemoResponse = async (promptText: string) => {
+    const demoResponses = [
+      "I'm running in demo mode for security. Here's a sample component based on your request:",
+      "```tsx src/components/DemoComponent.tsx\nimport React from 'react';\n\nexport default function DemoComponent() {\n  return (\n    <div className=\"bg-white shadow-md rounded-lg p-6 max-w-md mx-auto my-8\">\n      <h2 className=\"text-2xl font-bold text-gray-800 mb-4\">Demo Component</h2>\n      <p className=\"text-gray-600 mb-4\">This is a demonstration component created in demo mode.</p>\n      <p className=\"text-gray-600\">In production, real code would be generated based on your prompt:</p>\n      <div className=\"bg-gray-100 p-3 rounded mt-2 text-sm\">\"{promptText}\"</div>\n    </div>\n  );\n}\n```",
+      "To use this component, you can import it in your App.tsx file."
+    ];
+    
+    let fullResponse = '';
+    
+    // Simulate streaming with demo content
+    for (const text of demoResponses) {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      fullResponse += text + " ";
+      setStreamingResponse(fullResponse);
+      
+      // Update the streaming message in the messages list
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === 'streaming-message' 
+            ? { ...msg, content: fullResponse } 
+            : msg
+        )
+      );
+    }
+    
+    return fullResponse;
+  };
+  
   const processPrompt = async (promptText: string) => {
     // Add user message
     const userMessage = { role: 'user' as const, content: promptText, id: uuidv4() };
@@ -171,59 +206,65 @@ export default function AIWebBuilder() {
         { role: 'assistant', content: '', id: assistantMessageId }
       ]);
       
-      // Add current files context to the prompt
-      const filesList = Object.keys(files).map(path => `- ${path}`).join('\n');
-      const contextPrompt = `
-      You are an AI web application builder specializing in React and Tailwind CSS.
+      // Generate response (using demo mode for security)
+      let fullResponse;
+      if (demoMode) {
+        fullResponse = await generateDemoResponse(promptText);
+      } else {
+        // Add current files context to the prompt
+        const filesList = Object.keys(files).map(path => `- ${path}`).join('\n');
+        const contextPrompt = `
+        You are an AI web application builder specializing in React and Tailwind CSS.
 
-      The user is building a website with these files:
-      ${filesList}
-      
-      Generate or modify code based on this request: "${promptText}"
-      
-      Return your response with code blocks like:
-      \`\`\`tsx src/components/NewComponent.tsx
-      // component code here
-      \`\`\`
-      
-      Or use FILE: format:
-      // FILE: src/components/AnotherComponent.tsx
-      // component code here
-      
-      Let me know which files you've created or modified.
-      `;
-      
-      // Get the Claude 3.7 Sonnet model
-      const model = getSelectedModel();
-      if (!model) {
-        throw new Error("AI model not available");
+        The user is building a website with these files:
+        ${filesList}
+        
+        Generate or modify code based on this request: "${promptText}"
+        
+        Return your response with code blocks like:
+        \`\`\`tsx src/components/NewComponent.tsx
+        // component code here
+        \`\`\`
+        
+        Or use FILE: format:
+        // FILE: src/components/AnotherComponent.tsx
+        // component code here
+        
+        Let me know which files you've created or modified.
+        `;
+        
+        // Get the Claude 3.7 Sonnet model
+        const model = getSelectedModel();
+        if (!model) {
+          throw new Error("AI model not available");
+        }
+        
+        // Stream response from the model
+        fullResponse = '';
+        const addToken = (token: string) => {
+          fullResponse += token;
+          setStreamingResponse(fullResponse);
+          
+          // Update the streaming message in the messages list
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === assistantMessageId 
+                ? { ...msg, content: fullResponse } 
+                : msg
+            )
+          );
+        };
+        
+        console.log("Sending prompt to Claude 3.7 Sonnet...");
+        
+        // Use the selected model's generateStream method
+        await model.generateStream(contextPrompt, addToken, {
+          temperature: 0.7,
+          maxOutputTokens: 4096
+        });
       }
       
-      // Stream response from the model
-      let fullResponse = '';
-      const addToken = (token: string) => {
-        fullResponse += token;
-        setStreamingResponse(fullResponse);
-        
-        // Update the streaming message in the messages list
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === assistantMessageId 
-              ? { ...msg, content: fullResponse } 
-              : msg
-          )
-        );
-      };
-      
-      console.log("Sending prompt to Claude 3.7 Sonnet...");
-      
-      // Use the selected model's generateStream method
-      await model.generateStream(contextPrompt, addToken, {
-        temperature: 0.7,
-        maxOutputTokens: 4096
-      });
-      
-      console.log("Claude 3.7 Sonnet response completed");
+      console.log("Response completed");
       
       // When stream is complete, parse the file edits from the response
       const { fileEdits, npmChanges } = parseFileEditsFromResponse(fullResponse);
@@ -276,6 +317,7 @@ export default function AIWebBuilder() {
       setActiveTab('preview');
     } catch (error) {
       console.error('Error calling AI:', error);
+      setApiError(`Failed to generate response: ${error instanceof Error ? error.message : 'Unknown error'}`);
       toast.error("Failed to generate response");
       
       // Add error message
@@ -345,10 +387,32 @@ export default function AIWebBuilder() {
             <h3 className="text-sm font-medium">Project ID: {projectId}</h3>
             <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-              Claude 3.7 Sonnet
+              Demo Mode
             </span>
           </div>
         </div>
+
+        {/* API Error Alert */}
+        {apiError && (
+          <Alert variant="destructive" className="m-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>API Error</AlertTitle>
+            <AlertDescription>
+              {apiError}
+              <p className="mt-2 text-sm">Using demo mode for security.</p>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Demo Mode Alert */}
+        {demoMode && (
+          <Alert className="m-2 border-blue-200 bg-blue-50">
+            <AlertTitle className="text-blue-800">Demo Mode Active</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              Running in demo mode for security. API calls are simulated.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Messages container */}
         <div className="flex-1 overflow-y-auto p-4">
@@ -415,7 +479,7 @@ export default function AIWebBuilder() {
         <div className="p-3 border-b border-border flex items-center justify-between">
           <h2 className="text-lg font-semibold">Live Preview</h2>
           <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">
-            Powered by Claude 3.7 Sonnet
+            Demo Mode Active
           </span>
         </div>
         
