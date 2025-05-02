@@ -6,9 +6,9 @@ import type { LLMProvider } from '../types';
 // Default to Claude if API key is available, otherwise fallback to Gemini
 let selectedProvider: LLMProvider = anthropicProvider;
 
-// Check if Anthropic API key is available
+// Check if Anthropic API key is available - always true now with hardcoded key
 const hasAnthropicKey = () => {
-  return true; // We now have a hardcoded key in the anthropic.ts file
+  return true;
 };
 
 // Check if Gemini API key is available
@@ -22,16 +22,7 @@ if (!hasAnthropicKey() && hasGeminiKey()) {
 }
 
 export const setSelectedModel = (provider: 'gemini' | 'claude') => {
-  if (provider === 'claude' && !hasAnthropicKey()) {
-    console.warn('Anthropic API key not found, staying with current provider');
-    return;
-  }
-  
-  if (provider === 'gemini' && !hasGeminiKey()) {
-    console.warn('Gemini API key not found, staying with current provider');
-    return;
-  }
-  
+  // Since we now always have a Claude key, we'll allow switching regardless
   selectedProvider = provider === 'claude' ? anthropicProvider : geminiProvider;
 };
 
@@ -42,15 +33,13 @@ export const getSelectedModel = (): LLMProvider => {
 export const getAvailableModels = () => {
   const models = [];
   
-  // Add Claude if available (should always be true now with hardcoded key)
-  if (hasAnthropicKey()) {
-    models.push({
-      id: 'claude',
-      name: 'Claude 3.7 Sonnet',
-      provider: 'Anthropic',
-      available: true
-    });
-  }
+  // Add Claude (always available now with hardcoded key)
+  models.push({
+    id: 'claude',
+    name: 'Claude 3.7 Sonnet',
+    provider: 'Anthropic',
+    available: true
+  });
   
   // Add Gemini if available
   if (hasGeminiKey()) {
@@ -59,17 +48,6 @@ export const getAvailableModels = () => {
       name: 'Gemini 2.5 Flash',
       provider: 'Google',
       available: true
-    });
-  }
-  
-  // If no models are available, add Claude with available false
-  // (This shouldn't happen now with hardcoded Anthropic key)
-  if (models.length === 0) {
-    models.push({
-      id: 'claude',
-      name: 'Claude 3.7 Sonnet',
-      provider: 'Anthropic',
-      available: true // Changed to true since we have a hardcoded key
     });
   }
   

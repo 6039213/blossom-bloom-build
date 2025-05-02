@@ -1,7 +1,7 @@
 
-// API Keys
+// API Keys - hardcoded backup for Claude
 export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-export const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || '';
+export const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || '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';
 
 // Token limits and pricing
 export const ANTHROPIC_MAX_TOKENS = 4096;

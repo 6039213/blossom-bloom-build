@@ -78,9 +78,6 @@ export const anthropicProvider: LLMProvider = {
       const creditsUsed = tokens * 10;
       console.log(`Used ${tokens} tokens (${creditsUsed} credits)`);
       
-      // Here we would track/deduct credits from the user's account
-      // This is a placeholder for where you'd implement the credit tracking system
-      
     } catch (error) {
       console.error("Error streaming from Claude:", error);
       opts.onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error connecting to Claude'}`);

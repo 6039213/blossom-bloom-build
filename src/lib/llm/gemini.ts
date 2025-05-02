@@ -1,7 +1,7 @@
 
-import { GEMINI_API_KEY } from '@/lib/constants';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getSelectedModel } from '@/lib/llm/modelSelection';
+import { ANTHROPIC_API_KEY, GEMINI_API_KEY } from '@/lib/constants';
 
 // Initialize the Generative AI with the API key
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -39,18 +39,14 @@ async function* streamFromClaude(
   prompt: string,
   onToken: (token: string) => void
 ) {
-  const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  
-  if (!ANTHROPIC_API_KEY) {
-    console.warn("No Anthropic API key found, falling back to Gemini");
-    return null;
-  }
+  // Use the constant from lib/constants or fallback
+  const apiKey = ANTHROPIC_API_KEY;
   
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'x-api-key': ANTHROPIC_API_KEY,
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
@@ -142,9 +138,10 @@ async function* streamFromGemini(
   prompt: string,
   onToken: (token: string) => void
 ) {
-  const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+  // Use constant from lib/constants
+  const apiKey = GEMINI_API_KEY;
   
-  if (!GEMINI_API_KEY) {
+  if (!apiKey) {
     onToken("Error: No Gemini API key found. Please add a VITE_GEMINI_API_KEY to your environment variables.");
     yield { done: true, filesChanged: [], error: true };
     return;

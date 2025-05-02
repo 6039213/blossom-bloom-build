@@ -47,22 +47,22 @@ export default function AIModelSelector({
         if (availableModels && availableModels.length > 0) {
           setModels(availableModels);
         } else {
-          // Fallback to default models
+          // Fallback to default models with Claude as available
           setModels([{
             id: 'claude',
             name: 'Claude 3.7 Sonnet',
             provider: 'Anthropic',
-            available: true // Changed to true since we have a hardcoded key
+            available: true
           }]);
         }
       } catch (error) {
         console.error('Error loading models:', error);
-        // Fallback to default models
+        // Fallback to default models with Claude as available
         setModels([{
           id: 'claude',
           name: 'Claude 3.7 Sonnet',
           provider: 'Anthropic',
-          available: true // Changed to true since we have a hardcoded key
+          available: true
         }]);
       } finally {
         setLoading(false);
