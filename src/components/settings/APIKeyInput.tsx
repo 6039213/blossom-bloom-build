@@ -55,10 +55,12 @@ const APIKeyInput: React.FC<APIKeyInputProps> = ({
     try {
       const result = await onTest(apiKey);
       setTestResult(result);
-      toast(result ? 
-        { title: "API key is valid", description: `Successfully connected to ${serviceName} API` } : 
-        { title: "API key is invalid", description: `Failed to connect to ${serviceName} API` }
-      );
+      
+      if (result) {
+        toast.success(`Successfully connected to ${serviceName} API`);
+      } else {
+        toast.error(`Failed to connect to ${serviceName} API`);
+      }
     } catch (error) {
       setTestResult(false);
       toast.error(`Error testing ${serviceName} API connection`);
