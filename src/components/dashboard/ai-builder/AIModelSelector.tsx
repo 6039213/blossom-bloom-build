@@ -52,7 +52,7 @@ export default function AIModelSelector({
             id: 'claude',
             name: 'Claude 3.7 Sonnet',
             provider: 'Anthropic',
-            available: false
+            available: true // Changed to true since we have a hardcoded key
           }]);
         }
       } catch (error) {
@@ -62,7 +62,7 @@ export default function AIModelSelector({
           id: 'claude',
           name: 'Claude 3.7 Sonnet',
           provider: 'Anthropic',
-          available: false
+          available: true // Changed to true since we have a hardcoded key
         }]);
       } finally {
         setLoading(false);

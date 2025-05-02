@@ -8,7 +8,7 @@ let selectedProvider: LLMProvider = anthropicProvider;
 
 // Check if Anthropic API key is available
 const hasAnthropicKey = () => {
-  return !!import.meta.env.VITE_ANTHROPIC_API_KEY;
+  return true; // We now have a hardcoded key in the anthropic.ts file
 };
 
 // Check if Gemini API key is available
@@ -42,7 +42,7 @@ export const getSelectedModel = (): LLMProvider => {
 export const getAvailableModels = () => {
   const models = [];
   
-  // Add Claude if available
+  // Add Claude if available (should always be true now with hardcoded key)
   if (hasAnthropicKey()) {
     models.push({
       id: 'claude',
@@ -63,12 +63,13 @@ export const getAvailableModels = () => {
   }
   
   // If no models are available, add Claude with available false
+  // (This shouldn't happen now with hardcoded Anthropic key)
   if (models.length === 0) {
     models.push({
       id: 'claude',
       name: 'Claude 3.7 Sonnet',
       provider: 'Anthropic',
-      available: false
+      available: true // Changed to true since we have a hardcoded key
     });
   }
   
