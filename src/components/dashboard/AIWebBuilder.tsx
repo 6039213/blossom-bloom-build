@@ -39,7 +39,11 @@ interface Message {
   npmChanges?: string[];
 }
 
-export default function AIWebBuilder() {
+interface AIWebBuilderProps {
+  selectedModel?: string;
+}
+
+export default function AIWebBuilder({ selectedModel: initialModel = 'claude' }: AIWebBuilderProps) {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -47,7 +51,7 @@ export default function AIWebBuilder() {
   const [streamingResponse, setStreamingResponse] = useState('');
   const [projectId, setProjectId] = useState<string>(uuidv4());
   const [projectName, setProjectName] = useState<string>("Nieuw Project");
-  const [selectedModel, setSelectedModel] = useState('claude');
+  const [selectedModel, setSelectedModel] = useState(initialModel);
   
   // File system state
   const [files, setFiles] = useState<Record<string, string>>({
@@ -56,6 +60,14 @@ export default function AIWebBuilder() {
     'src/styles/tailwind.css': '@tailwind base;\n@tailwind components;\n@tailwind utilities;',
   });
   
+  // Update selected model when the prop changes
+  useEffect(() => {
+    if (initialModel) {
+      setSelectedModel(initialModel);
+    }
+  }, [initialModel]);
+  
+  // File tree state
   const [fileTree, setFileTree] = useState<FileSystemItem[]>([]);
   const [activeFile, setActiveFile] = useState<string | null>('src/App.tsx');
   const [openFiles, setOpenFiles] = useState<string[]>(['src/App.tsx']);

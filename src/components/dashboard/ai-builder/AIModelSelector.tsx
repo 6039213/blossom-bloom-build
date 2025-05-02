@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import {
@@ -22,10 +22,14 @@ interface AIModelSelectorProps {
   onModelChange?: (modelId: string) => void;
 }
 
-export default function AIModelSelector({ className, selectedModel, onModelChange }: AIModelSelectorProps) {
-  const [open, setOpen] = React.useState(false);
-  const [loading, setLoading] = React.useState(true);
-  const [models, setModels] = React.useState<Array<{
+export default function AIModelSelector({ 
+  className, 
+  selectedModel, 
+  onModelChange 
+}: AIModelSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [models, setModels] = useState<Array<{
     id: string;
     name: string;
     provider: string;
@@ -33,35 +37,39 @@ export default function AIModelSelector({ className, selectedModel, onModelChang
   }>>([]);
   
   // Load models on component mount
-  React.useEffect(() => {
-    try {
-      setLoading(true);
-      const availableModels = getAvailableModels();
-      
-      // Make sure we have at least one model
-      if (availableModels && availableModels.length > 0) {
-        setModels(availableModels);
-      } else {
-        // Fallback to a default model if no models are available
+  useEffect(() => {
+    const loadModels = () => {
+      try {
+        setLoading(true);
+        const availableModels = getAvailableModels();
+        
+        // Make sure we have at least one model
+        if (availableModels && availableModels.length > 0) {
+          setModels(availableModels);
+        } else {
+          // Fallback to default models
+          setModels([{
+            id: 'claude',
+            name: 'Claude 3.7 Sonnet',
+            provider: 'Anthropic',
+            available: false
+          }]);
+        }
+      } catch (error) {
+        console.error('Error loading models:', error);
+        // Fallback to default models
         setModels([{
           id: 'claude',
           name: 'Claude 3.7 Sonnet',
           provider: 'Anthropic',
           available: false
         }]);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading models:', error);
-      // Fallback to a default model
-      setModels([{
-        id: 'claude',
-        name: 'Claude 3.7 Sonnet',
-        provider: 'Anthropic',
-        available: false
-      }]);
-    } finally {
-      setLoading(false);
-    }
+    };
+    
+    loadModels();
   }, []);
   
   const handleModelChange = (modelId: string) => {
@@ -77,8 +85,15 @@ export default function AIModelSelector({ className, selectedModel, onModelChang
     }
   };
 
-  // Find the current model display name
+  // Find the current model display name (with safe fallback)
   const currentModel = React.useMemo(() => {
+    if (!models || models.length === 0) {
+      return { 
+        name: selectedModel === 'claude' ? 'Claude 3.7 Sonnet' : 'Gemini 2.5 Flash',
+        id: selectedModel 
+      };
+    }
+    
     return models.find(m => m.id === selectedModel) || { 
       name: selectedModel === 'claude' ? 'Claude 3.7 Sonnet' : 'Gemini 2.5 Flash',
       id: selectedModel 
@@ -105,19 +120,6 @@ export default function AIModelSelector({ className, selectedModel, onModelChang
     );
   }
 
-  // Ensure models array is initialized
-  if (!models || models.length === 0) {
-    return (
-      <Button
-        variant="outline"
-        className={cn("flex justify-between w-[220px] text-sm", className)}
-      >
-        {currentModel.name}
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
-    );
-  }
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -135,7 +137,7 @@ export default function AIModelSelector({ className, selectedModel, onModelChang
         <Command>
           <CommandEmpty>No AI models found.</CommandEmpty>
           <CommandGroup>
-            {models.map((model) => (
+            {models && models.map((model) => (
               <CommandItem
                 key={model.id}
                 value={model.id}
