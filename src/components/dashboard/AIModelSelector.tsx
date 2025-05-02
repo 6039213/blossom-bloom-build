@@ -15,7 +15,7 @@ export default function AIModelSelector({ selectedModel, onSelectModel }: AIMode
         <span className="text-sm font-medium">AI Model:</span>
       </div>
       <div className="px-3 py-1 rounded-md bg-blue-50 text-blue-700 text-sm">
-        Blossom AI
+        Claude 3.7 Sonnet
       </div>
     </div>
   );

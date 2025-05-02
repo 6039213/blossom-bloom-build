@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Send } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +11,7 @@ import { detectProjectType } from './ai-builder/utils';
 import { ProjectFiles } from './ai-builder/types';
 import { buildFileTree } from '@/utils/fileStructureUtils';
 import { FileSystemItem } from './FileExplorer';
+import { parseClaudeOutput, FileDefinition, convertToProjectFiles } from '@/utils/fileSystemParser';
 
 // Define types for our AI response
 interface FileEdit {
@@ -27,6 +27,7 @@ interface Message {
   content: string;
   edits?: FileEdit[];
   npmChanges?: string[];
+  generatedFiles?: FileDefinition[];
 }
 
 export default function AIWebBuilder() {
@@ -53,6 +54,7 @@ export default function AIWebBuilder() {
   const [detectedType, setDetectedType] = useState<string | null>('react');
   const [runtimeError, setRuntimeError] = useState<{ message: string; file?: string } | null>(null);
   const [streamingResponse, setStreamingResponse] = useState('');
+  const [generatedFiles, setGeneratedFiles] = useState<FileDefinition[]>([]);
 
   // Update project files when files change
   useEffect(() => {
@@ -109,49 +111,33 @@ export default function AIWebBuilder() {
     await processPrompt(prompt);
   };
 
-  // Parse code blocks from AI response
-  const parseFileEditsFromResponse = useCallback((response: string) => {
-    const fileEdits: FileEdit[] = [];
-    const fileRegex = /```(?:tsx|jsx|ts|js|css|html|json)(?: ([^\n]+))?\n([\s\S]*?)```/g;
+  const applyGeneratedFiles = (files: FileDefinition[]) => {
+    if (!files || files.length === 0) {
+      console.error("No files to apply");
+      return;
+    }
     
-    let match;
-    while ((match = fileRegex.exec(response)) !== null) {
-      const fileName = match[1]?.trim();
-      const fileContent = match[2];
+    try {
+      const updatedFiles = { ...files };
       
-      if (fileName && fileContent) {
-        fileEdits.push({
-          file: fileName,
-          action: files[fileName] ? 'replace' : 'create',
-          content: fileContent
-        });
-      }
-    }
-    
-    // Also check for FILE: format
-    const fileBlockRegex = /\/\/ FILE: ([^\n]+)\n([\s\S]*?)(?=\/\/ FILE:|$)/g;
-    while ((match = fileBlockRegex.exec(response)) !== null) {
-      const fileName = match[1]?.trim();
-      const fileContent = match[2].trim();
+      files.forEach(file => {
+        updatedFiles[file.path] = file.content;
+      });
       
-      if (fileName && fileContent) {
-        fileEdits.push({
-          file: fileName,
-          action: files[fileName] ? 'replace' : 'create',
-          content: fileContent
-        });
+      // Update files state
+      setFiles(updatedFiles);
+      
+      // Set first file as active
+      if (files.length > 0) {
+        setActiveFile(files[0].path);
       }
+      
+      toast.success(`Generated ${files.length} files successfully`);
+    } catch (error) {
+      console.error("Error applying generated files:", error);
+      toast.error("Failed to apply generated files");
     }
-    
-    // Extract npm dependencies
-    const npmChanges: string[] = [];
-    const npmRegex = /(?:npm install|yarn add) ([\w\s@\/-]+)/g;
-    while ((match = npmRegex.exec(response)) !== null) {
-      npmChanges.push(match[1].trim());
-    }
-    
-    return { fileEdits, npmChanges };
-  }, [files]);
+  };
   
   const processPrompt = async (promptText: string) => {
     // Add user message
@@ -178,28 +164,6 @@ export default function AIWebBuilder() {
       // Generate response
       let fullResponse = '';
       
-      // Add current files context to the prompt
-      const filesList = Object.keys(files).map(path => `- ${path}`).join('\n');
-      const contextPrompt = `
-      You are an AI web application builder specializing in React and Tailwind CSS.
-
-      The user is building a website with these files:
-      ${filesList}
-      
-      Generate or modify code based on this request: "${promptText}"
-      
-      Return your response with code blocks like:
-      \`\`\`tsx src/components/NewComponent.tsx
-      // component code here
-      \`\`\`
-      
-      Or use FILE: format:
-      // FILE: src/components/AnotherComponent.tsx
-      // component code here
-      
-      Let me know which files you've created or modified.
-      `;
-      
       // Get the Claude 3.7 Sonnet model
       const model = getSelectedModel();
       if (!model) {
@@ -225,59 +189,46 @@ export default function AIWebBuilder() {
       console.log("Building your website with Blossom AI...");
       
       // Use the selected model's generateStream method
-      await model.generateStream(contextPrompt, addToken, {
+      await model.generateStream(promptText, addToken, {
         temperature: 0.7,
         maxOutputTokens: 4096
       });
       
       console.log("Response completed");
       
-      // When stream is complete, parse the file edits from the response
-      const { fileEdits, npmChanges } = parseFileEditsFromResponse(fullResponse);
+      // Parse generated files from Claude's output
+      const parsedFiles = parseClaudeOutput(fullResponse);
+      setGeneratedFiles(parsedFiles);
       
-      // Apply file edits
-      if (fileEdits.length > 0) {
-        const updatedFiles = { ...files };
+      if (parsedFiles && parsedFiles.length > 0) {
+        // Apply the generated files
+        applyGeneratedFiles(parsedFiles);
         
-        fileEdits.forEach(edit => {
-          if (edit.action === 'replace' || edit.action === 'create') {
-            updatedFiles[edit.file] = edit.content;
-          } else if (edit.action === 'delete') {
-            delete updatedFiles[edit.file];
-          }
-        });
+        // Update the final assistant message with file info
+        const aiMessage = { 
+          role: 'assistant' as const,
+          content: fullResponse,
+          generatedFiles: parsedFiles,
+          id: assistantMessageId
+        };
         
-        // Update files state
-        setFiles(updatedFiles);
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === assistantMessageId 
+              ? aiMessage 
+              : msg
+          )
+        );
         
-        // If a new file was created, set it as active
-        if (fileEdits.some(edit => edit.action === 'create')) {
-          const newFile = fileEdits.find(edit => edit.action === 'create')?.file;
-          if (newFile) {
-            setActiveFile(newFile);
-          }
-        }
+        // Show success notification
+        toast.success(`Generated ${parsedFiles.length} files successfully`);
+        
+        // Convert to project files format
+        const newProjectFiles = convertToProjectFiles(parsedFiles);
+        setProjectFiles(newProjectFiles);
+      } else {
+        toast.error("Failed to generate valid files from AI response");
       }
-      
-      // Update the final assistant message with edits info
-      const aiMessage = { 
-        role: 'assistant' as const,
-        content: fullResponse,
-        edits: fileEdits,
-        npmChanges,
-        id: assistantMessageId
-      };
-      
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === assistantMessageId 
-            ? aiMessage 
-            : msg
-        )
-      );
-      
-      // Show success notification
-      toast.success("Changes applied successfully");
       
       // Switch to preview tab to show changes
       setActiveTab('preview');
@@ -326,15 +277,20 @@ export default function AIWebBuilder() {
               : message.content}
           </div>
           
-          {message.edits && message.edits.length > 0 && (
+          {message.generatedFiles && message.generatedFiles.length > 0 && (
             <div className="mt-2 text-sm">
-              <p className="font-medium">Files modified:</p>
+              <p className="font-medium">Files generated:</p>
               <ul className="list-disc list-inside">
-                {message.edits.map((edit, i) => (
+                {message.generatedFiles.slice(0, 5).map((file, i) => (
                   <li key={i} className="text-xs">
-                    {edit.action === 'create' ? 'Created' : edit.action === 'replace' ? 'Updated' : 'Deleted'}: {edit.file}
+                    {file.path}
                   </li>
                 ))}
+                {message.generatedFiles.length > 5 && (
+                  <li className="text-xs">
+                    ...and {message.generatedFiles.length - 5} more files
+                  </li>
+                )}
               </ul>
             </div>
           )}
@@ -422,10 +378,36 @@ export default function AIWebBuilder() {
         </div>
       </div>
       
-      {/* Right side: Code Preview - Taking 70% of the width */}
+      {/* Right side: Code Preview - Taking 70% of the width, Full Screen Responsive */}
       <div className="w-2/3 flex flex-col">
         <div className="p-3 border-b border-border flex items-center justify-between">
           <h2 className="text-lg font-semibold">Live Preview</h2>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setViewportSize('mobile')}
+              className={viewportSize === 'mobile' ? 'bg-blue-50' : ''}
+            >
+              Mobile
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setViewportSize('tablet')}
+              className={viewportSize === 'tablet' ? 'bg-blue-50' : ''}
+            >
+              Tablet
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setViewportSize('desktop')}
+              className={viewportSize === 'desktop' ? 'bg-blue-50' : ''}
+            >
+              Desktop
+            </Button>
+          </div>
         </div>
         
         <div className="flex-1 overflow-hidden p-4">
