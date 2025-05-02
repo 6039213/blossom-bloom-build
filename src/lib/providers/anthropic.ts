@@ -6,7 +6,7 @@ const modelName = import.meta.env.VITE_CLAUDE_MODEL || 'claude-3-7-sonnet-202502
 
 export const callClaude = async (prompt: string) => {
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("https://claude-proxy.lovable-worker.workers.dev/v1/messages", {
       method: "POST",
       headers: {
         "x-api-key": apiKey,
@@ -79,7 +79,7 @@ export const anthropicProvider: LLMProvider = {
         };
       }
       
-      // Call Claude API
+      // Call Claude API using the proxy endpoint
       const response = await fetch("https://claude-proxy.lovable-worker.workers.dev/v1/messages", {
         method: "POST",
         headers: {

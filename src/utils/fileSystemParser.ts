@@ -17,6 +17,7 @@ export const parseClaudeOutput = (output: string): FileDefinition[] => {
     
     if (!match) {
       console.error("Could not extract JSON from Claude's response");
+      console.log("Raw output:", output.substring(0, 500) + "...");
       toast.error("Failed to parse AI response into files");
       return [];
     }
@@ -34,6 +35,7 @@ export const parseClaudeOutput = (output: string): FileDefinition[] => {
     return files;
   } catch (error) {
     console.error("Error parsing Claude output:", error);
+    console.log("Raw output:", output.substring(0, 500) + "...");
     toast.error("Failed to parse AI-generated code");
     return [];
   }

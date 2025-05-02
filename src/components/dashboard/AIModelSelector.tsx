@@ -8,6 +8,8 @@ interface AIModelSelectorProps {
 }
 
 export default function AIModelSelector({ selectedModel, onSelectModel }: AIModelSelectorProps) {
+  const modelName = import.meta.env.VITE_CLAUDE_MODEL || 'Claude 3.7 Sonnet';
+  
   return (
     <div className="flex items-center gap-2">
       <div className="flex items-center gap-1">
@@ -15,7 +17,7 @@ export default function AIModelSelector({ selectedModel, onSelectModel }: AIMode
         <span className="text-sm font-medium">AI Model:</span>
       </div>
       <div className="px-3 py-1 rounded-md bg-blue-50 text-blue-700 text-sm">
-        Claude 3.7 Sonnet
+        {modelName}
       </div>
     </div>
   );
