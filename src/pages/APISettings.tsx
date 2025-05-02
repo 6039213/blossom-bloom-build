@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import APIKeyInput from '@/components/settings/APIKeyInput';
 import { toast } from 'sonner';
-import { callClaude } from '@/lib/providers/anthropic';
 
 export default function APISettings() {
   // Test function to verify API key works with Claude
