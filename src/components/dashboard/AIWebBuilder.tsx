@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Send } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
@@ -118,13 +119,15 @@ export default function AIWebBuilder() {
     }
     
     try {
-      const updatedFiles = { ...files };
+      // Create a new Record<string, string> object from the FileDefinition array
+      const updatedFiles: Record<string, string> = {};
       
+      // Transform each FileDefinition into a key-value pair in the Record
       files.forEach(file => {
         updatedFiles[file.path] = file.content;
       });
       
-      // Update files state
+      // Update files state with the transformed object
       setFiles(updatedFiles);
       
       // Set first file as active
