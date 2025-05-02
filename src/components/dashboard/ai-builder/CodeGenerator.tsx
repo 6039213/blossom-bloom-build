@@ -1,231 +1,164 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { getSelectedModel } from '@/lib/llm/modelSelection';
+import { Card } from '@/components/ui/card';
+import AIModelSelector from '@/components/dashboard/AIModelSelector';
 import { toast } from 'sonner';
-import { v4 as uuidv4 } from 'uuid';
-import { ChatMessage } from '@/components/dashboard/AIResponseDisplay';
-import { geminiProvider } from '@/lib/providers/gemini';
-import { ProjectStatus } from '@/stores/projectStore';
-import { 
-  createDefaultFilesForTemplate, 
-  detectProjectType, 
-  getTemplatePrompt, 
-  projectTemplates 
-} from '@/utils/projectTemplates';
-import { processToken } from '@/utils/fileHelpers';
-import { 
-  ProjectFiles, 
-  ProjectTemplate 
-} from './types';
-import { 
-  ensureRequiredFilesExist, 
-  extractProjectName, 
-  findMainFile, 
-  fixScssImports, 
-  parseProjectFiles, 
-  verifyTemplateFilesExist 
-} from './utils';
-import { geminiStream } from '@/lib/llm/gemini';
-import { applyDiff, installAndRestartIfNeeded } from '@/lib/builder/webcontainer';
+
+// Helper function to clean code blocks from AI responses
+const extractCodeBlocks = (response: string) => {
+  const codeBlocks: Record<string, string> = {};
+  const fileRegex = /```(?:typescript|jsx|tsx|js|html|css)(?: ([^\n]+))?\n([\s\S]*?)```/g;
+  
+  let match;
+  while ((match = fileRegex.exec(response)) !== null) {
+    const fileName = match[1]?.trim() || `file-${Object.keys(codeBlocks).length + 1}.tsx`;
+    const codeContent = match[2];
+    codeBlocks[fileName] = codeContent;
+  }
+  
+  return codeBlocks;
+};
 
 interface CodeGeneratorProps {
-  setProjectFiles: (files: ProjectFiles) => void;
-  setGeneratedCode: (code: string) => void;
-  setActiveFile: (file: string) => void;
-  setProjectName: (name: string) => void;
-  setDetectedType: (type: string | null) => void;
-  setActiveTab: (tab: string) => void;
-  setShowTemplateSelector: (show: boolean) => void;
-  setErrorMessage: (error: string | null) => void;
-  setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
-  setStreamingMessage: React.Dispatch<React.SetStateAction<string>>;
-  setCurrentMessageId: React.Dispatch<React.SetStateAction<string | null>>;
-  selectedTemplate: ProjectTemplate | null;
+  onCodeGenerated: (files: Record<string, string>) => void;
+  initialPrompt?: string;
 }
 
-export default function CodeGenerator({
-  setProjectFiles,
-  setGeneratedCode,
-  setActiveFile,
-  setProjectName,
-  setDetectedType,
-  setActiveTab,
-  setShowTemplateSelector,
-  setErrorMessage,
-  setChatMessages,
-  setStreamingMessage,
-  setCurrentMessageId,
-  selectedTemplate
-}: CodeGeneratorProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
+interface StreamResponse {
+  diff?: string;
+  filesChanged: string[];
+  done?: boolean;
+  error?: boolean;
+}
 
-  const handlePromptSubmit = async (prompt: string) => {
+export const CodeGenerator = ({ onCodeGenerated, initialPrompt = '' }: CodeGeneratorProps) => {
+  const [prompt, setPrompt] = useState(initialPrompt);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [streamingResponse, setStreamingResponse] = useState('');
+  const [selectedModel, setSelectedModel] = useState('claude');
+
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
+    toast.success(`Now using ${model === 'claude' ? 'Claude 3.7 Sonnet' : 'Gemini 2.5 Flash'}`);
+  };
+  
+  const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      toast.error('Please enter a prompt');
+      return;
+    }
+    
     setIsGenerating(true);
-    setErrorMessage(null);
-    
-    const userMessageId = uuidv4();
-    const newUserMessage: ChatMessage = {
-      id: userMessageId,
-      role: 'user',
-      content: prompt,
-      createdAt: new Date(),
-    };
-    
-    setChatMessages(prev => [...prev, newUserMessage]);
-    
-    const aiMessageId = uuidv4();
-    setCurrentMessageId(aiMessageId);
-    setStreamingMessage('');
-    
-    setChatMessages(prev => [
-      ...prev,
-      {
-        id: aiMessageId,
-        role: 'assistant',
-        content: '',
-        createdAt: new Date(),
-        isStreaming: true
-      }
-    ]);
+    setStreamingResponse('');
     
     try {
-      const extractedName = extractProjectName(prompt);
-      setProjectName(extractedName);
+      // Get the selected AI model
+      const model = getSelectedModel();
       
-      const type = detectProjectType(prompt);
-      setDetectedType(type);
+      // Stream response from AI model
+      let fullResponse = '';
       
-      const templateInstructions = getTemplatePrompt(type);
-      
-      let initialFiles: ProjectFiles = {};
-      if (selectedTemplate) {
-        initialFiles = createDefaultFilesForTemplate(selectedTemplate.type);
-      }
-      
-      let streamedText = '';
-      let codeBuffer = '';
-      let inCodeBlock = false;
-      
-      // Use the gemini stream
       const addToken = (token: string) => {
-        const processedToken = processToken(token);
-        streamedText += processedToken;
-        
-        setStreamingMessage(streamedText);
-        
-        setChatMessages(prev => 
-          prev.map(msg => 
-            msg.id === aiMessageId 
-              ? { ...msg, content: streamedText, isStreaming: true } 
-              : msg
-          )
-        );
-        
-        if (processedToken.includes("// FILE:")) {
-          inCodeBlock = true;
-        }
-        
-        if (inCodeBlock) {
-          codeBuffer += processedToken;
-        }
+        fullResponse += token;
+        setStreamingResponse(fullResponse);
       };
       
-      // Process the gemini stream with WebContainer integration
-      try {
-        for await (const chunk of geminiStream(prompt, addToken)) {
-          if (chunk.diff) {
-            try {
-              await applyDiff(chunk.diff);
-            } catch (error) {
-              console.error("Error applying diff:", error);
-            }
-          }
-          
-          if (chunk.done && chunk.filesChanged && chunk.filesChanged.length > 0) {
-            try {
-              await installAndRestartIfNeeded(chunk.filesChanged);
-            } catch (error) {
-              console.error("Error installing dependencies:", error);
-            }
-          }
+      // Call the API to generate code
+      const streamHandler = await model.generateStream(
+        prompt, 
+        addToken, 
+        {
+          temperature: 0.7,
+          maxOutputTokens: 4000
         }
-      } catch (error) {
-        console.error("Error processing gemini stream:", error);
-        throw error;
-      }
-      
-      // Use the existing parseProjectFiles function to extract files from the AI response
-      let parsedFiles = parseProjectFiles(codeBuffer || streamedText);
-      
-      if (Object.keys(initialFiles).length > 0) {
-        parsedFiles = { ...initialFiles, ...parsedFiles };
-      }
-      
-      if (type && projectTemplates[type]) {
-        const template = projectTemplates[type];
-        parsedFiles = ensureRequiredFilesExist(parsedFiles, template);
-      }
-      
-      const fixedFiles = fixScssImports(parsedFiles);
-      
-      setProjectFiles(fixedFiles);
-      setGeneratedCode(JSON.stringify(fixedFiles, null, 2));
-      
-      let mainFile = findMainFile(fixedFiles, type);
-      setActiveFile(mainFile);
-      
-      setChatMessages(prev => 
-        prev.map(msg => 
-          msg.id === aiMessageId 
-            ? { 
-                ...msg, 
-                content: streamedText, 
-                isStreaming: false,
-                codeFiles: Object.keys(parsedFiles).map(path => ({
-                  path,
-                  content: parsedFiles[path].code.substring(0, 40) + '...'
-                }))
-              } 
-            : msg
-        )
       );
       
-      setStreamingMessage('');
-      setCurrentMessageId(null);
+      // Process the stream
+      for await (const chunk of streamHandler) {
+        // Processing is handled by addToken callback
+        console.log("Stream chunk received", chunk.length);
+      }
       
-      if (selectedTemplate && !verifyTemplateFilesExist(fixedFiles, selectedTemplate)) {
-        toast.warning("Some template files may be missing. Please check your generated code.");
+      // Extract code blocks from response
+      const codeBlocks = extractCodeBlocks(fullResponse);
+      
+      // If no code blocks were found, show an error
+      if (Object.keys(codeBlocks).length === 0) {
+        toast.error('No code blocks found in response');
       } else {
-        toast.success("Website generated successfully!");
+        // Pass the extracted code blocks to the parent component
+        onCodeGenerated(codeBlocks);
+        toast.success(`Generated ${Object.keys(codeBlocks).length} files`);
       }
-      
-      setActiveTab('preview');
-      setShowTemplateSelector(false);
     } catch (error) {
-      console.error("Error generating website:", error);
-      toast.error("Failed to generate website: " + (error instanceof Error ? error.message : "Unknown error"));
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error generating website");
-      
-      setChatMessages(prev => 
-        prev.map(msg => 
-          msg.id === aiMessageId 
-            ? { 
-                ...msg, 
-                content: `Error generating website: ${error instanceof Error ? error.message : "Unknown error"}`,
-                isStreaming: false 
-              } 
-            : msg
-        )
-      );
-      
-      setStreamingMessage('');
-      setCurrentMessageId(null);
+      console.error('Error generating code:', error);
+      toast.error(`Failed to generate code: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  return {
-    handlePromptSubmit,
-    isGenerating
+  const handleStream = async (response: StreamResponse) => {
+    // SafeGuard for error response type
+    if (response.error) {
+      toast.error('Error in code generation');
+      return;
+    }
+    
+    // Only process responses with diff content
+    if (response.diff !== undefined) {
+      setStreamingResponse(prev => prev + response.diff);
+    }
+    
+    // If the stream is done, notify the user
+    if (response.done) {
+      toast.success(`Code generation complete. Files changed: ${response.filesChanged.join(', ')}`);
+    }
   };
-}
+
+  return (
+    <div className="space-y-4 p-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold">Generate Code</h2>
+        <AIModelSelector 
+          selectedModel={selectedModel} 
+          onSelectModel={handleModelChange} 
+        />
+      </div>
+      
+      <Card className="p-4 bg-white dark:bg-gray-900">
+        <Textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Describe the website or component you want to create..."
+          className="min-h-[100px] mb-4"
+          disabled={isGenerating}
+        />
+        
+        <div className="flex justify-end">
+          <Button 
+            onClick={handleGenerate}
+            disabled={isGenerating || !prompt.trim()}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {isGenerating ? 'Generating...' : 'Generate Code'}
+          </Button>
+        </div>
+      </Card>
+      
+      {streamingResponse && (
+        <Card className="p-4 bg-gray-50 dark:bg-gray-800 overflow-auto max-h-[300px]">
+          <h3 className="font-medium mb-2">AI Response:</h3>
+          <pre className="whitespace-pre-wrap text-sm">
+            {streamingResponse}
+          </pre>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default CodeGenerator;
