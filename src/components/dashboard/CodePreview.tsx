@@ -5,6 +5,7 @@ import CodePreviewTabs from '@/components/dashboard/CodePreviewTabs';
 import { ProjectFiles } from '../dashboard/ai-builder/types';
 import { getProjectDependencies } from '../dashboard/ai-builder/utils';
 import { projectTemplates } from '@/utils/projectTemplates';
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 
 interface CodePreviewProps {
   projectFiles: ProjectFiles;
@@ -41,37 +42,49 @@ export default function CodePreview({
 
   return (
     <div className="w-full h-full mx-auto flex flex-col">
-      <div className="flex items-center justify-between w-full mb-2">
-        <CodePreviewTabs 
-          activeTab={activeTab}
-          viewportSize={viewportSize}
-          onTabChange={setActiveTab}
-          onViewportChange={setViewportSize}
-        />
-      </div>
-      
-      <div className="flex-1 overflow-hidden border border-border rounded-lg">
-        {Object.keys(projectFiles).length > 0 && (
-          <SandpackProvider
-            template="react-ts"
-            theme="auto"
-            files={projectFiles}
-            customSetup={{
-              dependencies: getProjectDependencies(projectFiles, detectedType, projectTemplates),
-            }}
-            options={{
-              visibleFiles: [activeFile],
-            }}
-          >
-            <SandpackLayout className="h-full">
-              <SandpackPreview
-                showRefreshButton
-                className="flex-grow h-full"
-              />
-            </SandpackLayout>
-          </SandpackProvider>
-        )}
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
+        <div className="flex items-center justify-between w-full mb-2">
+          <CodePreviewTabs 
+            activeTab={activeTab}
+            viewportSize={viewportSize}
+            onTabChange={setActiveTab}
+            onViewportChange={setViewportSize}
+          />
+        </div>
+        
+        <div className="flex-1 overflow-hidden border border-border rounded-lg">
+          <TabsContent value="preview" className="h-full m-0">
+            {Object.keys(projectFiles).length > 0 && (
+              <SandpackProvider
+                template="react-ts"
+                theme="auto"
+                files={projectFiles}
+                customSetup={{
+                  dependencies: getProjectDependencies(projectFiles, detectedType, projectTemplates),
+                }}
+                options={{
+                  visibleFiles: [activeFile],
+                }}
+              >
+                <SandpackLayout className="h-full">
+                  <SandpackPreview
+                    showRefreshButton
+                    className="flex-grow h-full"
+                  />
+                </SandpackLayout>
+              </SandpackProvider>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="code" className="h-full m-0">
+            <div className="h-full bg-gray-100 p-4">
+              <pre className="overflow-auto h-full">
+                {JSON.stringify(projectFiles, null, 2)}
+              </pre>
+            </div>
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 }

@@ -20,6 +20,7 @@ export default function CodePreview({ files }: CodePreviewProps) {
   const [sandpackOptions, setSandpackOptions] = useState<SandpackOptions | null>(null);
   const [iframeKey, setIframeKey] = useState(0); // Used to force iframe refresh
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('preview');
   
   // Process files for sandpack preview
   useEffect(() => {
@@ -175,35 +176,52 @@ export default function App() {
         </div>
       </div>
       
-      <div className="flex-1 p-4 overflow-hidden bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
-        {error ? (
-          <div className="p-4 bg-red-50 text-red-700 rounded">
-            <p className="font-bold">Preview Error</p>
-            <p>{error}</p>
-          </div>
-        ) : sandpackOptions ? (
-          <div 
-            className={`bg-white dark:bg-gray-900 border rounded shadow-lg h-full overflow-hidden transition-all
-              ${viewportSize === 'mobile' ? 'max-w-[375px]' : 
-                viewportSize === 'tablet' ? 'max-w-[768px]' : 'w-full'}`}
-          >
-            <div className="bg-gray-100 dark:bg-gray-800 p-1 text-xs text-center border-b">
-              {viewportSize === 'mobile' ? 'Mobile Preview (375px)' : 
-               viewportSize === 'tablet' ? 'Tablet Preview (768px)' : 'Desktop Preview'}
-            </div>
-            <div className="h-[calc(100%-24px)] overflow-hidden">
-              {/* In a real app, we'd use Sandpack directly, but here we'll just show a message */}
-              <div className="h-full w-full flex items-center justify-center">
-                <p className="text-sm text-gray-500">Preview would be rendered here using Sandpack</p>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="p-2">
+          <TabsTrigger value="preview">Preview</TabsTrigger>
+          <TabsTrigger value="code">Code</TabsTrigger>
+        </TabsList>
+      
+        <div className="flex-1 p-4 overflow-hidden bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+          <TabsContent value="preview" className="h-full w-full m-0">
+            {error ? (
+              <div className="p-4 bg-red-50 text-red-700 rounded">
+                <p className="font-bold">Preview Error</p>
+                <p>{error}</p>
               </div>
+            ) : sandpackOptions ? (
+              <div 
+                className={`bg-white dark:bg-gray-900 border rounded shadow-lg h-full overflow-hidden transition-all
+                  ${viewportSize === 'mobile' ? 'max-w-[375px]' : 
+                    viewportSize === 'tablet' ? 'max-w-[768px]' : 'w-full'}`}
+              >
+                <div className="bg-gray-100 dark:bg-gray-800 p-1 text-xs text-center border-b">
+                  {viewportSize === 'mobile' ? 'Mobile Preview (375px)' : 
+                   viewportSize === 'tablet' ? 'Tablet Preview (768px)' : 'Desktop Preview'}
+                </div>
+                <div className="h-[calc(100%-24px)] overflow-hidden">
+                  {/* In a real app, we'd use Sandpack directly, but here we'll just show a message */}
+                  <div className="h-full w-full flex items-center justify-center">
+                    <p className="text-sm text-gray-500">Preview would be rendered here using Sandpack</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="code" className="h-full w-full m-0">
+            <div className="h-full bg-white dark:bg-gray-900 rounded overflow-auto">
+              <pre className="p-4 text-xs">
+                {JSON.stringify(sandpackOptions?.files || {}, null, 2)}
+              </pre>
             </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-          </div>
-        )}
-      </div>
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 }

@@ -24,6 +24,7 @@ export default function CodeEditor({ files, onFileChange }: CodeEditorProps) {
   const [fileTree, setFileTree] = useState<FileTreeItem[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [editingContent, setEditingContent] = useState<string>('');
+  const [editorTab, setEditorTab] = useState('edit');
   
   // Build file tree when files change
   useEffect(() => {
@@ -162,7 +163,7 @@ export default function CodeEditor({ files, onFileChange }: CodeEditorProps) {
       
       {/* Editor */}
       <div className="flex-1 flex flex-col">
-        <Tabs defaultValue="edit" className="flex-1 flex flex-col">
+        <Tabs value={editorTab} onValueChange={setEditorTab} className="flex-1 flex flex-col">
           <div className="flex items-center justify-between border-b p-2">
             <div className="flex-1 truncate">
               {activeFile ? (
