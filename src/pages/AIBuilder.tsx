@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Layout from '@/components/Layout';
-import AIWebBuilder from '@/components/dashboard/AIWebBuilder';
+import EnhancedAIWebBuilder from '@/components/dashboard/EnhancedAIWebBuilder';
 
 export default function AIBuilder() {
   return (
@@ -13,7 +13,7 @@ export default function AIBuilder() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <AIWebBuilder />
+        <EnhancedAIWebBuilder />
       </motion.div>
     </Layout>
   );
