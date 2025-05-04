@@ -77,7 +77,7 @@ export default function CodePreview({
           </TabsContent>
           
           <TabsContent value="code" className="h-full m-0">
-            <div className="h-full bg-gray-100 p-4">
+            <div className="h-full bg-gray-900 p-4 text-white">
               <pre className="overflow-auto h-full">
                 {JSON.stringify(projectFiles, null, 2)}
               </pre>

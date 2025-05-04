@@ -84,15 +84,15 @@ export default function CodePreviewPanel({ activeTab, projectFiles }: CodePrevie
       <TabsContent value="preview" className="mt-0 h-full">
         <div className="h-full w-full overflow-hidden bg-gray-100 border-t border-border">
           <iframe
-            srcDoc={`<!DOCTYPE html><html><head><style>body{font-family:sans-serif;margin:0;} .p-8{padding:2rem;} .mb-4{margin-bottom:1rem;} .text-4xl{font-size:2.25rem;} .font-bold{font-weight:700;}</style><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"></head><body>${generatePreviewHtml()}</body></html>`}
-            className="w-full h-full border-0"
+            srcDoc={`<!DOCTYPE html><html><head><style>body{font-family:sans-serif;margin:0;} .p-8{padding:2rem;} .mb-4{margin-bottom:1rem;} .text-4xl{font-size:2.25rem;} .font-bold{font-weight:700;}</style><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"></head><body class="bg-gradient-to-br from-blossom-50 to-white">${generatePreviewHtml()}</body></html>`}
+            className="w-full h-full border-0 shadow-lg"
             title="Website Preview"
             sandbox="allow-scripts"
           />
         </div>
       </TabsContent>
       <TabsContent value="code" className="mt-0 h-full">
-        <div className="h-full w-full overflow-auto">
+        <div className="h-full w-full overflow-auto bg-gray-900 text-white">
           <pre className="p-4 font-mono text-sm">
             {activeTab === 'code' && projectFiles ? 
               JSON.stringify(projectFiles, null, 2) : 
