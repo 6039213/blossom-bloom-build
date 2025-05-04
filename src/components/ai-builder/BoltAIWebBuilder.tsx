@@ -114,9 +114,13 @@ export default function BoltAIWebBuilder() {
   <div id="root"></div>
   <script type="text/babel">
     // This is a simplified preview and doesn't support all React features
+    // Remove duplicate React imports from component code to prevent conflicts
     ${Object.entries(generatedCode)
       .filter(([filename]) => filename.endsWith('.jsx') || filename.endsWith('.js') || filename.endsWith('.tsx'))
-      .map(([_, code]) => code)
+      .map(([_, code]) => {
+        // Strip out React imports to prevent duplicate declarations
+        return code.replace(/import\s+React,?\s*(?:{[^}]*})?\s*from\s+['"]react['"];?/g, '// React already imported globally');
+      })
       .join('\n\n')}
       
     // Mount the App component to the root div

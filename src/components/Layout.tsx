@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import MainNavbar from "./layout/MainNavbar";
