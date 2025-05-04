@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { motion } from 'framer-motion';
 
 interface CodePreviewPanelProps {
   activeTab: 'preview' | 'code';
@@ -81,26 +82,44 @@ export default function CodePreviewPanel({ activeTab, projectFiles }: CodePrevie
 
   return (
     <Tabs value={activeTab} className="h-full">
-      <TabsContent value="preview" className="mt-0 h-full">
-        <div className="h-full w-full overflow-hidden bg-gray-100 border-t border-border">
-          <iframe
-            srcDoc={`<!DOCTYPE html><html><head><style>body{font-family:sans-serif;margin:0;} .p-8{padding:2rem;} .mb-4{margin-bottom:1rem;} .text-4xl{font-size:2.25rem;} .font-bold{font-weight:700;}</style><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"></head><body class="bg-gradient-to-br from-blossom-50 to-white">${generatePreviewHtml()}</body></html>`}
-            className="w-full h-full border-0 shadow-lg"
-            title="Website Preview"
-            sandbox="allow-scripts"
-          />
-        </div>
-      </TabsContent>
-      <TabsContent value="code" className="mt-0 h-full">
-        <div className="h-full w-full overflow-auto bg-gray-900 text-white">
-          <pre className="p-4 font-mono text-sm">
-            {activeTab === 'code' && projectFiles ? 
-              JSON.stringify(projectFiles, null, 2) : 
-              "No files to display"
-            }
-          </pre>
-        </div>
-      </TabsContent>
+      <TabsList className="mb-4">
+        <TabsTrigger value="preview">Preview</TabsTrigger>
+        <TabsTrigger value="code">Code</TabsTrigger>
+      </TabsList>
+      
+      <div className="h-[calc(100%-40px)]">
+        <TabsContent value="preview" className="mt-0 h-full">
+          <motion.div 
+            className="h-full w-full overflow-hidden bg-gray-100 border-t border-border rounded-lg shadow-md"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <iframe
+              srcDoc={`<!DOCTYPE html><html><head><style>body{font-family:sans-serif;margin:0;} .p-8{padding:2rem;} .mb-4{margin-bottom:1rem;} .text-4xl{font-size:2.25rem;} .font-bold{font-weight:700;}</style><link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"></head><body class="bg-gradient-to-br from-blossom-50 to-white">${generatePreviewHtml()}</body></html>`}
+              className="w-full h-full border-0 shadow-lg"
+              title="Website Preview"
+              sandbox="allow-scripts"
+            />
+          </motion.div>
+        </TabsContent>
+        
+        <TabsContent value="code" className="mt-0 h-full">
+          <motion.div 
+            className="h-full w-full overflow-auto bg-gray-900 text-white rounded-lg"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <pre className="p-4 font-mono text-sm">
+              {activeTab === 'code' && projectFiles ? 
+                JSON.stringify(projectFiles, null, 2) : 
+                "No files to display"
+              }
+            </pre>
+          </motion.div>
+        </TabsContent>
+      </div>
     </Tabs>
   );
 }

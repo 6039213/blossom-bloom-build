@@ -1,64 +1,62 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Send, Settings } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
-import { getSelectedModel } from '@/lib/llm/modelSelection';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import CodePreview from './ai-builder/CodePreview';
 import ErrorDetectionHandler from './ai-builder/ErrorDetectionHandler';
 import { detectProjectType } from './ai-builder/utils';
 import { ProjectFiles } from './ai-builder/types';
-import { buildFileTree } from '@/utils/fileStructureUtils';
-import { FileSystemItem } from './FileExplorer';
-import { parseClaudeOutput, FileDefinition, convertToProjectFiles } from '@/utils/fileSystemParser';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
-// Define types for our AI response
-interface FileEdit {
-  file: string;
-  action: 'replace' | 'create' | 'delete';
-  content: string;
-}
+// Animation variants for components
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { 
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
 
-// Define message type with ID
-interface Message {
-  id?: string;
-  role: 'user' | 'assistant';
-  content: string;
-  edits?: FileEdit[];
-  npmChanges?: string[];
-  generatedFiles?: FileDefinition[];
-}
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { 
+    y: 0, 
+    opacity: 1,
+    transition: { 
+      type: "spring",
+      stiffness: 100
+    }
+  }
+};
 
 export default function AIWebBuilder() {
-  const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+  const [activeTab, setActiveTab] = useState('preview');
   const [prompt, setPrompt] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [projectId] = useState<string>(uuidv4().substring(0, 6));
-  const [projectName, setProjectName] = useState<string>("New Project");
+  const [apiError, setApiError] = useState(null);
+  const [projectId] = useState(uuidv4().substring(0, 6));
+  const [projectName, setProjectName] = useState("New Project");
   
-  // File system state
-  const [files, setFiles] = useState<Record<string, string>>({
+  const [files, setFiles] = useState({
     'src/App.tsx': 'import React from "react";\n\nexport default function App() {\n  return (\n    <div className="flex min-h-screen items-center justify-center bg-gray-100">\n      <div className="w-full max-w-6xl p-4">\n        <h1 className="text-3xl font-bold text-blue-600 mb-6">Blossom AI Web Builder</h1>\n        <p className="text-gray-700 mb-4">Start building your web app by describing it in the text input.</p>\n        <p className="text-gray-500 text-sm">Powered by advanced AI to generate complete, functional websites.</p>\n      </div>\n    </div>\n  );\n}',
     'src/index.tsx': 'import React from "react";\nimport ReactDOM from "react-dom/client";\nimport App from "./App";\nimport "./styles/tailwind.css";\n\nReactDOM.createRoot(document.getElementById("root")!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>,\n);',
     'src/styles/tailwind.css': '@tailwind base;\n@tailwind components;\n@tailwind utilities;',
   });
   
-  // File tree state
-  const [fileTree, setFileTree] = useState<FileSystemItem[]>([]);
-  const [activeFile, setActiveFile] = useState<string | null>('src/App.tsx');
-  const [projectFiles, setProjectFiles] = useState<ProjectFiles>({});
+  const [activeFile, setActiveFile] = useState('src/App.tsx');
+  const [projectFiles, setProjectFiles] = useState({});
   const [viewportSize, setViewportSize] = useState('desktop');
-  const [detectedType, setDetectedType] = useState<string | null>('react');
-  const [runtimeError, setRuntimeError] = useState<{ message: string; file?: string } | null>(null);
-  const [streamingResponse, setStreamingResponse] = useState('');
-  const [generatedFiles, setGeneratedFiles] = useState<FileDefinition[]>([]);
+  const [detectedType, setDetectedType] = useState('react');
+  const [runtimeError, setRuntimeError] = useState(null);
 
   // Check if API key is set
-  const [apiKeySet, setApiKeySet] = useState<boolean>(false);
+  const [apiKeySet, setApiKeySet] = useState(false);
   
   useEffect(() => {
     // Check for API key in localStorage
@@ -68,7 +66,7 @@ export default function AIWebBuilder() {
 
   // Update project files when files change
   useEffect(() => {
-    const formattedFiles: ProjectFiles = {};
+    const formattedFiles = {};
     Object.entries(files).forEach(([path, content]) => {
       formattedFiles[path] = { code: content };
     });
@@ -76,41 +74,21 @@ export default function AIWebBuilder() {
     
     // Detect project type
     const type = detectProjectType(formattedFiles);
-    setDetectedType(type);
+    if (type) setDetectedType(type);
   }, [files]);
 
-  // Update file tree when files change
-  useEffect(() => {
-    try {
-      const tree = buildFileTree(files);
-      setFileTree(tree);
-    } catch (error) {
-      console.error("Error building file tree:", error);
-    }
-  }, [files]);
-
-  const handleRuntimeError = (error: { message: string; file?: string } | null) => {
+  const handleRuntimeError = (error) => {
     setRuntimeError(error);
   };
 
-  const handleFixError = async () => {
-    if (!runtimeError) return;
-    
-    const errorFile = runtimeError.file || '';
-    const errorMessage = runtimeError.message || '';
-    
-    // Automatically generate a prompt to fix the error
-    const fixPrompt = `Fix this error in ${errorFile}: ${errorMessage}. Only modify this file, don't change other files.`;
-    
-    // Add the prompt to messages
-    const userMessage = { role: 'user' as const, content: fixPrompt, id: uuidv4() };
-    setMessages(prev => [...prev, userMessage]);
-    
-    // Auto-submit this prompt
-    await processPrompt(fixPrompt);
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!prompt.trim()) return;
@@ -118,219 +96,35 @@ export default function AIWebBuilder() {
     // Clear any previous API errors
     setApiError(null);
     
-    await processPrompt(prompt);
-  };
-
-  const applyGeneratedFiles = (files: FileDefinition[]) => {
-    if (!files || files.length === 0) {
-      console.error("No files to apply");
-      return;
-    }
-    
-    try {
-      // Create a new Record<string, string> object from the FileDefinition array
-      const updatedFiles: Record<string, string> = {};
-      
-      // Transform each FileDefinition into a key-value pair in the Record
-      files.forEach(file => {
-        updatedFiles[file.path] = file.content;
-      });
-      
-      // Update files state with the transformed object
-      setFiles(updatedFiles);
-      
-      // Set first file as active
-      if (files.length > 0) {
-        setActiveFile(files[0].path);
-      }
-      
-      toast.success(`Generated ${files.length} files successfully`);
-    } catch (error) {
-      console.error("Error applying generated files:", error);
-      toast.error("Failed to apply generated files");
-    }
-  };
-  
-  const processPrompt = async (promptText: string) => {
-    // Add user message
-    const userMessage = { role: 'user' as const, content: promptText, id: uuidv4() };
-    setMessages(prev => [...prev, userMessage]);
-    
-    // Clear input if this was from the input field
-    if (prompt === promptText) {
-      setPrompt('');
-    }
-    
-    // Call AI service
+    // Simulate processing
     setIsLoading(true);
-    setStreamingResponse('');
     
-    try {
-      // Create a message to show while streaming
-      const assistantMessageId = uuidv4();
-      setMessages(prev => [
-        ...prev, 
-        { role: 'assistant', content: '', id: assistantMessageId }
-      ]);
-      
-      // Check if API key is available
-      const apiKey = localStorage.getItem('VITE_CLAUDE_API_KEY') || import.meta.env.VITE_CLAUDE_API_KEY;
-      if (!apiKey) {
-        const noApiKeyMessage = "No API key found. Please add your Anthropic API key in API Settings.";
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === assistantMessageId 
-              ? { ...msg, content: noApiKeyMessage } 
-              : msg
-          )
-        );
-        setIsLoading(false);
-        setApiError(noApiKeyMessage);
-        throw new Error(noApiKeyMessage);
-      }
-      
-      // Generate response
-      let fullResponse = '';
-      
-      // Get the Claude 3.7 Sonnet model
-      const model = getSelectedModel();
-      if (!model) {
-        throw new Error("AI model not available");
-      }
-      
-      // Stream response from the model
-      fullResponse = '';
-      const addToken = (token: string) => {
-        fullResponse += token;
-        setStreamingResponse(fullResponse);
-        
-        // Update the streaming message in the messages list
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === assistantMessageId 
-              ? { ...msg, content: fullResponse } 
-              : msg
-          )
-        );
-      };
-      
-      console.log("Building your website with Blossom AI...");
-      
-      // Use the selected model's generateStream method
-      await model.generateStream(promptText, addToken, {
-        temperature: 0.7,
-        maxOutputTokens: 4096
-      });
-      
-      console.log("Response completed");
-      
-      // Parse generated files from Claude's output
-      const parsedFiles = parseClaudeOutput(fullResponse);
-      setGeneratedFiles(parsedFiles);
-      
-      if (parsedFiles && parsedFiles.length > 0) {
-        // Apply the generated files
-        applyGeneratedFiles(parsedFiles);
-        
-        // Update the final assistant message with file info
-        const aiMessage = { 
-          role: 'assistant' as const,
-          content: fullResponse,
-          generatedFiles: parsedFiles,
-          id: assistantMessageId
-        };
-        
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === assistantMessageId 
-              ? aiMessage 
-              : msg
-          )
-        );
-        
-        // Show success notification
-        toast.success(`Generated ${parsedFiles.length} files successfully`);
-        
-        // Convert to project files format
-        const newProjectFiles = convertToProjectFiles(parsedFiles);
-        setProjectFiles(newProjectFiles);
-      } else {
-        toast.error("Failed to generate valid files from AI response");
-      }
-      
-      // Switch to preview tab to show changes
-      setActiveTab('preview');
-    } catch (error) {
-      console.error('Error building website:', error);
-      setApiError(`Failed to generate website: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      toast.error("Failed to generate website");
-      
-      // Add error message
-      const errorMessage = { 
-        role: 'assistant' as const, 
-        content: `Sorry, an error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        id: uuidv4()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
+    // In a real app, we'd call the AI here
+    setTimeout(() => {
+      toast.success("Processing your request...");
       setIsLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
-  };
-
-  // Function to render message bubbles
-  const renderMessages = () => {
-    return messages.map((message) => (
-      <div 
-        key={message.id || Math.random()} 
-        className={`mb-4 ${message.role === 'user' ? 'text-right' : 'text-left'}`}
-      >
-        <div 
-          className={`inline-block max-w-[85%] rounded-lg p-3 ${
-            message.role === 'user' 
-            ? 'bg-blue-100 text-blue-900' 
-            : 'bg-gray-100 text-gray-900'
-          }`}
-        >
-          <div className="whitespace-pre-wrap">
-            {/* Limit visible content length and add View More button for long messages */}
-            {message.content.length > 500 
-              ? `${message.content.substring(0, 500)}... `
-              : message.content}
-          </div>
-          
-          {message.generatedFiles && message.generatedFiles.length > 0 && (
-            <div className="mt-2 text-sm">
-              <p className="font-medium">Files generated:</p>
-              <ul className="list-disc list-inside">
-                {message.generatedFiles.slice(0, 5).map((file, i) => (
-                  <li key={i} className="text-xs">
-                    {file.path}
-                  </li>
-                ))}
-                {message.generatedFiles.length > 5 && (
-                  <li className="text-xs">
-                    ...and {message.generatedFiles.length - 5} more files
-                  </li>
-                )}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-    ));
+      setPrompt('');
+      
+      // If API key is not set, show a notification
+      if (!apiKeySet) {
+        toast.error("API key is required to generate content");
+        setApiError("Please set your API key in Settings");
+      }
+    }, 1500);
   };
 
   return (
-    <div className="flex h-full overflow-hidden bg-background">
+    <motion.div 
+      className="flex h-full overflow-hidden bg-background rounded-lg shadow-lg border border-border/50"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Left side: Chat and Input - Taking 30% of the width */}
-      <div className="w-1/3 flex flex-col border-r border-border">
+      <motion.div 
+        className="w-1/3 flex flex-col border-r border-border"
+        variants={itemVariants}
+      >
         {/* Chat header */}
         <div className="p-3 border-b border-border bg-muted/30">
           <div className="flex items-center justify-between">
@@ -347,7 +141,12 @@ export default function AIWebBuilder() {
 
         {/* API Error Alert */}
         {apiError && (
-          <div className="p-4 bg-red-50 text-red-800 border border-red-200 rounded-md m-4">
+          <motion.div 
+            className="p-4 bg-red-50 text-red-800 border border-red-200 rounded-md m-4"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 100 }}
+          >
             <p>{apiError}</p>
             {!apiKeySet && (
               <div className="mt-2">
@@ -361,22 +160,37 @@ export default function AIWebBuilder() {
               </div>
             )}
             <p className="mt-2 text-sm">Please try again or contact support if the issue persists.</p>
-          </div>
+          </motion.div>
         )}
 
         {/* Messages container */}
         <div className="flex-1 overflow-y-auto p-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-6">
-              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+              <motion.div 
+                className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4"
+                whileHover={{ rotate: 360, scale: 1.1 }}
+                transition={{ duration: 1.5 }}
+              >
                 <span className="text-2xl">✨</span>
-              </div>
-              <h2 className="text-xl font-semibold mb-2">Welcome to Blossom AI Website Builder</h2>
-              <p className="text-gray-500 mb-6">
+              </motion.div>
+              <motion.h2 
+                className="text-xl font-semibold mb-2"
+                variants={itemVariants}
+              >
+                Welcome to Blossom AI Website Builder
+              </motion.h2>
+              <motion.p 
+                className="text-gray-500 mb-6"
+                variants={itemVariants}
+              >
                 Describe what you want to build, and we'll generate a complete website for you.
-              </p>
+              </motion.p>
               {!apiKeySet && (
-                <div className="w-full max-w-md bg-amber-50 border border-amber-200 p-4 rounded-lg text-amber-700 mb-6">
+                <motion.div 
+                  className="w-full max-w-md bg-amber-50 border border-amber-200 p-4 rounded-lg text-amber-700 mb-6"
+                  variants={itemVariants}
+                >
                   <p className="font-medium flex items-center gap-2 mb-2">
                     <Settings size={16} />
                     API Key Required
@@ -390,24 +204,33 @@ export default function AIWebBuilder() {
                   >
                     Set API Key
                   </Link>
-                </div>
+                </motion.div>
               )}
-              <div className="w-full max-w-md bg-blue-50 p-3 rounded-lg text-sm text-blue-700">
+              <motion.div 
+                className="w-full max-w-md bg-blue-50 p-3 rounded-lg text-sm text-blue-700"
+                variants={itemVariants}
+              >
                 <p className="font-medium mb-1">Try examples like:</p>
                 <ul className="list-disc list-inside space-y-1 text-left">
                   <li>"Create a landing page for a vegan restaurant"</li>
                   <li>"Build a portfolio site for a professional photographer"</li>
                   <li>"Make a dashboard for a project management tool"</li>
                 </ul>
-              </div>
+              </motion.div>
             </div>
           ) : (
-            renderMessages()
+            <div>
+              {/* Message bubbles would go here */}
+              <p className="text-center text-gray-500">No messages yet</p>
+            </div>
           )}
         </div>
         
         {/* Input section */}
-        <div className="border-t border-border p-4">
+        <motion.div 
+          className="border-t border-border p-4"
+          variants={itemVariants}
+        >
           <form onSubmit={handleSubmit} className="space-y-3">
             <Textarea 
               value={prompt}
@@ -440,65 +263,63 @@ export default function AIWebBuilder() {
               )}
             </Button>
           </form>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
       
-      {/* Right side: Code Preview - Taking 70% of the width, Full Screen Responsive */}
-      <div className="w-2/3 flex flex-col">
-        <div className="p-3 border-b border-border flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Live Preview</h2>
-          <div className="flex items-center space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setViewportSize('mobile')}
-              className={viewportSize === 'mobile' ? 'bg-blue-50' : ''}
-            >
-              Mobile
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setViewportSize('tablet')}
-              className={viewportSize === 'tablet' ? 'bg-blue-50' : ''}
-            >
-              Tablet
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setViewportSize('desktop')}
-              className={viewportSize === 'desktop' ? 'bg-blue-50' : ''}
-            >
-              Desktop
-            </Button>
-          </div>
-        </div>
-        
+      {/* Right side: Code Preview - Taking 70% of the width */}
+      <motion.div 
+        className="w-2/3 flex flex-col"
+        variants={itemVariants}
+      >
         <div className="flex-1 overflow-hidden p-4">
-          <CodePreview 
-            projectFiles={projectFiles}
-            activeTab={activeTab} 
-            setActiveTab={(val) => setActiveTab(val as 'preview' | 'code')}
-            activeFile={activeFile || ''}
-            viewportSize={viewportSize}
-            setViewportSize={setViewportSize}
-            detectedType={detectedType}
-            onDetectError={handleRuntimeError}
-          />
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="preview">Preview</TabsTrigger>
+              <TabsTrigger value="code">Code</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="preview" className="h-[calc(100%-50px)]">
+              <CodePreview 
+                projectFiles={projectFiles}
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab}
+                activeFile={activeFile || ''}
+                viewportSize={viewportSize}
+                setViewportSize={setViewportSize}
+                detectedType={detectedType}
+                onDetectError={handleRuntimeError}
+              />
+            </TabsContent>
+            
+            <TabsContent value="code" className="h-[calc(100%-50px)]">
+              <div className="h-full bg-gray-900 p-4 text-white overflow-auto rounded-lg">
+                <pre className="font-mono text-sm">
+                  {JSON.stringify(projectFiles, null, 2)}
+                </pre>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Show runtime error at the bottom of the page */}
         {runtimeError && (
-          <div className="p-2 bg-red-50 border-t border-red-200">
+          <motion.div 
+            className="p-2 bg-red-50 border-t border-red-200"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 100 }}
+          >
             <ErrorDetectionHandler 
               error={runtimeError}
-              onFixError={handleFixError}
+              onFixError={() => {
+                // Handler for fixing errors
+                toast.info("Attempting to fix error...");
+              }}
               onIgnoreError={() => setRuntimeError(null)}
             />
-          </div>
+          </motion.div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

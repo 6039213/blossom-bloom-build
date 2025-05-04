@@ -8,9 +8,8 @@ import { ProjectFiles } from './types';
 import { getProjectDependencies } from './utils';
 import { projectTemplates } from '@/utils/projectTemplates';
 import ErrorDetectionHandler from './ErrorDetectionHandler';
-
-// Import non-type dependencies
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { motion } from 'framer-motion';
 
 interface CodePreviewProps {
   projectFiles: ProjectFiles;
@@ -106,13 +105,9 @@ export default function CodePreview({
   };
 
   return (
-    <div className="w-full h-full mx-auto flex flex-col">
-      <Tabs 
-        value={activeTab} 
-        onValueChange={(val) => setActiveTab(val)} 
-        className="w-full h-full flex flex-col"
-      >
-        <div className="flex items-center justify-between w-full mb-2">
+    <div className="w-full h-full mx-auto flex flex-col overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
+        <div className="flex items-center justify-between w-full mb-4">
           <CodePreviewTabs 
             activeTab={activeTab}
             viewportSize={viewportSize}
@@ -144,13 +139,16 @@ export default function CodePreview({
                   }}
                   options={{
                     visibleFiles: [activeFile],
-                    externalResources: [
-                      "https://cdn.tailwindcss.com"
-                    ]
+                    externalResources: ["https://cdn.tailwindcss.com"]
                   }}
                 >
                   {error && (
-                    <div className="px-4 py-2">
+                    <motion.div 
+                      className="px-4 py-2"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ type: "spring", stiffness: 100 }}
+                    >
                       <ErrorDetectionHandler 
                         error={error}
                         onFixError={() => {
@@ -161,7 +159,7 @@ export default function CodePreview({
                           if (onDetectError) onDetectError(null);
                         }}
                       />
-                    </div>
+                    </motion.div>
                   )}
                   <SandpackLayout className="h-full">
                     <SandpackPreview
@@ -181,21 +179,42 @@ export default function CodePreview({
                   </SandpackLayout>
                 </SandpackProvider>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                  <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                <motion.div 
+                  className="flex flex-col items-center justify-center h-full p-8 text-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <motion.div 
+                    className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4"
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
                     <span className="text-2xl">✨</span>
-                  </div>
-                  <h2 className="text-xl font-semibold mb-2">Welcome to AI Website Builder</h2>
-                  <p className="text-gray-500 max-w-md mx-auto">
+                  </motion.div>
+                  <motion.h2 
+                    className="text-xl font-semibold mb-2"
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    Welcome to AI Website Builder
+                  </motion.h2>
+                  <motion.p 
+                    className="text-gray-500 max-w-md mx-auto"
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
                     Describe what you want to build in the text input on the left side, and Claude 3.7 Sonnet will generate a complete website for you.
-                  </p>
-                </div>
+                  </motion.p>
+                </motion.div>
               )}
             </div>
           </TabsContent>
           
           <TabsContent value="code" className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col overflow-hidden">
-            {Object.keys(projectFiles).length > 0 && (
+            {Object.keys(projectFiles).length > 0 ? (
               <SandpackProvider
                 template="react-ts"
                 theme="dark"
@@ -210,6 +229,10 @@ export default function CodePreview({
                 </SandpackLayout>
                 <SandpackConsole className="h-40" />
               </SandpackProvider>
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <p className="text-muted-foreground">No code generated yet</p>
+              </div>
             )}
           </TabsContent>
         </div>
