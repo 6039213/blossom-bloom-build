@@ -1,289 +1,346 @@
 
 import React, { useState } from 'react';
-import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Search, FileText, MessageCircle, Book } from "lucide-react";
-import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Search, HelpCircle, Info, MessageCircle, Video, BookOpen, ExternalLink, ChevronDown, ChevronRight } from 'lucide-react';
+import Layout from '@/components/Layout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
-interface HelpArticle {
-  id: string;
-  title: string;
-  excerpt: string;
-  category: string;
-}
+// Sample FAQs
+const faqs = [
+  {
+    question: "How do I create a new project?",
+    answer: "To create a new project, navigate to the Dashboard and click the 'Create New Project' button. You'll be prompted to select a template or start from scratch, then give your project a name."
+  },
+  {
+    question: "How does the AI Website Builder work?",
+    answer: "The AI Website Builder uses Claude 3.7 Sonnet to generate React components based on your text description. Simply describe the website you want, and the AI will create the HTML, CSS, and React code for you. You can then customize, preview, and export the code."
+  },
+  {
+    question: "Can I export my projects?",
+    answer: "Yes, you can export your projects as a ZIP file containing all the source code. This allows you to continue development in your preferred environment or deploy the site to any hosting service."
+  },
+  {
+    question: "How do I invite team members?",
+    answer: "Go to the Team page, click on 'Invite Member', and enter their email address and role. They'll receive an invitation to join your team and collaborate on your projects."
+  },
+  {
+    question: "What's the difference between the pricing plans?",
+    answer: "Our pricing plans differ based on the number of projects you can create, team members you can add, priority support, and additional features like custom domains and commercial usage rights."
+  },
+  {
+    question: "How secure is my data?",
+    answer: "We take security seriously and employ industry-standard encryption and security practices. Your project data is encrypted at rest and in transit, and we perform regular security audits of our infrastructure."
+  }
+];
 
-interface FAQ {
-  question: string;
-  answer: string;
-  category: string;
-}
+// Sample tutorials
+const tutorials = [
+  {
+    title: "Getting Started with Blossom AI",
+    description: "Learn the basics of creating and managing projects",
+    length: "5 min",
+    type: "video"
+  },
+  {
+    title: "Using the AI Website Builder",
+    description: "How to create websites using natural language",
+    length: "8 min",
+    type: "video"
+  },
+  {
+    title: "Team Collaboration",
+    description: "Working with team members on shared projects",
+    length: "6 min",
+    type: "video"
+  },
+  {
+    title: "Customizing Generated Code",
+    description: "How to modify and extend AI-generated code",
+    length: "10 min",
+    type: "article"
+  },
+  {
+    title: "Deploying Your Website",
+    description: "Options for publishing your Blossom AI projects",
+    length: "7 min",
+    type: "article"
+  }
+];
 
 export default function Help() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
-  const helpArticles: HelpArticle[] = [
-    {
-      id: "getting-started",
-      title: "Getting Started with Blossom AI",
-      excerpt: "Learn how to create your first website using our AI builder.",
-      category: "basics"
-    },
-    {
-      id: "api-keys",
-      title: "Managing API Keys",
-      excerpt: "How to set up and manage API keys for external services.",
-      category: "advanced"
-    },
-    {
-      id: "deploying",
-      title: "Deploying Your Website",
-      excerpt: "A step-by-step guide to deploying your Blossom website.",
-      category: "deployment"
-    },
-    {
-      id: "custom-domains",
-      title: "Setting up Custom Domains",
-      excerpt: "Connect your own domain to your Blossom website.",
-      category: "deployment"
-    },
-    {
-      id: "ai-prompts",
-      title: "Writing Effective AI Prompts",
-      excerpt: "Tips for getting better results from the AI builder.",
-      category: "ai"
-    },
-    {
-      id: "editing-code",
-      title: "Editing Generated Code",
-      excerpt: "How to customize and extend the AI-generated code.",
-      category: "advanced"
-    }
-  ];
-  
-  const faqs: FAQ[] = [
-    {
-      question: "How does the AI builder work?",
-      answer: "Our AI builder uses Claude 3.7 Sonnet to analyze your requirements and generate complete, functional websites based on your instructions. It can create React components, styling, and functionality all from simple text prompts.",
-      category: "ai"
-    },
-    {
-      question: "Can I edit the code after it's generated?",
-      answer: "Yes, you have full access to edit and customize all generated code. You can use our built-in code editor or export the project for editing in your preferred development environment.",
-      category: "basics"
-    },
-    {
-      question: "Do I need to know how to code to use Blossom?",
-      answer: "No, you don't need coding knowledge to create websites with Blossom. Our AI builder can generate complete websites from simple text descriptions. However, having some knowledge of web development can help you customize and extend your projects further.",
-      category: "basics"
-    },
-    {
-      question: "How do I deploy my website?",
-      answer: "Blossom provides one-click deployment to our hosting platform. Once your website is ready, simply click the 'Deploy' button in your project dashboard. You can also export your project and deploy it to any hosting provider that supports React applications.",
-      category: "deployment"
-    },
-    {
-      question: "Can I use my own domain name?",
-      answer: "Yes, you can connect your own custom domain to your Blossom website. Go to your project settings, navigate to the 'Domains' section, and follow the instructions to set up your domain with our platform.",
-      category: "deployment"
-    },
-    {
-      question: "What API integrations are supported?",
-      answer: "Blossom supports a wide range of API integrations, including authentication providers, database services, payment processors, and more. You can add your API keys in the API Settings section and the AI builder can help you implement these integrations in your website.",
-      category: "advanced"
-    }
-  ];
-  
-  const categories = [
-    { id: "basics", name: "Basics", icon: <Book className="h-4 w-4" /> },
-    { id: "ai", name: "AI Builder", icon: <Sparkles className="h-4 w-4" /> },
-    { id: "deployment", name: "Deployment", icon: <Globe className="h-4 w-4" /> },
-    { id: "advanced", name: "Advanced", icon: <Code className="h-4 w-4" /> }
-  ];
-
-  const filteredArticles = helpArticles.filter(article => 
-    (activeCategory ? article.category === activeCategory : true) &&
-    (searchQuery ? article.title.toLowerCase().includes(searchQuery.toLowerCase()) : true)
-  );
-  
+  // Filter FAQs based on search query
   const filteredFaqs = faqs.filter(faq => 
-    (activeCategory ? faq.category === activeCategory : true) &&
-    (searchQuery ? faq.question.toLowerCase().includes(searchQuery.toLowerCase()) : true)
+    searchQuery === '' || 
+    faq.question.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <div className="h-full">
-        <DashboardSidebar />
-      </div>
-      
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="bg-white dark:bg-gray-900 border-b border-border p-4">
-          <h1 className="text-2xl font-bold">Help Center</h1>
-        </header>
-        
-        <main className="flex-1 overflow-auto p-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-              <Input
-                placeholder="Search for help articles..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            
-            <div className="mb-6 flex flex-wrap gap-3">
-              <Button
-                variant={activeCategory === null ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveCategory(null)}
-              >
-                All Categories
-              </Button>
-              
-              {categories.map(category => (
-                <Button
-                  key={category.id}
-                  variant={activeCategory === category.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveCategory(category.id)}
-                  className="flex items-center gap-2"
-                >
-                  {category.icon}
-                  {category.name}
-                </Button>
-              ))}
-            </div>
-            
-            <Tabs defaultValue="articles">
-              <TabsList className="mb-4">
-                <TabsTrigger value="articles" className="flex gap-2 items-center">
-                  <FileText className="h-4 w-4" />
-                  Help Articles
-                </TabsTrigger>
-                <TabsTrigger value="faq" className="flex gap-2 items-center">
-                  <MessageCircle className="h-4 w-4" />
-                  FAQs
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="articles">
-                {filteredArticles.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {filteredArticles.map(article => (
-                      <Card 
-                        key={article.id} 
-                        className="p-4 hover:shadow-md transition-shadow"
-                      >
-                        <h3 className="text-lg font-medium mb-2">{article.title}</h3>
-                        <p className="text-muted-foreground mb-4 text-sm">{article.excerpt}</p>
-                        <Button asChild variant="ghost" size="sm" className="mt-auto">
-                          <Link to={`/dashboard/help/${article.id}`}>Read More</Link>
-                        </Button>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No help articles found for your search.</p>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="faq">
-                {filteredFaqs.length > 0 ? (
-                  <Accordion type="single" collapsible className="w-full">
-                    {filteredFaqs.map((faq, index) => (
-                      <AccordionItem key={index} value={`faq-${index}`}>
-                        <AccordionTrigger className="text-left">
-                          {faq.question}
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <p className="text-muted-foreground">{faq.answer}</p>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No FAQs found for your search.</p>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-            
-            <div className="mt-12 text-center p-6 bg-muted rounded-lg">
-              <h2 className="text-xl font-bold mb-2">Can't find what you're looking for?</h2>
-              <p className="text-muted-foreground mb-4">
-                Our support team is ready to help with any questions you might have.
-              </p>
-              <Button asChild>
-                <a href="mailto:support@example.com">Contact Support</a>
-              </Button>
-            </div>
+    <Layout>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Help Center</h1>
+            <p className="text-muted-foreground">Find answers, tutorials, and support resources.</p>
           </div>
-        </main>
-      </div>
-    </div>
+          
+          <div className="flex w-full max-w-sm items-center space-x-2">
+            <Input 
+              type="search" 
+              placeholder="Search for help..." 
+              className="flex-1"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <Button type="submit" size="icon">
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        
+        <div className="grid gap-6 md:grid-cols-3 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Documentation
+              </CardTitle>
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Guides</div>
+              <p className="text-xs text-muted-foreground">
+                Detailed documentation and user guides
+              </p>
+            </CardContent>
+            <CardFooter>
+              <Button variant="ghost" className="w-full justify-start" asChild>
+                <a href="#documentation">
+                  <span>Browse docs</span>
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </a>
+              </Button>
+            </CardFooter>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Video Tutorials
+              </CardTitle>
+              <Video className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Learn</div>
+              <p className="text-xs text-muted-foreground">
+                Step-by-step video guides and walkthroughs
+              </p>
+            </CardContent>
+            <CardFooter>
+              <Button variant="ghost" className="w-full justify-start" asChild>
+                <a href="#tutorials">
+                  <span>Watch tutorials</span>
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </a>
+              </Button>
+            </CardFooter>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Support
+              </CardTitle>
+              <MessageCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Contact us</div>
+              <p className="text-xs text-muted-foreground">
+                Get help from our support team
+              </p>
+            </CardContent>
+            <CardFooter>
+              <Button variant="ghost" className="w-full justify-start" asChild>
+                <a href="#contact">
+                  <span>Contact support</span>
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </a>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+        
+        <Tabs defaultValue="faqs" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="faqs" className="flex items-center gap-1.5">
+              <HelpCircle className="h-4 w-4" />
+              FAQs
+            </TabsTrigger>
+            <TabsTrigger value="tutorials" className="flex items-center gap-1.5">
+              <Video className="h-4 w-4" />
+              Tutorials
+            </TabsTrigger>
+            <TabsTrigger value="contact" className="flex items-center gap-1.5">
+              <MessageCircle className="h-4 w-4" />
+              Contact
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="faqs">
+            <Card>
+              <CardHeader>
+                <CardTitle>Frequently Asked Questions</CardTitle>
+                <CardDescription>
+                  Find answers to common questions about Blossom AI.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  {filteredFaqs.map((faq, index) => (
+                    <AccordionItem key={index} value={`item-${index}`}>
+                      <AccordionTrigger className="text-left">
+                        {faq.question}
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        {faq.answer}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                  
+                  {filteredFaqs.length === 0 && (
+                    <div className="py-8 text-center">
+                      <Info className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <h3 className="font-medium mb-1">No FAQs found</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Try a different search term or browse all FAQs by clearing your search.
+                      </p>
+                      <Button
+                        variant="link"
+                        onClick={() => setSearchQuery('')}
+                        className="mt-2"
+                      >
+                        Clear search
+                      </Button>
+                    </div>
+                  )}
+                </Accordion>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="tutorials">
+            <Card>
+              <CardHeader>
+                <CardTitle>Tutorials & Guides</CardTitle>
+                <CardDescription>
+                  Learn how to use Blossom AI with step-by-step tutorials.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {tutorials.map((tutorial, index) => (
+                    <div 
+                      key={index}
+                      className="border rounded-lg p-4 hover:bg-muted transition-colors cursor-pointer"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-medium">{tutorial.title}</h3>
+                        <Badge variant="outline" className={
+                          tutorial.type === "video" 
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-green-50 text-green-700 border-green-200"
+                        }>
+                          {tutorial.type === "video" ? (
+                            <Video className="h-3 w-3 mr-1" />
+                          ) : (
+                            <BookOpen className="h-3 w-3 mr-1" />
+                          )}
+                          {tutorial.type}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">{tutorial.description}</p>
+                      <div className="flex justify-between items-center text-xs text-muted-foreground">
+                        <span>{tutorial.length}</span>
+                        <Button variant="ghost" size="sm" className="h-7 p-0">
+                          {tutorial.type === "video" ? "Watch" : "Read"}
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="contact">
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact Support</CardTitle>
+                <CardDescription>
+                  Get help from our team if you can't find what you need.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-2">
+                      <label htmlFor="name" className="text-sm font-medium">Name</label>
+                      <Input id="name" placeholder="Your name" />
+                    </div>
+                    <div className="grid gap-2">
+                      <label htmlFor="email" className="text-sm font-medium">Email</label>
+                      <Input id="email" placeholder="your.email@example.com" type="email" />
+                    </div>
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <label htmlFor="subject" className="text-sm font-medium">Subject</label>
+                    <Input id="subject" placeholder="How can we help you?" />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <label htmlFor="message" className="text-sm font-medium">Message</label>
+                    <textarea 
+                      id="message" 
+                      rows={5}
+                      className="min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none" 
+                      placeholder="Please describe your issue in detail..."
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <label htmlFor="priority" className="text-sm font-medium">Priority</label>
+                    <select 
+                      id="priority"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="low">Low - General question</option>
+                      <option value="medium">Medium - Need help soon</option>
+                      <option value="high">High - Blocking issue</option>
+                      <option value="urgent">Urgent - System down</option>
+                    </select>
+                  </div>
+                </form>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button variant="outline">Cancel</Button>
+                <Button onClick={() => alert('Support ticket submitted!')}>Submit Support Ticket</Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </motion.div>
+    </Layout>
   );
 }
-
-// Missing components
-const Sparkles = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-  </svg>
-);
-
-const Globe = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <circle cx="12" cy="12" r="10" />
-    <line x1="2" x2="22" y1="12" y2="12" />
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-  </svg>
-);
-
-const Code = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <polyline points="16 18 22 12 16 6" />
-    <polyline points="8 6 2 12 8 18" />
-  </svg>
-);
