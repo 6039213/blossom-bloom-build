@@ -1,52 +1,65 @@
 
 import React from 'react';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, Code } from 'lucide-react';
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Smartphone, Tablet, Monitor } from 'lucide-react';
+import { TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Monitor, Smartphone, Tablet, Code } from 'lucide-react';
 
 interface CodePreviewTabsProps {
   activeTab: string;
   viewportSize: string;
-  onTabChange: (value: string) => void;
-  onViewportChange: (value: string) => void;
-  showViewportToggle?: boolean;
+  onTabChange: (tab: string) => void;
+  onViewportChange: (size: string) => void;
 }
 
-export default function CodePreviewTabs({
-  activeTab,
-  viewportSize,
-  onTabChange,
-  onViewportChange,
-  showViewportToggle = true
+export default function CodePreviewTabs({ 
+  activeTab, 
+  viewportSize, 
+  onTabChange, 
+  onViewportChange 
 }: CodePreviewTabsProps) {
   return (
-    <div className="flex items-center gap-2">
-      <Tabs value={activeTab} onValueChange={onTabChange}>
-        <TabsList>
-          <TabsTrigger value="preview" className={`flex items-center ${activeTab === 'preview' ? 'bg-primary/20' : ''}`}>
-            <Eye className="h-3 w-3 mr-1" />
-            Preview
-          </TabsTrigger>
-          <TabsTrigger value="code" className={`flex items-center ${activeTab === 'code' ? 'bg-primary/20' : ''}`}>
-            <Code className="h-3 w-3 mr-1" />
-            Code
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+    <div className="flex items-center">
+      <TabsList>
+        <TabsTrigger value="preview" onClick={() => onTabChange('preview')} className="flex items-center gap-1">
+          <Monitor className="h-4 w-4" />
+          Preview
+        </TabsTrigger>
+        <TabsTrigger value="code" onClick={() => onTabChange('code')} className="flex items-center gap-1">
+          <Code className="h-4 w-4" />
+          Code
+        </TabsTrigger>
+      </TabsList>
       
-      {showViewportToggle && activeTab === 'preview' && (
-        <ToggleGroup type="single" value={viewportSize} onValueChange={(value) => value && onViewportChange(value)}>
-          <ToggleGroupItem value="mobile" aria-label="Mobile view">
-            <Smartphone className="h-3 w-3" />
-          </ToggleGroupItem>
-          <ToggleGroupItem value="tablet" aria-label="Tablet view">
-            <Tablet className="h-3 w-3" />
-          </ToggleGroupItem>
-          <ToggleGroupItem value="desktop" aria-label="Desktop view">
-            <Monitor className="h-3 w-3" />
-          </ToggleGroupItem>
-        </ToggleGroup>
+      {activeTab === 'preview' && (
+        <div className="ml-4 flex items-center gap-1">
+          <Button
+            variant={viewportSize === 'desktop' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onViewportChange('desktop')}
+            className="h-8 w-8 p-0"
+          >
+            <Monitor className="h-4 w-4" />
+            <span className="sr-only">Desktop</span>
+          </Button>
+          <Button
+            variant={viewportSize === 'tablet' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onViewportChange('tablet')}
+            className="h-8 w-8 p-0"
+          >
+            <Tablet className="h-4 w-4" />
+            <span className="sr-only">Tablet</span>
+          </Button>
+          <Button
+            variant={viewportSize === 'mobile' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onViewportChange('mobile')}
+            className="h-8 w-8 p-0"
+          >
+            <Smartphone className="h-4 w-4" />
+            <span className="sr-only">Mobile</span>
+          </Button>
+        </div>
       )}
     </div>
   );

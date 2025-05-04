@@ -1,54 +1,23 @@
 
-// Types for Project Files
 export interface ProjectFiles {
-  [path: string]: {
-    code: string;
-  };
+  [key: string]: { code: string };
 }
 
-// Types for Web Container
-export interface WebContainerInstance {
-  applyDiff: (diff: string) => Promise<void>;
-  installAndRestartIfNeeded: (filesChanged: string[]) => Promise<void>;
-  snapshot: () => Promise<any>;
-  revert: () => Promise<void>;
-  packZip: () => Promise<Blob>;
-  onTerminalData: (callback: (data: string) => void) => () => void;
-}
-
-export interface FileChange {
-  path: string;
-  content: string;
-  type: 'create' | 'update' | 'delete';
-}
-
-export interface DiffResult {
-  changes: FileChange[];
-  requiresInstall: boolean;
-}
-
-// Project Templates
-export interface ProjectTemplate {
+export interface InternalChatMessage {
   id: string;
-  name: string;
-  description: string;
-  type: string;
-  displayName: string;
-  icon?: string;
-  dependencies?: Record<string, string>;
-}
-
-// Chat Message Types
-export interface AIMessage {
-  role: 'assistant';
+  role: 'user' | 'assistant';
   content: string;
-  files?: string[];
-  npmChanges?: string[];
+  timestamp: Date;
+  isStreaming?: boolean;
 }
 
-export interface UserMessage {
-  role: 'user';
-  content: string;
+export interface GenerateStreamOptions {
+  system?: string;
+  temperature?: number;
+  maxOutputTokens?: number;
 }
 
-export type InternalChatMessage = AIMessage | UserMessage;
+export interface ErrorData {
+  message: string;
+  file?: string;
+}
