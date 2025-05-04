@@ -1,7 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, Code, Eye, Download, Copy, Smartphone, Tablet, Monitor, RefreshCw } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,9 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { anthropicProvider } from "@/lib/providers/anthropic";
 
-// Sample prompts to help users get started
+// Sample prompts
 const samplePrompts = [
   "Create a modern landing page for a coffee shop with a gold and brown color scheme",
   "Build a photography portfolio website with a dark theme and image gallery",
@@ -19,83 +17,398 @@ const samplePrompts = [
   "Create a personal blog with featured posts and a newsletter signup"
 ];
 
+// Sample code templates
+const codeTemplates = {
+  landingPage: `// App.jsx
+import React from 'react';
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white">
+      {/* Header */}
+      <header className="px-4 py-6 md:px-8 lg:px-12">
+        <div className="container mx-auto flex justify-between items-center">
+          <div className="font-bold text-amber-800 text-xl md:text-2xl">Coffee House</div>
+          <nav className="hidden md:flex space-x-8">
+            <a href="#" className="text-amber-900 hover:text-amber-700">Home</a>
+            <a href="#" className="text-amber-900 hover:text-amber-700">Menu</a>
+            <a href="#" className="text-amber-900 hover:text-amber-700">About</a>
+            <a href="#" className="text-amber-900 hover:text-amber-700">Contact</a>
+          </nav>
+          <button className="md:hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="py-12 md:py-20 px-4 md:px-8 lg:px-12">
+        <div className="container mx-auto flex flex-col md:flex-row items-center">
+          <div className="md:w-1/2 md:pr-12 mb-8 md:mb-0">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-amber-900 mb-6">Artisanal Coffee Experience</h1>
+            <p className="text-lg text-amber-800 mb-8">Discover our carefully selected coffee beans from around the world, roasted to perfection.</p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button className="px-6 py-3 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition">View Menu</button>
+              <button className="px-6 py-3 border border-amber-800 text-amber-800 rounded-md hover:bg-amber-50 transition">Book a Table</button>
+            </div>
+          </div>
+          <div className="md:w-1/2">
+            <img 
+              src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80" 
+              alt="Coffee cup on wooden table" 
+              className="rounded-lg shadow-lg w-full"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="py-12 md:py-20 px-4 md:px-8 lg:px-12 bg-amber-100">
+        <div className="container mx-auto text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-amber-900 mb-4">Why Choose Us</h2>
+          <p className="text-amber-800 max-w-2xl mx-auto">Our commitment to quality and service sets us apart.</p>
+        </div>
+        <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white p-8 rounded-lg shadow-md">
+            <div className="text-amber-700 text-3xl mb-4">♨️</div>
+            <h3 className="text-xl font-bold text-amber-900 mb-2">Premium Beans</h3>
+            <p className="text-amber-800">Sourced from sustainable farms across the globe for unique flavors.</p>
+          </div>
+          <div className="bg-white p-8 rounded-lg shadow-md">
+            <div className="text-amber-700 text-3xl mb-4">👨‍🍳</div>
+            <h3 className="text-xl font-bold text-amber-900 mb-2">Expert Baristas</h3>
+            <p className="text-amber-800">Our skilled baristas craft each drink with care and precision.</p>
+          </div>
+          <div className="bg-white p-8 rounded-lg shadow-md">
+            <div className="text-amber-700 text-3xl mb-4">🌿</div>
+            <h3 className="text-xl font-bold text-amber-900 mb-2">Eco-Friendly</h3>
+            <p className="text-amber-800">Committed to sustainable practices that are good for the planet.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-12 md:py-20 px-4 md:px-8 lg:px-12">
+        <div className="container mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-amber-900 mb-8">Visit Us Today</h2>
+          <p className="text-lg text-amber-800 mb-8 max-w-2xl mx-auto">Experience our premium coffee and cozy atmosphere. We're open daily from 7am to 8pm.</p>
+          <button className="px-8 py-3 bg-amber-800 text-white rounded-md hover:bg-amber-700 transition">Find Location</button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-amber-900 text-amber-100 py-8 px-4 md:px-8 lg:px-12">
+        <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div>
+            <h3 className="text-xl font-bold mb-4">Coffee House</h3>
+            <p>Bringing you the finest coffee experience since 2010.</p>
+          </div>
+          <div>
+            <h4 className="font-bold mb-4">Links</h4>
+            <ul className="space-y-2">
+              <li><a href="#" className="hover:text-white">Home</a></li>
+              <li><a href="#" className="hover:text-white">Menu</a></li>
+              <li><a href="#" className="hover:text-white">About Us</a></li>
+              <li><a href="#" className="hover:text-white">Contact</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold mb-4">Opening Hours</h4>
+            <ul className="space-y-2">
+              <li>Mon-Fri: 7am - 8pm</li>
+              <li>Sat: 8am - 8pm</li>
+              <li>Sun: 9am - 6pm</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold mb-4">Contact</h4>
+            <ul className="space-y-2">
+              <li>123 Coffee Street</li>
+              <li>City, State 12345</li>
+              <li>info@coffeehouse.com</li>
+              <li>(123) 456-7890</li>
+            </ul>
+          </div>
+        </div>
+        <div className="container mx-auto mt-8 pt-8 border-t border-amber-800 text-center">
+          <p>&copy; 2025 Coffee House. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}`,
+
+  dashboard: `// App.jsx
+import React, { useState } from 'react';
+
+export default function App() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+      {/* Sidebar - Mobile */}
+      <div className={\`fixed inset-0 z-20 transition-opacity bg-black opacity-50 lg:hidden \${sidebarOpen ? 'block' : 'hidden'}\`} 
+           onClick={() => setSidebarOpen(false)}></div>
+
+      {/* Sidebar */}
+      <div className={\`fixed inset-y-0 left-0 z-30 w-64 overflow-y-auto transition duration-300 transform bg-gray-900 lg:translate-x-0 lg:static lg:inset-0 \${sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'}\`}>
+        <div className="flex items-center justify-center mt-8">
+          <div className="flex items-center">
+            <span className="mx-2 text-2xl font-semibold text-white">Dashboard</span>
+          </div>
+        </div>
+
+        <nav className="mt-10">
+          <a className="flex items-center px-6 py-2 mt-4 text-gray-100 bg-gray-700 bg-opacity-25" href="#">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
+            </svg>
+            <span className="mx-3">Dashboard</span>
+          </a>
+
+          <a className="flex items-center px-6 py-2 mt-4 text-gray-300 hover:bg-gray-700 hover:bg-opacity-25 hover:text-gray-100" href="#">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+            <span className="mx-3">Team</span>
+          </a>
+
+          <a className="flex items-center px-6 py-2 mt-4 text-gray-300 hover:bg-gray-700 hover:bg-opacity-25 hover:text-gray-100" href="#">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+            <span className="mx-3">Projects</span>
+          </a>
+
+          <a className="flex items-center px-6 py-2 mt-4 text-gray-300 hover:bg-gray-700 hover:bg-opacity-25 hover:text-gray-100" href="#">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+            </svg>
+            <span className="mx-3">Documents</span>
+          </a>
+
+          <a className="flex items-center px-6 py-2 mt-4 text-gray-300 hover:bg-gray-700 hover:bg-opacity-25 hover:text-gray-100" href="#">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            <span className="mx-3">Settings</span>
+          </a>
+        </nav>
+      </div>
+
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b-2 border-gray-200 dark:border-gray-700">
+          <div className="flex items-center">
+            <button onClick={() => setSidebarOpen(true)} className="text-gray-500 dark:text-gray-200 focus:outline-none lg:hidden">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+              </svg>
+            </button>
+
+            <div className="relative mx-4 lg:mx-0">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+              </span>
+
+              <input className="w-32 pl-10 pr-4 rounded-md form-input sm:w-64 focus:border-indigo-600 dark:bg-gray-700 dark:text-white dark:border-gray-600" type="text" placeholder="Search" />
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            <div className="relative">
+              <button className="flex mx-4 text-gray-600 dark:text-gray-200 focus:outline-none">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+              </button>
+
+              <div className="fixed inset-0 z-10 w-full h-full" style={{display: 'none'}}></div>
+            </div>
+
+            <div className="relative">
+              <button className="relative block w-8 h-8 overflow-hidden rounded-full shadow focus:outline-none">
+                <img className="object-cover w-full h-full" src="https://images.unsplash.com/photo-1528892952291-009c663ce843?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=296&q=80" alt="Your avatar" />
+              </button>
+
+              <div className="fixed inset-0 z-10 w-full h-full" style={{display: 'none'}}></div>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900">
+          <div className="container px-6 py-8 mx-auto">
+            <h3 className="text-3xl font-medium text-gray-700 dark:text-gray-200">Dashboard</h3>
+
+            <div className="mt-4">
+              <div className="flex flex-wrap -mx-6">
+                <div className="w-full px-6 sm:w-1/2 xl:w-1/3">
+                  <div className="flex items-center px-5 py-6 bg-white dark:bg-gray-800 rounded-md shadow-sm">
+                    <div className="p-3 bg-indigo-600 bg-opacity-75 rounded-full">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                      </svg>
+                    </div>
+
+                    <div className="mx-5">
+                      <h4 className="text-2xl font-semibold text-gray-700 dark:text-gray-200">8,282</h4>
+                      <div className="text-gray-500 dark:text-gray-400">New Users</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-full px-6 mt-6 sm:w-1/2 xl:w-1/3 sm:mt-0">
+                  <div className="flex items-center px-5 py-6 bg-white dark:bg-gray-800 rounded-md shadow-sm">
+                    <div className="p-3 bg-green-600 bg-opacity-75 rounded-full">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                      </svg>
+                    </div>
+
+                    <div className="mx-5">
+                      <h4 className="text-2xl font-semibold text-gray-700 dark:text-gray-200">200,521</h4>
+                      <div className="text-gray-500 dark:text-gray-400">Total Orders</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-full px-6 mt-6 sm:w-1/2 xl:w-1/3 xl:mt-0">
+                  <div className="flex items-center px-5 py-6 bg-white dark:bg-gray-800 rounded-md shadow-sm">
+                    <div className="p-3 bg-pink-600 bg-opacity-75 rounded-full">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                      </svg>
+                    </div>
+
+                    <div className="mx-5">
+                      <h4 className="text-2xl font-semibold text-gray-700 dark:text-gray-200">$215,542</h4>
+                      <div className="text-gray-500 dark:text-gray-400">Total Sales</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <div className="flex flex-col mt-8">
+                <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                  <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                    <div className="overflow-hidden border-b border-gray-200 rounded-md shadow-md dark:border-gray-700">
+                      <table className="min-w-full overflow-x-scroll divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-800">
+                          <tr>
+                            <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Name</th>
+                            <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Title</th>
+                            <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Status</th>
+                            <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-400">Role</th>
+                            <th scope="col" className="relative px-6 py-3">
+                              <span className="sr-only">Edit</span>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                          <tr>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 w-10 h-10">
+                                  <img className="w-10 h-10 rounded-full" src="https://avatars0.githubusercontent.com/u/57622665?s=460&u=8f581f4c4acd4c18c33a87b3e6476112325e8b38&v=4" alt="" />
+                                </div>
+                                <div className="ml-4">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">Jane Doe</div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">jane.doe@example.com</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900 dark:text-white">Software Engineer</div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">Engineering</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex px-2 text-xs font-semibold leading-5 text-green-800 bg-green-100 rounded-full">Active</span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-400">Admin</td>
+                            <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
+                              <a href="#" className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-600">Edit</a>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-shrink-0 w-10 h-10">
+                                  <img className="w-10 h-10 rounded-full" src="https://avatars0.githubusercontent.com/u/57622665?s=460&u=8f581f4c4acd4c18c33a87b3e6476112325e8b38&v=4" alt="" />
+                                </div>
+                                <div className="ml-4">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">John Smith</div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">john.smith@example.com</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900 dark:text-white">Product Designer</div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">Design</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex px-2 text-xs font-semibold leading-5 text-green-800 bg-green-100 rounded-full">Active</span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap dark:text-gray-400">Member</td>
+                            <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
+                              <a href="#" className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-600">Edit</a>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}`
+};
+
 export default function BoltAIWebBuilder() {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<Record<string, string>>({});
-  const [rawResponse, setRawResponse] = useState('');
-  const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState('preview');
-  const [activeFile, setActiveFile] = useState('');
   const [viewportSize, setViewportSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const progressInterval = useRef<NodeJS.Timeout | null>(null);
-
-  // Effect to clean up interval on unmount
+  const [progress, setProgress] = useState(0);
+  const [progressInterval, setProgressIntervalRef] = useState<ReturnType<typeof setInterval> | null>(null);
+  const [websiteType, setWebsiteType] = useState<'landingPage' | 'dashboard' | null>(null);
+  
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
+      if (progressInterval) {
+        clearInterval(progressInterval);
       }
     };
-  }, []);
-
-  // Process generated code to extract components and files
-  useEffect(() => {
-    if (rawResponse) {
-      const extractedCode = extractCodeBlocks(rawResponse);
-      setGeneratedCode(extractedCode);
-      
-      // Set first file as active if we have files and none is selected
-      const fileKeys = Object.keys(extractedCode);
-      if (fileKeys.length > 0 && !activeFile) {
-        setActiveFile(fileKeys[0]);
-      }
-    }
-  }, [rawResponse]);
-
-  // Update iframe content with HTML when code changes
+  }, [progressInterval]);
+  
+  // Update iframe content when generated code changes
   useEffect(() => {
     if (iframeRef.current && Object.keys(generatedCode).length > 0) {
       updateIframeContent();
     }
   }, [generatedCode, viewportSize]);
-
-  // Extract code blocks from AI response
-  const extractCodeBlocks = (response: string) => {
-    const codeBlocks: Record<string, string> = {};
-    
-    // Match code blocks with filename in the format ```jsx filename.jsx
-    const codeBlockRegex = /```(?:jsx|js|tsx|javascript|html|css)?\s*(?:\/\/\s*)?([a-zA-Z0-9_\-./]+)?\n([\s\S]*?)```/g;
-    
-    let match;
-    while ((match = codeBlockRegex.exec(response)) !== null) {
-      let fileName = match[1] || `Component${Object.keys(codeBlocks).length + 1}.jsx`;
-      // Clean up the filename if needed
-      fileName = fileName.trim();
-      if (!fileName.includes('.')) {
-        fileName += '.jsx'; // Add default extension if none
-      }
-      
-      codeBlocks[fileName] = match[2].trim();
-    }
-    
-    return codeBlocks;
-  };
-
-  // Update iframe with generated code
+  
+  // Generate HTML content for iframe
   const updateIframeContent = () => {
     if (!iframeRef.current) return;
     
     try {
-      // Find HTML file, or create one from components
-      let htmlContent = '';
-      
-      if (generatedCode['index.html']) {
-        htmlContent = generatedCode['index.html'];
-      } else {
-        // Create basic HTML wrapper with all JS embedded
-        htmlContent = `
+      // Create basic HTML wrapper
+      const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,31 +420,22 @@ export default function BoltAIWebBuilder() {
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { margin: 0; padding: 0; font-family: system-ui, sans-serif; }
-    ${generatedCode['styles.css'] || ''}
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    // This is a simplified preview and doesn't support all React features
-    // Remove duplicate React imports from component code to prevent conflicts
-    ${Object.entries(generatedCode)
-      .filter(([filename]) => filename.endsWith('.jsx') || filename.endsWith('.js') || filename.endsWith('.tsx'))
-      .map(([_, code]) => {
-        // Strip out React imports to prevent duplicate declarations
-        return code.replace(/import\s+React,?\s*(?:{[^}]*})?\s*from\s+['"]react['"];?/g, '// React already imported globally');
-      })
-      .join('\n\n')}
-      
-    // Mount the App component to the root div
+    // This is a simplified preview environment
+    const App = ${Object.values(generatedCode)[0] || "() => <div>No preview available</div>"};
+    
+    // Mount the App component
     ReactDOM.render(React.createElement(App), document.getElementById('root'));
   </script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </body>
 </html>`;
-      }
       
-      // Write content to iframe
+      // Set content to iframe
       const iframeDoc = iframeRef.current.contentDocument;
       if (iframeDoc) {
         iframeDoc.open();
@@ -152,82 +456,52 @@ export default function BoltAIWebBuilder() {
       return;
     }
     
+    // Start generation process
     setIsGenerating(true);
     setProgress(0);
-    setRawResponse('');
-    setGeneratedCode({});
     
-    // Start progress simulation
-    progressInterval.current = setInterval(() => {
+    // Determine website type based on prompt keywords
+    let type: 'landingPage' | 'dashboard' = 'landingPage';
+    if (prompt.toLowerCase().includes('dashboard') || 
+        prompt.toLowerCase().includes('admin') || 
+        prompt.toLowerCase().includes('analytics')) {
+      type = 'dashboard';
+    }
+    setWebsiteType(type);
+    
+    // Simulate progress
+    const interval = setInterval(() => {
       setProgress(prev => {
-        const increment = Math.random() * 2 + 1; // 1-3% increment
+        const increment = Math.random() * 5 + 1; // 1-6% increment
         const newProgress = prev + increment;
-        return newProgress > 92 ? 92 : newProgress; // Cap at 92% until complete
+        return newProgress > 95 ? 95 : newProgress;
       });
-    }, 300);
+    }, 200);
+    setProgressIntervalRef(interval);
     
     try {
-      // Call the Anthropic API through our provider
-      await anthropicProvider.generateStream(
-        `Generate a complete React website based on this description: "${prompt}".
-        Use functional components, React Hooks, and Tailwind CSS for styling.
-        Include all necessary components, with each in a separate file.
-        Format your response with code blocks that include the filename as a comment or in the format syntax.
-        For example: \`\`\`jsx App.jsx\n// Component code\n\`\`\`
-        Create at minimum: App.jsx, multiple component files, any necessary styling.
-        Make sure components render properly when imported into the App component.`,
-        (token) => {
-          setRawResponse(prev => prev + token);
-        },
-        {
-          system: "You are an expert React developer who creates beautiful, functional websites using React and Tailwind CSS. You organize your code well, creating a file for each component.",
-          temperature: 0.7,
-          maxOutputTokens: 4000
-        }
-      );
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Clean up interval and set to 100%
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-        progressInterval.current = null;
-      }
+      // Use pre-built templates based on website type
+      const generatedCode = { 'App.jsx': codeTemplates[type] };
+      setGeneratedCode(generatedCode);
       
+      // Complete progress
+      clearInterval(interval);
       setProgress(100);
       toast.success("Website generated successfully!");
+      
+      // Switch to preview tab
       setActiveTab('preview');
       
     } catch (error) {
       console.error("Generation error:", error);
-      toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error("Failed to generate website. Please try again.");
     } finally {
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-        progressInterval.current = null;
-      }
+      if (interval) clearInterval(interval);
       setIsGenerating(false);
     }
-  };
-
-  // Copy code to clipboard
-  const handleCopyCode = () => {
-    if (activeFile && generatedCode[activeFile]) {
-      navigator.clipboard.writeText(generatedCode[activeFile]);
-      toast.success(`Copied ${activeFile} to clipboard`);
-    } else {
-      // Copy all code
-      const allCode = Object.entries(generatedCode)
-        .map(([filename, code]) => `/* ${filename} */\n${code}`)
-        .join('\n\n');
-      
-      navigator.clipboard.writeText(allCode);
-      toast.success("Copied all code to clipboard");
-    }
-  };
-
-  // Download code as a zip file
-  const handleDownload = () => {
-    // In a real app, you'd create a zip file with all the components
-    toast.success("Download functionality would save all components as a zip file");
   };
 
   // Get appropriate class for viewport size
@@ -242,6 +516,35 @@ export default function BoltAIWebBuilder() {
         return 'w-full h-full';
     }
   };
+  
+  // Handle sample prompt selection
+  const handleUseSamplePrompt = (samplePrompt: string) => {
+    setPrompt(samplePrompt);
+  };
+
+  // Copy code to clipboard
+  const handleCopyCode = () => {
+    const code = Object.values(generatedCode)[0] || '';
+    if (code) {
+      navigator.clipboard.writeText(code);
+      toast.success("Code copied to clipboard");
+    }
+  };
+
+  // Download code
+  const handleDownloadCode = () => {
+    const code = Object.values(generatedCode)[0] || '';
+    if (code) {
+      const blob = new Blob([code], { type: 'text/javascript' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'App.jsx';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Code downloaded");
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-7 gap-6 h-full">
@@ -253,11 +556,11 @@ export default function BoltAIWebBuilder() {
               <Sparkles className="h-3 w-3 mr-1" />
               AI Website Builder
             </Badge>
-            <span className="text-xs text-muted-foreground">Powered by Claude 3.7</span>
+            <span className="text-xs text-muted-foreground">Web Generator</span>
           </div>
           <h2 className="text-lg font-medium">Create your website</h2>
           <p className="text-sm text-muted-foreground">
-            Describe the website you want to build with AI
+            Describe the website you want to build
           </p>
         </div>
 
@@ -307,7 +610,7 @@ export default function BoltAIWebBuilder() {
               {samplePrompts.map((samplePrompt, index) => (
                 <button
                   key={index}
-                  onClick={() => setPrompt(samplePrompt)}
+                  onClick={() => handleUseSamplePrompt(samplePrompt)}
                   className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm transition-colors"
                 >
                   {samplePrompt}
@@ -382,20 +685,23 @@ export default function BoltAIWebBuilder() {
                   sandbox="allow-scripts allow-same-origin"
                 />
               ) : (
-                <motion.div 
-                  className="text-center p-6"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                >
+                <div className="text-center p-6 max-w-md mx-auto">
                   <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mx-auto flex items-center justify-center mb-4">
                     <Sparkles className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                   <h3 className="text-2xl font-semibold mb-2">Website Preview</h3>
-                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                    Enter your website description and click "Generate Website" to create your custom website with AI.
+                  <p className="text-muted-foreground mb-6">
+                    Enter your website description and click "Generate Website" to create your custom website.
                   </p>
-                </motion.div>
+                  <div className="grid grid-cols-2 gap-2 max-w-xs mx-auto">
+                    <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-3 text-center hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" onClick={() => handleUseSamplePrompt(samplePrompts[0])}>
+                      <p className="text-sm font-medium">Landing Page</p>
+                    </div>
+                    <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-3 text-center hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" onClick={() => handleUseSamplePrompt(samplePrompts[2])}>
+                      <p className="text-sm font-medium">Dashboard</p>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </TabsContent>
@@ -403,27 +709,9 @@ export default function BoltAIWebBuilder() {
           <TabsContent value="code" className="flex-1 flex flex-col m-0 overflow-hidden">
             {Object.keys(generatedCode).length > 0 ? (
               <>
-                <div className="border-b overflow-x-auto">
-                  <div className="flex p-2">
-                    {Object.keys(generatedCode).map((filename) => (
-                      <button
-                        key={filename}
-                        onClick={() => setActiveFile(filename)}
-                        className={`px-3 py-1.5 text-xs rounded-md mr-2 transition-colors ${
-                          activeFile === filename
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        {filename}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <div className="flex-1 overflow-auto">
                   <pre className="p-4 text-sm font-mono bg-gray-900 text-gray-100 h-full overflow-auto">
-                    {activeFile && generatedCode[activeFile]}
+                    {Object.values(generatedCode)[0] || ''}
                   </pre>
                 </div>
 
@@ -436,21 +724,21 @@ export default function BoltAIWebBuilder() {
                       className="text-xs bg-gray-700 border-gray-600 hover:bg-gray-600 text-white"
                     >
                       <Copy className="h-3.5 w-3.5 mr-1" />
-                      {activeFile ? `Copy ${activeFile}` : 'Copy All'}
+                      Copy Code
                     </Button>
                     <Button 
                       variant="outline"
                       size="sm"
-                      onClick={handleDownload}
+                      onClick={handleDownloadCode}
                       className="text-xs ml-2 bg-gray-700 border-gray-600 hover:bg-gray-600 text-white"
                     >
                       <Download className="h-3.5 w-3.5 mr-1" />
-                      Download All
+                      Download
                     </Button>
                   </div>
                   
                   <div className="text-xs text-gray-400">
-                    {activeFile ? `${generatedCode[activeFile]?.length || 0} characters` : `${Object.keys(generatedCode).length} files`}
+                    {websiteType === 'landingPage' ? 'Landing Page Template' : 'Dashboard Template'}
                   </div>
                 </div>
               </>
