@@ -1,7 +1,5 @@
 
-import { type NextRequest, NextResponse } from 'next/server';
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   // Extract the Claude API key from environment or request
   const API_KEY = "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";
   
@@ -15,7 +13,10 @@ export async function POST(req: NextRequest) {
       headers: {
         'x-api-key': API_KEY,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
+        'content-type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, x-api-key, anthropic-version'
       },
       body: JSON.stringify(body)
     });
@@ -24,26 +25,35 @@ export async function POST(req: NextRequest) {
     const data = await claudeResponse.json();
     
     // Return the response with CORS headers
-    return NextResponse.json(data, {
+    return new Response(JSON.stringify(data), {
       status: claudeResponse.status,
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, x-api-key, anthropic-version'
+        'Access-Control-Allow-Headers': 'Content-Type, x-api-key, anthropic-version',
+        'Content-Type': 'application/json'
       }
     });
   } catch (error) {
     console.error('Error proxying request to Claude API:', error);
-    return NextResponse.json(
-      { error: 'Failed to proxy request to Claude API' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: 'Failed to proxy request to Claude API' }),
+      { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, x-api-key, anthropic-version',
+          'Content-Type': 'application/json'
+        }
+      }
     );
   }
 }
 
 export async function OPTIONS() {
   // Handle CORS preflight requests
-  return NextResponse.json({}, {
+  return new Response(null, {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',

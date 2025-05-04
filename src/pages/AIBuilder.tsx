@@ -24,6 +24,19 @@ import { uploadFile, extractCodeFilesFromResponse } from '@/utils/fileUtils';
 import { useProjectStore } from '@/stores/projectStore';
 import { getTemplateImage } from '@/utils/sampleImages';
 
+// Create a type mapping that includes the missing createdAt field
+interface DisplayChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+  createdAt: Date; // Add the required field
+  files?: {
+    path: string;
+    content: string;
+  }[];
+}
+
 export default function AIBuilder() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -200,6 +213,17 @@ IMPORTANT: Always provide full, complete files that are ready to use, not snippe
     } finally {
       setIsProcessing(false);
     }
+  };
+  
+  // Map project chat messages to the format expected by AIResponseDisplay
+  const getDisplayChatMessages = (): DisplayChatMessage[] => {
+    const project = getCurrentProject();
+    if (!project) return [];
+    
+    return project.chat.map(msg => ({
+      ...msg,
+      createdAt: msg.timestamp, // Map timestamp to createdAt
+    }));
   };
   
   // Handle applying code changes from a chat message
@@ -429,7 +453,7 @@ IMPORTANT: Always provide full, complete files that are ready to use, not snippe
   // Current project and its data
   const currentProject = getCurrentProject();
   const projectFiles = currentProject?.files || [];
-  const chatMessages = currentProject?.chat || [];
+  const displayChatMessages = getDisplayChatMessages();
   
   // Prepare editor files 
   const editorFiles: Record<string, string> = {};
@@ -505,7 +529,7 @@ IMPORTANT: Always provide full, complete files that are ready to use, not snippe
             </div>
             
             <div className="flex-1 overflow-y-auto">
-              <AIResponseDisplay messages={chatMessages} isLoading={isProcessing} />
+              <AIResponseDisplay messages={displayChatMessages} isLoading={isProcessing} />
             </div>
             
             <div className="p-3 border-t">

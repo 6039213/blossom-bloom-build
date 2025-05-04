@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { SandpackCodeEditor } from '@codesandbox/sandpack-react';
+import { SandpackCodeEditor, useActiveCode, useSandpack } from '@codesandbox/sandpack-react';
 import { ProjectFiles } from './ai-builder/types';
 
 interface SandpackCustomCodeEditorProps {
@@ -12,16 +12,19 @@ export default function SandpackCustomCodeEditor({
 }: SandpackCustomCodeEditorProps) {
   // Track if this is the first render/update to avoid unnecessary callbacks
   const isFirstRender = useRef(true);
+  const { code, updateCode } = useActiveCode();
+  const { sandpack } = useSandpack();
+  const { activeFile } = sandpack;
 
-  // Handle file changes when code is edited in the editor
-  const handleCodeUpdate = (code: string, path: string) => {
+  // Handle code changes via the sandpack context
+  useEffect(() => {
     if (!onCodeChange || isFirstRender.current) return;
     
     // Get the current files from Sandpack
     onCodeChange({
-      [path]: { code }
+      [activeFile]: { code }
     });
-  };
+  }, [code, activeFile, onCodeChange]);
 
   useEffect(() => {
     // After the first render, allow code changes to be sent back to parent
@@ -36,7 +39,6 @@ export default function SandpackCustomCodeEditor({
       wrapContent
       closableTabs
       style={{ height: '100%', flexGrow: 1 }}
-      onCodeUpdate={handleCodeUpdate}
     />
   );
 }

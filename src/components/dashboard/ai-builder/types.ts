@@ -21,3 +21,32 @@ export interface ErrorData {
   message: string;
   file?: string;
 }
+
+export interface ProjectTemplate {
+  id: string;
+  name: string;
+  description: string;
+  files: ProjectFiles;
+  thumbnail?: string;
+  prompt?: string;
+}
+
+export interface WebContainerInstance {
+  applyDiff: (diff: string) => Promise<void>;
+  installAndRestartIfNeeded: (filesChanged: string[]) => Promise<void>;
+  snapshot: () => Promise<void>;
+  revert: () => Promise<void>;
+  packZip: () => Promise<Blob>;
+  onTerminalData: (callback: (data: string) => void) => () => void;
+}
+
+export interface FileChange {
+  path: string;
+  content: string;
+  type: 'create' | 'update' | 'delete';
+}
+
+export interface DiffResult {
+  changes: FileChange[];
+  requiresInstall: boolean;
+}
