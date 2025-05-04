@@ -80,12 +80,16 @@ export default function Layout({ children }: LayoutProps) {
 
 // Enhanced sidebar with beautiful animations
 function AppSidebar() {
-  const { state, dispatch } = useSidebar();
+  const { state, open, setOpen } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
 
   const toggle = () => {
-    dispatch({ type: state === "expanded" ? "collapse" : "expand" });
+    if (state === "expanded") {
+      setOpen(false);
+    } else {
+      setOpen(true);
+    }
   };
 
   const sidebarLinks = [
