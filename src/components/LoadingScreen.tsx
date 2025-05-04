@@ -42,15 +42,16 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ isLoading }) => {
         duration: 0.5,
         ease: "easeOut"
       }
-    },
-    pulse: {
-      scale: [1, 1.05, 1],
-      opacity: [1, 0.85, 1],
-      transition: {
-        duration: 2,
-        repeat: Infinity,
-        repeatType: "reverse"
-      }
+    }
+  };
+  
+  const pulseAnimation = {
+    scale: [1, 1.05, 1],
+    opacity: [1, 0.85, 1],
+    transition: {
+      duration: 2,
+      repeat: Infinity,
+      repeatType: "reverse" as const
     }
   };
 
@@ -80,7 +81,8 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ isLoading }) => {
             className="relative w-28 h-28 mb-10"
             variants={logoVariants}
             initial="hidden"
-            animate={["visible", "pulse"]}
+            animate="visible"
+            whileInView={pulseAnimation}
           >
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary via-purple-500 to-blue-500 opacity-20 blur-xl animate-spin-slow"></div>
             <div className="relative w-full h-full rounded-full bg-gradient-to-r from-primary to-blue-500 p-1.5 shadow-xl shadow-primary/20">

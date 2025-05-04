@@ -1,19 +1,16 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Send, Settings } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Send, Smartphone, Tablet, Monitor, Copy, Download, RefreshCw } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import CodePreview from './ai-builder/CodePreview';
-import ErrorDetectionHandler from './ai-builder/ErrorDetectionHandler';
-import { detectProjectType } from './ai-builder/utils';
-import { ProjectFiles } from './ai-builder/types';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { Card, CardContent } from "@/components/ui/card";
+import { motion, AnimatePresence } from 'framer-motion';
+import { Badge } from "@/components/ui/badge";
 
-// Animation variants for components
+// Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { 
@@ -39,46 +36,13 @@ export default function AIWebBuilder() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState(null);
   const [projectId] = useState(uuidv4().substring(0, 6));
-  const [projectName, setProjectName] = useState("New Project");
-  
-  const [files, setFiles] = useState({
-    'src/App.tsx': 'import React from "react";\n\nexport default function App() {\n  return (\n    <div className="flex min-h-screen items-center justify-center bg-gray-100">\n      <div className="w-full max-w-6xl p-4">\n        <h1 className="text-3xl font-bold text-blue-600 mb-6">Blossom AI Web Builder</h1>\n        <p className="text-gray-700 mb-4">Start building your web app by describing it in the text input.</p>\n        <p className="text-gray-500 text-sm">Powered by advanced AI to generate complete, functional websites.</p>\n      </div>\n    </div>\n  );\n}',
-    'src/index.tsx': 'import React from "react";\nimport ReactDOM from "react-dom/client";\nimport App from "./App";\nimport "./styles/tailwind.css";\n\nReactDOM.createRoot(document.getElementById("root")!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>,\n);',
-    'src/styles/tailwind.css': '@tailwind base;\n@tailwind components;\n@tailwind utilities;',
-  });
-  
-  const [activeFile, setActiveFile] = useState('src/App.tsx');
-  const [projectFiles, setProjectFiles] = useState({});
+  const [projectName, setProjectName] = useState("New AI Project");
   const [viewportSize, setViewportSize] = useState('desktop');
-  const [detectedType, setDetectedType] = useState('react');
-  const [runtimeError, setRuntimeError] = useState(null);
-
-  // Check if API key is set
-  const [apiKeySet, setApiKeySet] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState('');
   
-  useEffect(() => {
-    // Check for API key in localStorage
-    const apiKey = localStorage.getItem('VITE_CLAUDE_API_KEY') || import.meta.env.VITE_CLAUDE_API_KEY;
-    setApiKeySet(!!apiKey);
-  }, []);
-
-  // Update project files when files change
-  useEffect(() => {
-    const formattedFiles = {};
-    Object.entries(files).forEach(([path, content]) => {
-      formattedFiles[path] = { code: content };
-    });
-    setProjectFiles(formattedFiles);
-    
-    // Detect project type
-    const type = detectProjectType(formattedFiles);
-    if (type) setDetectedType(type);
-  }, [files]);
-
-  const handleRuntimeError = (error) => {
-    setRuntimeError(error);
+  const handleViewportChange = (size) => {
+    setViewportSize(size);
   };
 
   const handleKeyDown = (e) => {
@@ -93,159 +57,136 @@ export default function AIWebBuilder() {
     
     if (!prompt.trim()) return;
     
-    // Clear any previous API errors
-    setApiError(null);
-    
     // Simulate processing
     setIsLoading(true);
     
     // In a real app, we'd call the AI here
     setTimeout(() => {
-      toast.success("Processing your request...");
+      const newMessage = {
+        id: uuidv4(),
+        role: 'user',
+        content: prompt,
+        timestamp: new Date().toISOString()
+      };
+      
+      setMessages([...messages, newMessage]);
+      setGeneratedCode(`// Generated code from prompt: "${prompt}"\n\nfunction App() {\n  return (\n    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-8">\n      <h1 className="text-3xl font-bold text-blue-800 mb-6">AI Generated Website</h1>\n      <p className="text-gray-700">This is a website generated based on your prompt.</p>\n    </div>\n  );\n}`);
+      toast.success("Generated website preview!");
       setIsLoading(false);
       setPrompt('');
-      
-      // If API key is not set, show a notification
-      if (!apiKeySet) {
-        toast.error("API key is required to generate content");
-        setApiError("Please set your API key in Settings");
-      }
     }, 1500);
+  };
+
+  // Viewport styling based on selected size
+  const getPreviewStyle = () => {
+    switch (viewportSize) {
+      case 'mobile':
+        return { maxWidth: '375px', height: '667px' };
+      case 'tablet':
+        return { maxWidth: '768px', height: '1024px' };
+      case 'desktop':
+      default:
+        return { width: '100%', height: '100%' };
+    }
   };
 
   return (
     <motion.div 
-      className="flex h-full overflow-hidden bg-background rounded-lg shadow-lg border border-border/50"
+      className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      {/* Left side: Chat and Input - Taking 30% of the width */}
+      {/* Left panel: Chat and prompt input */}
       <motion.div 
-        className="w-1/3 flex flex-col border-r border-border"
+        className="lg:col-span-1 flex flex-col bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-border overflow-hidden"
         variants={itemVariants}
       >
-        {/* Chat header */}
-        <div className="p-3 border-b border-border bg-muted/30">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">Project ID: {projectId}</h3>
-            <Link 
-              to="/settings/api" 
-              className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-            >
-              <Settings size={14} />
-              {apiKeySet ? 'API Settings' : 'Set API Key'}
-            </Link>
+        <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Badge variant="outline" className="font-semibold bg-blue-100 text-blue-700 border-blue-300">
+              AI Builder
+            </Badge>
+            <span className="text-xs opacity-70">ID: {projectId}</span>
           </div>
+          <Button size="sm" variant="ghost" onClick={() => setProjectName(prompt || "New AI Project")} className="text-xs">
+            {projectName}
+          </Button>
         </div>
 
-        {/* API Error Alert */}
-        {apiError && (
-          <motion.div 
-            className="p-4 bg-red-50 text-red-800 border border-red-200 rounded-md m-4"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 100 }}
-          >
-            <p>{apiError}</p>
-            {!apiKeySet && (
-              <div className="mt-2">
-                <Link 
-                  to="/settings/api" 
-                  className="inline-flex items-center px-3 py-1.5 border border-red-300 text-red-800 bg-red-50 rounded-md text-sm font-medium hover:bg-red-100"
-                >
-                  <Settings size={14} className="mr-1" />
-                  Set API Key
-                </Link>
-              </div>
-            )}
-            <p className="mt-2 text-sm">Please try again or contact support if the issue persists.</p>
-          </motion.div>
-        )}
-
-        {/* Messages container */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-6">
-              <motion.div 
-                className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4"
-                whileHover={{ rotate: 360, scale: 1.1 }}
-                transition={{ duration: 1.5 }}
-              >
-                <span className="text-2xl">✨</span>
-              </motion.div>
-              <motion.h2 
-                className="text-xl font-semibold mb-2"
-                variants={itemVariants}
-              >
-                Welcome to Blossom AI Website Builder
-              </motion.h2>
-              <motion.p 
-                className="text-gray-500 mb-6"
-                variants={itemVariants}
-              >
-                Describe what you want to build, and we'll generate a complete website for you.
-              </motion.p>
-              {!apiKeySet && (
-                <motion.div 
-                  className="w-full max-w-md bg-amber-50 border border-amber-200 p-4 rounded-lg text-amber-700 mb-6"
-                  variants={itemVariants}
-                >
-                  <p className="font-medium flex items-center gap-2 mb-2">
-                    <Settings size={16} />
-                    API Key Required
-                  </p>
-                  <p className="mb-3 text-sm">
-                    You need to set up your Anthropic API key before generating websites.
-                  </p>
-                  <Link 
-                    to="/settings/api" 
-                    className="inline-flex items-center px-3 py-1.5 bg-amber-100 border border-amber-300 rounded-md text-sm font-medium hover:bg-amber-200"
-                  >
-                    Set API Key
-                  </Link>
-                </motion.div>
-              )}
-              <motion.div 
-                className="w-full max-w-md bg-blue-50 p-3 rounded-lg text-sm text-blue-700"
-                variants={itemVariants}
-              >
-                <p className="font-medium mb-1">Try examples like:</p>
-                <ul className="list-disc list-inside space-y-1 text-left">
-                  <li>"Create a landing page for a vegan restaurant"</li>
-                  <li>"Build a portfolio site for a professional photographer"</li>
-                  <li>"Make a dashboard for a project management tool"</li>
-                </ul>
-              </motion.div>
-            </div>
-          ) : (
-            <div>
-              {/* Message bubbles would go here */}
-              <p className="text-center text-gray-500">No messages yet</p>
-            </div>
-          )}
-        </div>
-        
-        {/* Input section */}
+        {/* Chat messages area */}
         <motion.div 
-          className="border-t border-border p-4"
+          className="flex-1 overflow-y-auto p-4 space-y-4"
           variants={itemVariants}
         >
-          <form onSubmit={handleSubmit} className="space-y-3">
+          {messages.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
+              <motion.div
+                className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center"
+                whileHover={{ scale: 1.05, rotate: 5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <span className="text-3xl">🚀</span>
+              </motion.div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold">AI Website Builder</h3>
+                <p className="text-muted-foreground max-w-sm">
+                  Describe the website you want to create, and AI will generate it for you.
+                </p>
+              </div>
+              <Card className="w-full bg-blue-50/50">
+                <CardContent className="p-4 text-sm">
+                  <h4 className="font-medium mb-2">Try prompts like:</h4>
+                  <ul className="space-y-2 list-disc list-inside">
+                    <li>"Create a landing page for a coffee shop"</li>
+                    <li>"Build a photography portfolio website"</li>
+                    <li>"Make a dashboard for project management"</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <AnimatePresence>
+              {messages.map((message, index) => (
+                <motion.div
+                  key={message.id}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <div 
+                    className={`rounded-lg px-4 py-2 max-w-[85%] ${
+                      message.role === 'user' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-100 dark:bg-gray-800'
+                    }`}
+                  >
+                    <p>{message.content}</p>
+                    <div className="text-xs opacity-70 text-right mt-1">
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          )}
+        </motion.div>
+
+        {/* Input area */}
+        <div className="border-t border-border p-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <Textarea 
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={apiKeySet ? 
-                "Describe the website or application you want to create in detail..." : 
-                "Please set your API key before generating websites..."}
-              className="min-h-[120px] resize-none border-gray-200 focus:border-blue-500"
-              disabled={isLoading || !apiKeySet}
+              placeholder="Describe the website or application you want to create..."
+              className="min-h-28 resize-none focus:border-blue-500"
             />
             <Button 
               type="submit"
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-              disabled={!prompt.trim() || isLoading || !apiKeySet}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              disabled={!prompt.trim() || isLoading}
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
@@ -253,72 +194,159 @@ export default function AIWebBuilder() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Building...
+                  Generating...
                 </span>
               ) : (
                 <>
                   <Send className="w-4 h-4 mr-2" />
-                  Generate Web App
+                  Generate Website
                 </>
               )}
             </Button>
           </form>
-        </motion.div>
+        </div>
       </motion.div>
-      
-      {/* Right side: Code Preview - Taking 70% of the width */}
+
+      {/* Right panel: Preview and code */}
       <motion.div 
-        className="w-2/3 flex flex-col"
+        className="lg:col-span-2 flex flex-col bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-border overflow-hidden"
         variants={itemVariants}
       >
-        <div className="flex-1 overflow-hidden p-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-              <TabsTrigger value="code">Code</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col h-full">
+          <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="preview">
+                <Monitor className="w-4 h-4 mr-2" />
+                Preview
+              </TabsTrigger>
+              <TabsTrigger value="code">
+                <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="16 18 22 12 16 6"></polyline>
+                  <polyline points="8 6 2 12 8 18"></polyline>
+                </svg>
+                Code
+              </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="preview" className="h-[calc(100%-50px)]">
-              <CodePreview 
-                projectFiles={projectFiles}
-                activeTab={activeTab} 
-                setActiveTab={setActiveTab}
-                activeFile={activeFile || ''}
-                viewportSize={viewportSize}
-                setViewportSize={setViewportSize}
-                detectedType={detectedType}
-                onDetectError={handleRuntimeError}
-              />
-            </TabsContent>
+            {/* Viewport controls (only in preview mode) */}
+            {activeTab === 'preview' && (
+              <div className="flex space-x-1">
+                <Button
+                  variant={viewportSize === 'desktop' ? 'default' : 'outline'}
+                  size="icon"
+                  onClick={() => handleViewportChange('desktop')}
+                  className="h-8 w-8"
+                >
+                  <Monitor className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewportSize === 'tablet' ? 'default' : 'outline'}
+                  size="icon"
+                  onClick={() => handleViewportChange('tablet')}
+                  className="h-8 w-8"
+                >
+                  <Tablet className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewportSize === 'mobile' ? 'default' : 'outline'}
+                  size="icon"
+                  onClick={() => handleViewportChange('mobile')}
+                  className="h-8 w-8"
+                >
+                  <Smartphone className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             
-            <TabsContent value="code" className="h-[calc(100%-50px)]">
-              <div className="h-full bg-gray-900 p-4 text-white overflow-auto rounded-lg">
-                <pre className="font-mono text-sm">
-                  {JSON.stringify(projectFiles, null, 2)}
-                </pre>
+            {/* Code actions (only in code mode) */}
+            {activeTab === 'code' && (
+              <div className="flex space-x-1">
+                <Button variant="outline" size="sm" onClick={() => {
+                  navigator.clipboard.writeText(generatedCode);
+                  toast.success("Code copied to clipboard");
+                }}>
+                  <Copy className="h-3.5 w-3.5 mr-1" />
+                  Copy
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  const blob = new Blob([generatedCode], { type: 'text/javascript' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'generated-code.jsx';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success("Code downloaded");
+                }}>
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                  Download
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  setGeneratedCode('');
+                  toast.info("Code reset");
+                }}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                  Reset
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-hidden p-4">
+            <TabsContent value="preview" className="h-full m-0">
+              <div className="h-full bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-black rounded-lg border border-border/40 overflow-hidden flex flex-col items-center justify-center transition-all duration-300" style={getPreviewStyle()}>
+                {generatedCode ? (
+                  <iframe
+                    srcDoc={`
+                      <!DOCTYPE html>
+                      <html>
+                        <head>
+                          <meta charset="UTF-8">
+                          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                          <script src="https://cdn.tailwindcss.com"></script>
+                          <style>
+                            body { font-family: system-ui, sans-serif; margin: 0; }
+                          </style>
+                        </head>
+                        <body>
+                          <div id="root" class="min-h-screen bg-gradient-to-b from-blue-50 to-white p-8">
+                            <h1 class="text-3xl font-bold text-blue-800 mb-6">AI Generated Website</h1>
+                            <p class="text-gray-700">This is a website generated based on your prompt.</p>
+                          </div>
+                        </body>
+                      </html>
+                    `}
+                    className="w-full h-full border-0"
+                    title="Preview"
+                    sandbox="allow-scripts"
+                  />
+                ) : (
+                  <div className="text-center p-12 max-w-xl">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full mx-auto flex items-center justify-center mb-4">
+                      <span className="text-2xl">✨</span>
+                    </div>
+                    <h3 className="text-2xl font-bold mb-4">Your AI Website Preview</h3>
+                    <p className="text-muted-foreground mb-6">
+                      Enter your website description in the prompt field on the left and click "Generate Website" to create your custom website.
+                    </p>
+                  </div>
+                )}
               </div>
             </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* Show runtime error at the bottom of the page */}
-        {runtimeError && (
-          <motion.div 
-            className="p-2 bg-red-50 border-t border-red-200"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 100 }}
-          >
-            <ErrorDetectionHandler 
-              error={runtimeError}
-              onFixError={() => {
-                // Handler for fixing errors
-                toast.info("Attempting to fix error...");
-              }}
-              onIgnoreError={() => setRuntimeError(null)}
-            />
-          </motion.div>
-        )}
+            
+            <TabsContent value="code" className="h-full m-0">
+              <div className="h-full bg-gray-900 text-gray-100 rounded-lg overflow-auto p-4 font-mono text-sm">
+                {generatedCode ? (
+                  <pre>{generatedCode}</pre>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-gray-400">No code generated yet. Enter a prompt to generate code.</p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </div>
+        </Tabs>
       </motion.div>
     </motion.div>
   );

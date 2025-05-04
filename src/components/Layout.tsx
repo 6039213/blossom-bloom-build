@@ -6,6 +6,7 @@ import Footer from "./layout/Footer";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarTrigger, SidebarInset, useSidebar } from "@/components/ui/sidebar";
 import LoadingScreen from "./LoadingScreen";
 import { Menu, ChevronLeft, Home, Settings, Users, HelpCircle, LayoutDashboard, Code } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface LayoutProps {
   children: ReactNode;
@@ -79,7 +80,9 @@ export default function Layout({ children }: LayoutProps) {
 
 // Enhanced sidebar with beautiful animations
 function AppSidebar() {
-  const { state, setState } = useSidebar();
+  const { state, toggle } = useSidebar();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const sidebarLinks = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -89,11 +92,20 @@ function AppSidebar() {
     { name: 'Settings', path: '/dashboard/settings', icon: Settings },
     { name: 'Help', path: '/dashboard/help', icon: HelpCircle },
   ];
+  
+  const handleNavigation = (path: string) => {
+    navigate(path);
+  };
+
+  const isActivePath = (path: string) => {
+    return location.pathname === path || 
+           (path !== '/dashboard' && location.pathname.startsWith(path));
+  };
 
   return (
     <Sidebar>
       <AnimatePresence mode="wait">
-        {state.open && (
+        {state === "expanded" && (
           <motion.div
             initial={{ opacity: 0, width: 0 }}
             animate={{ opacity: 1, width: "auto" }}
@@ -103,7 +115,7 @@ function AppSidebar() {
           >
             <div className="flex justify-end p-2">
               <motion.button
-                onClick={() => setState({ open: false })}
+                onClick={toggle}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 className="p-1 rounded-md hover:bg-muted"
@@ -115,17 +127,21 @@ function AppSidebar() {
             <SidebarContent className="p-2">
               <nav>
                 {sidebarLinks.map((link, index) => (
-                  <motion.a
+                  <motion.div
                     key={link.path}
-                    href={link.path}
                     initial={{ x: -20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: index * 0.05 + 0.1 }}
-                    className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted transition-colors mb-1"
+                    className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors mb-1 cursor-pointer ${
+                      isActivePath(link.path) 
+                        ? "bg-primary/10 text-primary" 
+                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                    }`}
+                    onClick={() => handleNavigation(link.path)}
                   >
-                    <link.icon className="h-5 w-5 text-primary" />
+                    <link.icon className={`h-5 w-5 ${isActivePath(link.path) ? "text-primary" : ""}`} />
                     <span>{link.name}</span>
-                  </motion.a>
+                  </motion.div>
                 ))}
               </nav>
             </SidebarContent>
