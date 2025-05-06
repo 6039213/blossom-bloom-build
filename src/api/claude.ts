@@ -1,6 +1,4 @@
 
-import { Request, Response } from 'express';
-
 export async function POST(req: Request) {
   // Extract the Claude API key from environment variables
   const API_KEY = process.env.VITE_CLAUDE_API_KEY || "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";
