@@ -4,9 +4,9 @@ import { motion } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { FileCode, MonitorSmartphone, MonitorTablet, Code, Send, Loader2, Download, Sparkles } from 'lucide-react';
+import { FileCode, Smartphone, Tablet, Code, Send, Loader2, Download, Sparkles } from 'lucide-react';
 import WebsitePreview from './WebsitePreview';
-import { generateWebsite } from '@/utils/codeGeneration';
+import { extractCodeBlocks } from '@/utils/codeGeneration';
 
 type PromptStatus = 'idle' | 'loading' | 'success' | 'error';
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';
@@ -29,10 +29,62 @@ export default function BlossomsAIWebBuilder() {
       setStatus('loading');
       setError(null);
       
-      // Call the code generation utility
-      const generatedFiles = await generateWebsite(prompt);
+      // Simulate website generation (would normally call an API)
+      const mockResponse = `
+        \`\`\`jsx src/components/Header.jsx
+        import React from 'react';
+        
+        export default function Header() {
+          return (
+            <header className="bg-amber-50 p-4">
+              <h1 className="text-2xl font-bold">Generated Website</h1>
+            </header>
+          );
+        }
+        \`\`\`
+        
+        \`\`\`jsx src/components/MainContent.jsx
+        import React from 'react';
+        
+        export default function MainContent() {
+          return (
+            <main className="p-4">
+              <p>This is the main content of your generated website.</p>
+            </main>
+          );
+        }
+        \`\`\`
+        
+        \`\`\`jsx src/App.jsx
+        import React from 'react';
+        import Header from './components/Header';
+        import MainContent from './components/MainContent';
+        
+        export default function App() {
+          return (
+            <div className="min-h-screen bg-amber-50">
+              <Header />
+              <MainContent />
+            </div>
+          );
+        }
+        \`\`\`
+      `;
       
-      setFiles(generatedFiles);
+      // Extract code blocks from the mock response
+      const extractedFiles = extractCodeBlocks(mockResponse);
+      
+      // Format files for the preview component
+      const formattedFiles = Object.entries(extractedFiles).map(([path, content]) => {
+        const fileType = path.split('.').pop() || 'jsx';
+        return {
+          path,
+          content,
+          type: fileType
+        };
+      });
+      
+      setFiles(formattedFiles);
       setStatus('success');
     } catch (err) {
       console.error('Error generating website:', err);
@@ -122,7 +174,7 @@ export default function BlossomsAIWebBuilder() {
                   className={`${viewportSize === 'tablet' ? 'bg-white dark:bg-gray-800' : ''} rounded-md`}
                   onClick={() => setViewportSize('tablet')}
                 >
-                  <MonitorTablet className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                  <Tablet className="h-4 w-4 text-amber-700 dark:text-amber-400" />
                 </Button>
                 <Button
                   variant="ghost"
@@ -130,7 +182,7 @@ export default function BlossomsAIWebBuilder() {
                   className={`${viewportSize === 'mobile' ? 'bg-white dark:bg-gray-800' : ''} rounded-md`}
                   onClick={() => setViewportSize('mobile')}
                 >
-                  <MonitorSmartphone className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                  <Smartphone className="h-4 w-4 text-amber-700 dark:text-amber-400" />
                 </Button>
               </div>
             )}
