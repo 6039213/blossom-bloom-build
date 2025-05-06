@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Send, Smartphone, Tablet, Monitor, Copy, Download, Code, Eye, RefreshCw, FileText } from 'lucide-react';
@@ -78,7 +77,7 @@ export default function BoltAIWebBuilder() {
   }, [messages]);
 
   // Handle viewport change for responsive preview
-  const handleViewportChange = (size: string) => {
+  const handleViewportChange = (size: 'desktop' | 'tablet' | 'mobile') => {
     setViewportSize(size);
   };
 

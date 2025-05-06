@@ -1,6 +1,5 @@
 
-import type { NextApiRequest, NextApiResponse } from 'next';
-
+// Removing the NextApiRequest import since we're not using Next.js
 export default async function handler(req: Request) {
   // Handle CORS
   const corsHeaders = {
