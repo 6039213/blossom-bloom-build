@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,7 +9,7 @@ import NewProjectModal from '@/components/dashboard/NewProjectModal';
 import { toast } from 'sonner';
 import { Search, Plus, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useProjectStore, ProjectStatus } from '@/stores/projectStore';
+import { useProjectStore } from '@/stores/projectStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -72,28 +73,28 @@ export default function ProjectsPage() {
   );
   
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-amber-50 to-amber-100 dark:from-gray-900 dark:to-gray-800">
       <div className="hidden md:block md:w-64 h-full">
         <DashboardSidebar />
       </div>
       
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="bg-white dark:bg-gray-900 border-b border-border p-4 sticky top-0 z-10">
+        <header className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-gray-900 dark:to-gray-800 border-b border-amber-200 dark:border-amber-700 p-4 sticky top-0 z-10">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Projects</h1>
+            <h1 className="text-2xl font-bold text-amber-900 dark:text-amber-300">Projects</h1>
             <div className="flex gap-4 items-center">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-700 dark:text-amber-400" />
                 <Input
                   placeholder="Search projects..."
-                  className="pl-9 w-[200px] lg:w-[300px] border-blossom-200 focus:border-blossom-500"
+                  className="pl-9 w-[200px] lg:w-[300px] border-amber-200 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/10 focus:border-amber-400 dark:focus:border-amber-500"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <Button 
                 onClick={goToAIBuilder}
-                className="bg-blossom-500 hover:bg-blossom-600 text-white"
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white"
               >
                 <Sparkles className="mr-2 h-4 w-4" />
                 AI Builder
@@ -111,15 +112,15 @@ export default function ProjectsPage() {
               ))}
             </div>
           ) : filteredProjects.length === 0 ? (
-            <Card>
+            <Card className="border-amber-200 dark:border-amber-700 bg-white/80 dark:bg-gray-800/50 backdrop-blur-sm">
               <div className="p-6 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center">
-                  <Plus className="h-8 w-8 text-blossom-500" />
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <Plus className="h-8 w-8 text-amber-600 dark:text-amber-400" />
                 </div>
-                <h3 className="text-lg font-medium mb-2">
+                <h3 className="text-lg font-medium mb-2 text-amber-900 dark:text-amber-300">
                   {searchTerm ? "No projects found" : "Create your first project"}
                 </h3>
-                <p className="text-muted-foreground mb-4">
+                <p className="text-amber-700 dark:text-amber-400 mb-4">
                   {searchTerm 
                     ? `No projects matching "${searchTerm}"`
                     : "Start by creating a new project to build your website"
@@ -129,7 +130,7 @@ export default function ProjectsPage() {
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Button 
                       onClick={goToAIBuilder}
-                      className="bg-blossom-500 hover:bg-blossom-600 text-white w-full sm:w-auto"
+                      className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white w-full sm:w-auto"
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
                       Create with AI
@@ -141,6 +142,7 @@ export default function ProjectsPage() {
                   <Button 
                     variant="outline"
                     onClick={() => setSearchTerm('')}
+                    className="border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400"
                   >
                     Clear Search
                   </Button>

@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { getSupabaseClient } from '@/lib/supabase-client';
 import { Search, Plus, Loader2, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { motion } from 'framer-motion';
 
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
@@ -98,21 +99,21 @@ export default function Dashboard() {
   const publishedCount = projects.filter(p => p.status === 'published').length;
   
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-amber-50 to-amber-100 dark:from-gray-900 dark:to-gray-800">
       <div className="hidden md:block md:w-64 h-full">
         <DashboardSidebar />
       </div>
       
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="bg-white dark:bg-gray-900 border-b border-border p-4 sticky top-0 z-10">
+        <header className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-gray-900 dark:to-gray-800 border-b border-amber-200 dark:border-amber-700 p-4 sticky top-0 z-10">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <h1 className="text-2xl font-bold text-amber-900 dark:text-amber-300">Dashboard</h1>
             <div className="flex gap-4 items-center">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-700 dark:text-amber-400" />
                 <Input
                   placeholder="Search projects..."
-                  className="pl-9 w-[200px] lg:w-[300px] border-blossom-200 focus:border-blossom-500"
+                  className="pl-9 w-[200px] lg:w-[300px] border-amber-200 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/10 focus:border-amber-400 dark:focus:border-amber-500"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -135,46 +136,62 @@ export default function Dashboard() {
           ) : (
             <>
               {/* Welcome Card */}
-              <Card className="mb-8 bg-gradient-to-r from-blossom-100 to-blossom-50 dark:from-blossom-900/40 dark:to-blossom-900/20 border-blossom-200 dark:border-blossom-800/30">
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                    <div>
-                      <h2 className="text-2xl font-bold mb-2">Welcome back, {user?.user_metadata?.name || user?.email?.split('@')[0] || 'Creator'}!</h2>
-                      <p className="text-muted-foreground">Continue building your amazing websites or start a new project</p>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <Card className="mb-8 bg-gradient-to-r from-amber-100/80 to-amber-50/80 dark:from-amber-900/40 dark:to-amber-900/20 border-amber-200 dark:border-amber-700/30 overflow-hidden relative">
+                  <div className="absolute inset-0 bg-[url('/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png')] bg-no-repeat bg-right-bottom bg-contain opacity-5"></div>
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+                      <div>
+                        <h2 className="text-2xl font-bold mb-2 text-amber-900 dark:text-amber-300">Welcome back, {user?.user_metadata?.name || user?.email?.split('@')[0] || 'Creator'}!</h2>
+                        <p className="text-amber-700 dark:text-amber-400">Continue building your amazing websites or start a new project</p>
+                      </div>
+                      <div className="flex-1" />
+                      <Button 
+                        className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-lg shadow-amber-300/20 dark:shadow-amber-900/30"
+                        onClick={() => navigate('/dashboard/ai-builder')}
+                      >
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Try AI Builder
+                      </Button>
                     </div>
-                    <div className="flex-1" />
-                    <Button 
-                      className="bg-blossom-gradient hover:opacity-90 text-white shadow-blossom"
-                      onClick={() => navigate('/dashboard/ai-builder')}
-                    >
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Try AI Builder
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
               
               {/* Recent Projects */}
-              <div className="mb-8">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="mb-8"
+              >
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold">Recent Projects</h2>
+                  <h2 className="text-xl font-semibold text-amber-900 dark:text-amber-300">Recent Projects</h2>
                   {projects.length > 3 && (
-                    <Button variant="ghost" onClick={() => navigate('/dashboard/projects')}>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => navigate('/dashboard/projects')}
+                      className="text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/20"
+                    >
                       View All
                     </Button>
                   )}
                 </div>
                 
                 {filteredProjects.length === 0 ? (
-                  <Card>
+                  <Card className="border-amber-200 dark:border-amber-700 bg-white/80 dark:bg-gray-800/50 backdrop-blur-sm">
                     <CardContent className="p-6 text-center">
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blossom-100 dark:bg-blossom-900/30 flex items-center justify-center">
-                        <Plus className="h-8 w-8 text-blossom-500" />
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                        <Plus className="h-8 w-8 text-amber-600 dark:text-amber-400" />
                       </div>
-                      <h3 className="text-lg font-medium mb-2">
+                      <h3 className="text-lg font-medium mb-2 text-amber-900 dark:text-amber-300">
                         {searchTerm ? "No projects found" : "Create your first project"}
                       </h3>
-                      <p className="text-muted-foreground mb-4">
+                      <p className="text-amber-700 dark:text-amber-400 mb-4">
                         {searchTerm 
                           ? `No projects matching "${searchTerm}"`
                           : "Start by creating a new project to build your website"
@@ -187,6 +204,7 @@ export default function Dashboard() {
                         <Button 
                           variant="outline"
                           onClick={() => setSearchTerm('')}
+                          className="border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400"
                         >
                           Clear Search
                         </Button>
@@ -195,46 +213,56 @@ export default function Dashboard() {
                   </Card>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredProjects.slice(0, 3).map((project) => (
-                      <ProjectCard 
+                    {filteredProjects.slice(0, 3).map((project, idx) => (
+                      <motion.div
                         key={project.id}
-                        id={project.id}
-                        title={project.title}
-                        description={project.description}
-                        lastEdited={project.lastEdited}
-                        status={project.status as any}
-                        thumbnail={project.thumbnail}
-                        onDelete={handleDeleteProject}
-                      />
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.2 + idx * 0.1 }}
+                      >
+                        <ProjectCard 
+                          id={project.id}
+                          title={project.title}
+                          description={project.description}
+                          lastEdited={project.lastEdited}
+                          status={project.status as any}
+                          thumbnail={project.thumbnail}
+                          onDelete={handleDeleteProject}
+                        />
+                      </motion.div>
                     ))}
                   </div>
                 )}
-              </div>
+              </motion.div>
               
               {/* Quick Stats */}
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Quick Stats</h2>
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <h2 className="text-xl font-semibold mb-4 text-amber-900 dark:text-amber-300">Quick Stats</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
+                  <Card className="border-amber-200 dark:border-amber-700 bg-white/80 dark:bg-gray-800/50 backdrop-blur-sm">
                     <CardHeader>
-                      <CardTitle>{projects.length}</CardTitle>
-                      <CardDescription>Total Projects</CardDescription>
+                      <CardTitle className="text-amber-900 dark:text-amber-300">{projects.length}</CardTitle>
+                      <CardDescription className="text-amber-700 dark:text-amber-400">Total Projects</CardDescription>
                     </CardHeader>
                   </Card>
-                  <Card>
+                  <Card className="border-amber-200 dark:border-amber-700 bg-white/80 dark:bg-gray-800/50 backdrop-blur-sm">
                     <CardHeader>
-                      <CardTitle>{publishedCount}</CardTitle>
-                      <CardDescription>Published Sites</CardDescription>
+                      <CardTitle className="text-amber-900 dark:text-amber-300">{publishedCount}</CardTitle>
+                      <CardDescription className="text-amber-700 dark:text-amber-400">Published Sites</CardDescription>
                     </CardHeader>
                   </Card>
-                  <Card>
+                  <Card className="border-amber-200 dark:border-amber-700 bg-white/80 dark:bg-gray-800/50 backdrop-blur-sm">
                     <CardHeader>
-                      <CardTitle>{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : '0'}</CardTitle>
-                      <CardDescription>Last Login</CardDescription>
+                      <CardTitle className="text-amber-900 dark:text-amber-300">{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : '0'}</CardTitle>
+                      <CardDescription className="text-amber-700 dark:text-amber-400">Last Login</CardDescription>
                     </CardHeader>
                   </Card>
                 </div>
-              </div>
+              </motion.div>
             </>
           )}
         </main>

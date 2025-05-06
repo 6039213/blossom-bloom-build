@@ -118,13 +118,13 @@ export default function DashboardSidebar() {
   return (
     <div 
       className={cn(
-        "flex flex-col h-full bg-white dark:bg-gray-900 border-r border-border transition-all duration-300",
+        "flex flex-col h-full bg-gradient-to-b from-amber-50 to-amber-100 dark:from-gray-900 dark:to-gray-800 border-r border-amber-200 dark:border-amber-700 transition-all duration-300",
         showExpanded ? "w-64" : "w-16"
       )}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="p-4 border-b border-border flex items-center justify-between">
+      <div className="p-4 border-b border-amber-200 dark:border-amber-700 flex items-center justify-between">
         {showExpanded ? (
           <Link to="/" className="flex items-center gap-2">
             <img 
@@ -132,7 +132,7 @@ export default function DashboardSidebar() {
               alt="Blossom Logo" 
               className="w-8 h-8 object-contain"
             />
-            <span className="font-bold text-xl bg-gradient-to-r from-blossom-700 to-blossom-500 inline-block text-transparent bg-clip-text">
+            <span className="font-bold text-xl bg-gradient-to-r from-amber-600 to-amber-800 dark:from-amber-400 dark:to-amber-300 inline-block text-transparent bg-clip-text">
               {APP_NAME}
             </span>
           </Link>
@@ -152,7 +152,7 @@ export default function DashboardSidebar() {
           onClick={toggleExpanded}
           className={cn("flex-shrink-0", !showExpanded && "hidden")}
         >
-          {isExpanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          {isExpanded ? <ChevronLeft className="h-4 w-4 text-amber-700 dark:text-amber-300" /> : <ChevronRight className="h-4 w-4 text-amber-700 dark:text-amber-300" />}
         </Button>
       </div>
       
@@ -164,8 +164,8 @@ export default function DashboardSidebar() {
             className={cn(
               "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
               isActive(item.href)
-                ? "bg-blossom-50 dark:bg-blossom-950/20 text-blossom-700 dark:text-blossom-400"
-                : "hover:bg-gray-100 dark:hover:bg-gray-800 text-muted-foreground",
+                ? "bg-amber-200/50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-300"
+                : "hover:bg-amber-100/50 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400",
               !showExpanded && "justify-center"
             )}
           >
@@ -175,11 +175,11 @@ export default function DashboardSidebar() {
         ))}
       </nav>
       
-      <div className="p-2 border-t border-border">
+      <div className="p-2 border-t border-amber-200 dark:border-amber-700">
         <Button 
           variant="ghost" 
           className={cn(
-            "text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800",
+            "text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/20",
             showExpanded ? "w-full justify-start" : "w-full justify-center"
           )}
           onClick={handleSignOut}
