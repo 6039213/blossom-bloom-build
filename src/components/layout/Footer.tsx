@@ -1,168 +1,155 @@
 
-import { Link } from "react-router-dom";
-import { APP_NAME } from "@/lib/constants";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { APP_NAME } from '@/lib/constants';
 
-export default function Footer() {
+const Footer = () => {
   const currentYear = new Date().getFullYear();
   
   return (
-    <footer className="border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container max-w-screen-xl py-10 md:py-16">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5">
-          <div className="col-span-2">
+    <footer className="bg-gradient-to-b from-amber-50 to-amber-100 dark:from-gray-900 dark:to-gray-950 border-t border-amber-200 dark:border-gray-800">
+      <div className="container max-w-screen-xl mx-auto py-12 px-4">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+          {/* Brand Column */}
+          <div className="md:col-span-4 flex flex-col">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <img 
-                src="/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png" 
-                alt="Blossom Logo" 
-                className="w-8 h-8 object-contain"
-              />
-              <span className="font-bold text-xl bg-gradient-to-r from-blossom-700 to-blossom-500 inline-block text-transparent bg-clip-text">
+              <div className="relative">
+                <img 
+                  src="/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png" 
+                  alt={`${APP_NAME} Logo`} 
+                  className="h-10 w-10 object-contain"
+                />
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-gradient-to-r from-amber-400 to-amber-600 rounded-full" />
+              </div>
+              <span className="font-bold text-2xl bg-gradient-to-r from-amber-600 to-amber-800 dark:from-amber-400 dark:to-amber-300 inline-block text-transparent bg-clip-text">
                 {APP_NAME}
               </span>
             </Link>
-            <p className="text-muted-foreground max-w-xs">
-              Blossom helps you create beautiful websites in minutes using the power of AI. Build, customize, and deploy with ease.
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Create beautiful, responsive websites in minutes with our AI-powered website builder.
             </p>
-            <div className="flex gap-4 mt-6">
-              <a 
-                href="https://twitter.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-blossom-500 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg>
-                <span className="sr-only">Twitter</span>
-              </a>
-              <a 
-                href="https://github.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-blossom-500 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path></svg>
-                <span className="sr-only">GitHub</span>
-              </a>
-              <a 
-                href="https://linkedin.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-blossom-500 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect width="4" height="12" x="2" y="9"></rect><circle cx="4" cy="4" r="2"></circle></svg>
-                <span className="sr-only">LinkedIn</span>
-              </a>
+            <div className="flex space-x-4">
+              {['twitter', 'facebook', 'instagram', 'github'].map((social) => (
+                <motion.a
+                  key={social}
+                  href={`#${social}`}
+                  whileHover={{ y: -3 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-9 h-9 rounded-full flex items-center justify-center bg-amber-200/50 hover:bg-amber-300/70 dark:bg-amber-900/30 dark:hover:bg-amber-800/50 text-amber-800 dark:text-amber-300 transition-colors"
+                >
+                  <span className="sr-only">{social}</span>
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    {social === 'twitter' && (
+                      <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
+                    )}
+                    {social === 'facebook' && (
+                      <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
+                    )}
+                    {social === 'instagram' && (
+                      <path fillRule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" clipRule="evenodd" />
+                    )}
+                    {social === 'github' && (
+                      <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                    )}
+                  </svg>
+                </motion.a>
+              ))}
             </div>
           </div>
-          <div>
-            <h3 className="text-sm font-medium mb-3">Product</h3>
+          
+          {/* Links Columns */}
+          <nav className="md:col-span-2">
+            <h3 className="font-semibold text-amber-800 dark:text-amber-300 mb-4">Product</h3>
             <ul className="space-y-2">
-              <li>
-                <Link 
-                  to="/features" 
-                  className="text-muted-foreground hover:text-blossom-500 transition-colors text-sm"
-                >
-                  Features
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/pricing" 
-                  className="text-muted-foreground hover:text-blossom-500 transition-colors text-sm"
-                >
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/templates" 
-                  className="text-muted-foreground hover:text-blossom-500 transition-colors text-sm"
-                >
-                  Templates
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/changelog" 
-                  className="text-muted-foreground hover:text-blossom-500 transition-colors text-sm"
-                >
-                  Changelog
-                </Link>
-              </li>
+              {['Features', 'Pricing', 'Templates', 'Showcase'].map((item) => (
+                <li key={item}>
+                  <Link 
+                    to={`/${item.toLowerCase()}`}
+                    className="text-gray-600 hover:text-amber-800 dark:text-gray-400 dark:hover:text-amber-300 transition-colors"
+                  >
+                    {item}
+                  </Link>
+                </li>
+              ))}
             </ul>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium mb-3">Company</h3>
+          </nav>
+          
+          <nav className="md:col-span-2">
+            <h3 className="font-semibold text-amber-800 dark:text-amber-300 mb-4">Company</h3>
             <ul className="space-y-2">
-              <li>
-                <Link 
-                  to="/about" 
-                  className="text-muted-foreground hover:text-blossom-500 transition-colors text-sm"
-                >
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/blog" 
-                  className="text-muted-foreground hover:text-blossom-500 transition-colors text-sm"
-                >
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/careers" 
-                  className="text-muted-foreground hover:text-blossom-500 transition-colors text-sm"
-                >
-                  Careers
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/contact" 
-                  className="text-muted-foreground hover:text-blossom-500 transition-colors text-sm"
-                >
-                  Contact
-                </Link>
-              </li>
+              {['About', 'Careers', 'Blog', 'Legal'].map((item) => (
+                <li key={item}>
+                  <Link 
+                    to={`/${item.toLowerCase()}`}
+                    className="text-gray-600 hover:text-amber-800 dark:text-gray-400 dark:hover:text-amber-300 transition-colors"
+                  >
+                    {item}
+                  </Link>
+                </li>
+              ))}
             </ul>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium mb-3">Legal</h3>
+          </nav>
+          
+          <nav className="md:col-span-2">
+            <h3 className="font-semibold text-amber-800 dark:text-amber-300 mb-4">Resources</h3>
             <ul className="space-y-2">
-              <li>
-                <Link 
-                  to="/privacy" 
-                  className="text-muted-foreground hover:text-blossom-500 transition-colors text-sm"
-                >
-                  Privacy
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/terms" 
-                  className="text-muted-foreground hover:text-blossom-500 transition-colors text-sm"
-                >
-                  Terms
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/cookies" 
-                  className="text-muted-foreground hover:text-blossom-500 transition-colors text-sm"
-                >
-                  Cookie Policy
-                </Link>
-              </li>
+              {['Documentation', 'Help Center', 'Tutorials', 'Community'].map((item) => (
+                <li key={item}>
+                  <Link 
+                    to={`/${item.toLowerCase()}`}
+                    className="text-gray-600 hover:text-amber-800 dark:text-gray-400 dark:hover:text-amber-300 transition-colors"
+                  >
+                    {item}
+                  </Link>
+                </li>
+              ))}
             </ul>
+          </nav>
+          
+          {/* Newsletter */}
+          <div className="md:col-span-2">
+            <h3 className="font-semibold text-amber-800 dark:text-amber-300 mb-4">Subscribe</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
+              Join our newsletter for the latest updates and features.
+            </p>
+            <form className="space-y-2">
+              <div className="relative">
+                <input 
+                  type="email" 
+                  placeholder="Enter your email" 
+                  className="w-full px-4 py-2 rounded-md border border-amber-300 dark:border-amber-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-600"
+                />
+              </div>
+              <button 
+                type="submit" 
+                className="w-full py-2 px-4 bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-medium rounded-md shadow-sm hover:shadow-md transition-all"
+              >
+                Subscribe
+              </button>
+            </form>
           </div>
         </div>
-        <div className="mt-10 pt-6 border-t border-border/40">
-          <p className="text-center text-xs text-muted-foreground">
-            &copy; {currentYear} Blossom. All rights reserved.
+        
+        <div className="mt-12 pt-8 border-t border-amber-200 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center">
+          <p className="text-gray-600 dark:text-gray-400 text-sm">
+            &copy; {currentYear} {APP_NAME}. All rights reserved.
           </p>
+          <div className="flex space-x-6 mt-4 md:mt-0">
+            <Link to="/privacy" className="text-gray-600 hover:text-amber-800 dark:text-gray-400 dark:hover:text-amber-300 text-sm transition-colors">
+              Privacy Policy
+            </Link>
+            <Link to="/terms" className="text-gray-600 hover:text-amber-800 dark:text-gray-400 dark:hover:text-amber-300 text-sm transition-colors">
+              Terms of Service
+            </Link>
+            <Link to="/cookies" className="text-gray-600 hover:text-amber-800 dark:text-gray-400 dark:hover:text-amber-300 text-sm transition-colors">
+              Cookie Policy
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
   );
-}
+};
+
+export default Footer;

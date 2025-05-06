@@ -6,8 +6,10 @@ import { AuthProvider } from './contexts/AuthContext';
 // Import pages
 import Index from './pages/Index';
 import Dashboard from './pages/Dashboard';
-import FeaturesPage from './pages/FeaturesPage';
+import Features from './pages/Features';
 import Pricing from './pages/Pricing';
+import Templates from './pages/Templates';
+import About from './pages/About';
 import Auth from './pages/Auth';
 import Team from './pages/TeamPage';
 import Settings from './pages/Settings';
@@ -55,23 +57,23 @@ const router = createBrowserRouter([
   },
   {
     path: '/features',
-    element: <FeaturesPage />
+    element: <Features />
   },
   {
     path: '/pricing',
     element: <Pricing />
   },
   {
+    path: '/templates',
+    element: <Templates />
+  },
+  {
+    path: '/about',
+    element: <About />
+  },
+  {
     path: '/auth',
     element: <Auth />
-  },
-  {
-    path: '/team',
-    element: <Dashboard />
-  },
-  {
-    path: '/settings',
-    element: <Dashboard />
   },
   {
     path: '*',

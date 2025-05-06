@@ -13,10 +13,7 @@ export async function POST(req: Request) {
       headers: {
         'x-api-key': API_KEY,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, x-api-key, anthropic-version'
+        'content-type': 'application/json'
       },
       body: JSON.stringify(body)
     });

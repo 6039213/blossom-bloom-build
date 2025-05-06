@@ -2,8 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Layout from '@/components/Layout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import BoltAIWebBuilder from '@/components/ai-builder/BoltAIWebBuilder';
+import BlossomsAIWebBuilder from '@/components/ai-builder/BlossomsAIWebBuilder';
 
 export default function AIBuilder() {
   return (
@@ -14,8 +13,8 @@ export default function AIBuilder() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="h-full p-2">
-          <BoltAIWebBuilder />
+        <div className="h-full">
+          <BlossomsAIWebBuilder />
         </div>
       </motion.div>
     </Layout>
