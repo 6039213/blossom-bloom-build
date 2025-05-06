@@ -137,7 +137,7 @@ export default function BoltAIWebBuilder() {
         });
       }, 300);
       
-      // Call Claude API
+      // Call Claude API through proxy
       const response = await callClaudeAPI(prompt);
       clearInterval(progressInterval);
       
@@ -198,7 +198,7 @@ export default function BoltAIWebBuilder() {
     }
   };
 
-  // Call Claude API
+  // Call Claude API through our proxy
   const callClaudeAPI = async (userPrompt: string): Promise<string> => {
     try {
       const apiKey = import.meta.env.VITE_CLAUDE_API_KEY || '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';
@@ -227,12 +227,11 @@ When given a website description, you will:
 
 The code will be directly executed in a preview environment, so it must be complete and error-free.`;
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      // Use our proxy endpoint instead of direct API call
+      const response = await fetch('/api/claude-proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
           model: model,
@@ -311,7 +310,7 @@ The code will be directly executed in a preview environment, so it must be compl
         <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Badge variant="outline" className="font-semibold bg-blue-100 text-blue-700 border-blue-300">
-              Bolt AI Builder
+              Blossom AI Builder
             </Badge>
             <span className="text-xs opacity-70">ID: {projectId}</span>
           </div>
@@ -341,7 +340,7 @@ The code will be directly executed in a preview environment, so it must be compl
                     <Sparkles className="h-10 w-10 text-blue-500" />
                   </motion.div>
                   <div className="space-y-2">
-                    <h3 className="text-xl font-bold">Bolt AI Website Builder</h3>
+                    <h3 className="text-xl font-bold">Blossom AI Website Builder</h3>
                     <p className="text-muted-foreground max-w-sm">
                       Describe the website you want to create, and AI will generate it for you in seconds.
                     </p>
@@ -535,7 +534,7 @@ The code will be directly executed in a preview environment, so it must be compl
             <TabsContent value="chat" className="h-full m-0 p-0">
               <div className="h-full flex items-center justify-center">
                 <div className="text-center p-8 max-w-md">
-                  <h3 className="text-2xl font-bold mb-4">Welcome to Bolt AI Builder</h3>
+                  <h3 className="text-2xl font-bold mb-4">Welcome to Blossom AI Builder</h3>
                   <p className="text-muted-foreground mb-6">
                     Enter your website description in the prompt field on the left and click "Generate Website" to create your custom website with AI.
                   </p>

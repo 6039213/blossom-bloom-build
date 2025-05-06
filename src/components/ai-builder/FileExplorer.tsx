@@ -1,175 +1,132 @@
 
-import React, { useState, useMemo } from 'react';
-import { Folder, FolderOpen, FileText, ChevronRight, ChevronDown } from 'lucide-react';
-import { cn } from "@/lib/utils";
-
-interface WebsiteFile {
-  path: string;
-  content: string;
-  type: string;
-}
-
-interface FileTreeItem {
-  name: string;
-  path: string;
-  isFolder: boolean;
-  children: FileTreeItem[];
-}
+import React from 'react';
+import { Folder, File, ChevronRight, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface FileExplorerProps {
-  files: WebsiteFile[];
+  files: Array<{
+    path: string;
+    content: string;
+    type: string;
+  }>;
   activeFile: string | null;
-  onFileSelect: (filePath: string) => void;
+  onFileSelect: (path: string) => void;
 }
 
 export default function FileExplorer({ files, activeFile, onFileSelect }: FileExplorerProps) {
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['/src']));
-  
-  // Build file tree from flat list of files
-  const fileTree = useMemo(() => {
-    // Function to build a tree structure
-    const buildFileTree = (paths: string[]): FileTreeItem[] => {
-      const root: FileTreeItem[] = [];
-      const folderPaths = new Set<string>();
+  // Build a file tree structure from flat file paths
+  const buildFileTree = () => {
+    const tree: any = {};
+    
+    files.forEach(file => {
+      const parts = file.path.split('/');
+      let current = tree;
       
-      // First, collect all folder paths
-      paths.forEach(path => {
-        const parts = path.split('/').filter(Boolean);
-        let currentPath = '';
-        
-        parts.slice(0, -1).forEach(part => {
-          currentPath += '/' + part;
-          folderPaths.add(currentPath);
-        });
-      });
-      
-      // Then build the tree structure
-      paths.forEach(path => {
-        const parts = path.split('/').filter(Boolean);
-        let current = root;
-        let currentPath = '';
-        
-        parts.forEach((part, i) => {
-          currentPath += '/' + part;
-          const isLast = i === parts.length - 1;
-          const isFolder = !isLast || folderPaths.has(currentPath);
-          
-          // Find existing item
-          let item = current.find(item => item.name === part);
-          
-          if (!item) {
-            // Create new item
-            item = {
-              name: part,
-              path: currentPath,
-              isFolder: isFolder,
-              children: []
+      parts.forEach((part, index) => {
+        if (index === parts.length - 1) {
+          // This is a file
+          if (!current[part]) {
+            current[part] = { 
+              type: 'file', 
+              path: file.path, 
+              fileType: file.type 
             };
-            current.push(item);
           }
-          
-          if (isFolder) {
-            current = item.children;
+        } else {
+          // This is a directory
+          if (!current[part]) {
+            current[part] = { type: 'directory', children: {} };
           }
-        });
+          current = current[part].children;
+        }
       });
-      
-      // Sort folders first, then files
-      const sortItems = (items: FileTreeItem[]): FileTreeItem[] => {
-        return items.sort((a, b) => {
-          if (a.isFolder && !b.isFolder) return -1;
-          if (!a.isFolder && b.isFolder) return 1;
-          return a.name.localeCompare(b.name);
-        }).map(item => {
-          if (item.isFolder) {
-            return { ...item, children: sortItems(item.children) };
-          }
-          return item;
-        });
-      };
-      
-      return sortItems(root);
-    };
-    
-    // Extract paths from files
-    const paths = files.map(file => file.path);
-    
-    // Build tree
-    return buildFileTree(paths);
-  }, [files]);
-  
-  // Toggle folder expanded/collapsed
-  const toggleFolder = (path: string) => {
-    setExpandedFolders(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(path)) {
-        newSet.delete(path);
-      } else {
-        newSet.add(path);
-      }
-      return newSet;
     });
+    
+    return tree;
   };
-  
-  // Render tree items recursively
-  const renderTreeItems = (items: FileTreeItem[], depth = 0) => {
-    return items.map(item => (
-      <div key={item.path} style={{ paddingLeft: `${depth * 12}px` }}>
-        {item.isFolder ? (
-          <div className="py-1">
-            <button
-              onClick={() => toggleFolder(item.path)}
-              className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 w-full text-left text-sm"
+
+  // Render the file tree recursively
+  const renderTree = (tree: any, path = '', level = 0) => {
+    return Object.entries(tree).map(([key, value]: [string, any]) => {
+      const currentPath = path ? `${path}/${key}` : key;
+      
+      if (value.type === 'directory') {
+        // Render a directory
+        const [isOpen, setIsOpen] = React.useState(level < 2); // Auto-expand first two levels
+        
+        return (
+          <div key={currentPath}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start px-2 py-1 h-auto text-sm font-normal"
+              onClick={() => setIsOpen(!isOpen)}
             >
-              <span className="text-gray-500">
-                {expandedFolders.has(item.path) ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
+              <span className="mr-1">
+                {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
               </span>
-              {expandedFolders.has(item.path) ? (
-                <FolderOpen className="h-4 w-4 text-yellow-500" />
-              ) : (
-                <Folder className="h-4 w-4 text-yellow-500" />
-              )}
-              <span className="truncate">{item.name}</span>
-            </button>
+              <Folder className="h-3.5 w-3.5 mr-1 text-blue-500" />
+              <span>{key}</span>
+            </Button>
             
-            {expandedFolders.has(item.path) && (
-              <div className="mt-1">
-                {renderTreeItems(item.children, depth + 1)}
+            {isOpen && (
+              <div className="pl-4">
+                {renderTree(value.children, currentPath, level + 1)}
               </div>
             )}
           </div>
-        ) : (
-          <button
-            onClick={() => onFileSelect(item.path)}
-            className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 w-full text-left text-sm",
-              activeFile === item.path && "bg-blue-100 dark:bg-blue-900"
-            )}
+        );
+      } else {
+        // Render a file
+        const isActive = currentPath === activeFile;
+        const getFileIcon = () => {
+          switch (value.fileType) {
+            case 'javascript':
+            case 'javascriptreact':
+              return <File className="h-3.5 w-3.5 mr-1 text-yellow-500" />;
+            case 'typescript':
+            case 'typescriptreact':
+              return <File className="h-3.5 w-3.5 mr-1 text-blue-500" />;
+            case 'css':
+              return <File className="h-3.5 w-3.5 mr-1 text-purple-500" />;
+            case 'html':
+              return <File className="h-3.5 w-3.5 mr-1 text-orange-500" />;
+            default:
+              return <File className="h-3.5 w-3.5 mr-1 text-gray-500" />;
+          }
+        };
+        
+        return (
+          <Button
+            key={currentPath}
+            variant={isActive ? "secondary" : "ghost"}
+            size="sm"
+            className={`w-full justify-start px-2 py-1 h-auto text-sm font-normal ${
+              isActive ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300' : ''
+            }`}
+            onClick={() => onFileSelect(currentPath)}
           >
-            <FileText className="h-4 w-4 text-blue-500" />
-            <span className="truncate">{item.name}</span>
-          </button>
-        )}
-      </div>
-    ));
+            {getFileIcon()}
+            <span className="truncate">{key}</span>
+          </Button>
+        );
+      }
+    });
   };
   
-  if (files.length === 0) {
-    return (
-      <div className="p-4 text-center text-gray-500">
-        <p>No files generated yet.</p>
-        <p className="text-sm mt-2">Generate a website first to see files here.</p>
-      </div>
-    );
-  }
-  
+  const fileTree = buildFileTree();
+
   return (
-    <div className="overflow-auto">
-      {renderTreeItems(fileTree)}
+    <div className="overflow-y-auto h-full p-1">
+      {files.length === 0 ? (
+        <div className="p-4 text-center text-muted-foreground text-sm">
+          No files generated yet. Create a website using the prompt to see files here.
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {renderTree(fileTree)}
+        </div>
+      )}
     </div>
   );
 }

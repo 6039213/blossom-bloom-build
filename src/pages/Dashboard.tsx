@@ -20,7 +20,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const supabase = getSupabaseClient();
   
-  // Example projects with real thumbnails
+  // Example projects with placeholder images to avoid 404s
   const exampleProjects = [
     {
       id: '1',
@@ -28,7 +28,7 @@ export default function Dashboard() {
       description: 'A modern landing page for a local coffee shop with online ordering capability',
       lastEdited: '2 hours ago',
       status: 'published',
-      thumbnail: '/lovable-uploads/coffee-shop.jpg'
+      thumbnail: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80'
     },
     {
       id: '2',
@@ -36,7 +36,7 @@ export default function Dashboard() {
       description: 'My professional portfolio showcasing recent design work and case studies',
       lastEdited: 'Yesterday',
       status: 'draft',
-      thumbnail: '/lovable-uploads/portfolio.jpg'
+      thumbnail: 'https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80'
     },
     {
       id: '3',
@@ -44,7 +44,7 @@ export default function Dashboard() {
       description: 'A blog documenting my adventures around the world with photo galleries',
       lastEdited: '3 days ago',
       status: 'draft',
-      thumbnail: '/lovable-uploads/travel-blog.jpg'
+      thumbnail: 'https://images.unsplash.com/photo-1500835556837-99ac94a94552?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80'
     }
   ];
   
@@ -78,7 +78,7 @@ export default function Dashboard() {
         ...projectData,
         lastEdited: 'Just now',
         status: 'draft',
-        thumbnail: '/lovable-uploads/new-project.jpg'
+        thumbnail: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80'
       }
     ]);
     
@@ -139,7 +139,7 @@ export default function Dashboard() {
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
                     <div>
-                      <h2 className="text-2xl font-bold mb-2">Welcome back, {user?.user_metadata?.name || 'Creator'}!</h2>
+                      <h2 className="text-2xl font-bold mb-2">Welcome back, {user?.user_metadata?.name || user?.email?.split('@')[0] || 'Creator'}!</h2>
                       <p className="text-muted-foreground">Continue building your amazing websites or start a new project</p>
                     </div>
                     <div className="flex-1" />
@@ -229,8 +229,8 @@ export default function Dashboard() {
                   </Card>
                   <Card>
                     <CardHeader>
-                      <CardTitle>0</CardTitle>
-                      <CardDescription>Total Visits</CardDescription>
+                      <CardTitle>{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : '0'}</CardTitle>
+                      <CardDescription>Last Login</CardDescription>
                     </CardHeader>
                   </Card>
                 </div>

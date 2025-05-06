@@ -1,147 +1,108 @@
 
 import React from 'react';
-import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
-
-interface WebsiteFile {
-  path: string;
-  content: string;
-  type: string;
-}
 
 interface WebsitePreviewProps {
-  files: WebsiteFile[];
+  files: Array<{
+    path: string;
+    content: string;
+    type: string;
+  }>;
   viewportSize: string;
 }
 
 export default function WebsitePreview({ files, viewportSize }: WebsitePreviewProps) {
-  const formatFilesForSandpack = () => {
-    const sandpackFiles: Record<string, { code: string }> = {};
+  // Generate HTML content from files
+  const generateHtmlContent = () => {
+    // Get any CSS files
+    const cssFiles = files.filter(file => file.path.endsWith('.css'));
+    const cssContent = cssFiles.map(file => file.content).join('\n');
     
-    // Process files for Sandpack
-    files.forEach(file => {
-      // Check if path is valid and not empty
-      if (!file.path) return;
-      
-      // Add leading slash for Sandpack paths
-      const sandpackPath = file.path.startsWith('/') ? file.path : `/${file.path}`;
-      sandpackFiles[sandpackPath] = { code: file.content };
-    });
+    // Find potential entry point files
+    const entryFiles = files.filter(file => 
+      file.path.includes('App.') || 
+      file.path.includes('app.') || 
+      file.path.includes('index.') || 
+      file.path.includes('main.')
+    );
     
-    // Create index.html if it doesn't exist
-    if (!sandpackFiles['/index.html']) {
-      sandpackFiles['/index.html'] = {
-        code: `
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Generated Website</title>
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
-        `.trim()
-      };
-    }
+    // Find any HTML files
+    const htmlFiles = files.filter(file => file.path.endsWith('.html'));
     
-    // Create index.js if it doesn't exist
-    if (!sandpackFiles['/src/index.tsx'] && !sandpackFiles['/src/index.js']) {
-      // Check if App.tsx or App.jsx exists
-      const hasAppTsx = Object.keys(sandpackFiles).some(path => path.includes('App.tsx'));
-      const hasAppJsx = Object.keys(sandpackFiles).some(path => path.includes('App.jsx'));
-      
-      if (hasAppTsx || hasAppJsx) {
-        const appPath = hasAppTsx ? './App.tsx' : './App.jsx';
-        
-        sandpackFiles['/src/index.tsx'] = {
-          code: `
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import App from "${appPath}";
-
-const rootElement = document.getElementById("root");
-const root = createRoot(rootElement);
-
-root.render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
-          `.trim()
-        };
-      }
-    }
-    
-    return sandpackFiles;
+    // Create HTML document
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <script src="https://cdn.tailwindcss.com"></script>
+          <style>
+            body { font-family: system-ui, sans-serif; margin: 0; }
+            ${cssContent}
+          </style>
+        </head>
+        <body>
+          <div id="root">
+            ${htmlFiles.length > 0 ? htmlFiles[0].content : ''}
+            ${files.length > 0 && htmlFiles.length === 0 ? 
+              '<div class="flex min-h-screen items-center justify-center p-4 bg-gray-50">' +
+              '<div class="text-center max-w-md">' +
+              '<h2 class="text-2xl font-bold mb-4">Generated Website</h2>' +
+              '<p class="text-gray-600 mb-4">Your code has been generated successfully. This is a static preview.</p>' +
+              '<p class="text-sm text-blue-500">For a fully interactive preview, the code needs to be exported and run in a development environment.</p>' +
+              '</div></div>' : ''}
+          </div>
+        </body>
+      </html>
+    `;
   };
   
+  // Get viewport style based on selected size
   const getViewportStyle = () => {
     switch (viewportSize) {
       case 'mobile':
-        return { width: '375px', height: '100%' };
+        return { maxWidth: '375px', margin: '0 auto', height: '667px' };
       case 'tablet':
-        return { width: '768px', height: '100%' };
+        return { maxWidth: '768px', margin: '0 auto', height: '1024px' };
       case 'desktop':
       default:
         return { width: '100%', height: '100%' };
     }
   };
   
-  // Only render if we have files
   if (files.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center p-8 max-w-md">
-          <div className="w-16 h-16 bg-blue-100 rounded-full mx-auto flex items-center justify-center mb-4">
-            <span className="text-2xl">🏗️</span>
+      <div className="flex items-center justify-center h-full p-6">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mx-auto flex items-center justify-center mb-4">
+            <span className="text-2xl">✨</span>
           </div>
-          <h3 className="text-2xl font-bold mb-4">No Website Yet</h3>
+          <h3 className="text-2xl font-bold mb-4">Website Preview</h3>
           <p className="text-muted-foreground mb-6">
-            Enter a prompt in the chat to generate a website, and a preview will appear here.
+            Generate a website from the chat panel to see a preview here. Enter a description and click "Generate Website".
           </p>
         </div>
       </div>
     );
   }
   
-  // Format files for Sandpack
-  const sandpackFiles = formatFilesForSandpack();
-  
   return (
-    <div className="h-full flex items-center justify-center p-4">
-      <div 
-        style={getViewportStyle()} 
-        className="mx-auto shadow-lg border border-border h-full rounded-lg overflow-hidden transition-all duration-300"
-      >
-        <SandpackProvider
-          template="react-ts"
-          files={sandpackFiles}
-          options={{
-            classes: {
-              'sp-wrapper': 'h-full',
-              'sp-layout': 'h-full',
-              'sp-preview-container': 'h-full',
-            },
-          }}
-          customSetup={{
-            dependencies: {
-              react: "^18.0.0",
-              "react-dom": "^18.0.0",
-              "@types/react": "^18.0.0", 
-              "@types/react-dom": "^18.0.0",
-            },
-            entry: "/src/index.tsx",
-          }}
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-800 p-4">
+        <div 
+          className="bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden h-full transition-all duration-300"
+          style={getViewportStyle()}
         >
-          <SandpackPreview
-            showOpenInCodeSandbox={false}
-            showRefreshButton={true}
-            className="h-full"
-            style={{ height: '100%' }}
+          <iframe
+            srcDoc={generateHtmlContent()}
+            className="w-full h-full border-0"
+            title="Website Preview"
+            sandbox="allow-scripts"
           />
-        </SandpackProvider>
+        </div>
+      </div>
+      <div className="p-2 border-t border-border bg-white dark:bg-gray-900 text-xs text-muted-foreground">
+        <p>Preview is limited to static content. Some dynamic features may not work in this environment.</p>
       </div>
     </div>
   );

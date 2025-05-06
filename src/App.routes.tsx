@@ -43,6 +43,14 @@ const router = createBrowserRouter([
     element: <Help />
   },
   {
+    path: '/dashboard/team',
+    element: <Team />
+  },
+  {
+    path: '/dashboard/settings',
+    element: <Settings />
+  },
+  {
     path: '/features',
     element: <FeaturesPage />
   },
