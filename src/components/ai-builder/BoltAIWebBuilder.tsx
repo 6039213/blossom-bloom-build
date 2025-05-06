@@ -321,7 +321,7 @@ The code will be directly executed in a preview environment, so it must be compl
               id="advanced-mode" 
               checked={showAdvanced} 
               onCheckedChange={setShowAdvanced} 
-              size="sm"
+              className="data-[state=checked]:bg-blue-600"
             />
             <Label htmlFor="advanced-mode" className="text-xs">Advanced</Label>
           </div>
