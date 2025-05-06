@@ -1,193 +1,114 @@
 
-import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { getSupabaseClient } from '@/lib/supabase-client';
-import { toast } from 'sonner';
-import { 
-  LayoutDashboard, 
-  FolderOpen, 
-  Settings, 
-  Users, 
-  HelpCircle,
-  LogOut,
-  Sparkles,
-  ChevronRight,
-  ChevronLeft
-} from 'lucide-react';
-import { APP_NAME } from '@/lib/constants';
-import { cn } from '@/lib/utils';
-
-// Shared context for sidebar state
-import { create } from 'zustand';
-
-interface SidebarStore {
-  isExpanded: boolean;
-  setExpanded: (expanded: boolean) => void;
-  toggleExpanded: () => void;
-}
-
-export const useSidebarStore = create<SidebarStore>((set) => ({
-  isExpanded: false,
-  setExpanded: (expanded) => set({ isExpanded: expanded }),
-  toggleExpanded: () => set((state) => ({ isExpanded: !state.isExpanded })),
-}));
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { Home, Layers, Settings, LifeBuoy, Users, Sparkles } from 'lucide-react';
 
 export default function DashboardSidebar() {
-  const location = useLocation();
-  const supabase = getSupabaseClient();
-  const { isExpanded, toggleExpanded, setExpanded } = useSidebarStore();
-  const [isHovering, setIsHovering] = useState(false);
-  
-  // Automatically collapse on mobile screens
-  useEffect(() => {
-    const checkScreenSize = () => {
-      if (window.innerWidth < 768) {
-        setExpanded(false);
-      }
-    };
-    
-    // Initial check
-    checkScreenSize();
-    
-    // Add event listener
-    window.addEventListener('resize', checkScreenSize);
-    
-    // Remove event listener on cleanup
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, [setExpanded]);
-  
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      toast.success("Successfully signed out");
-    } catch (error) {
-      toast.error("Failed to sign out");
-      console.error(error);
-    }
-  };
-  
-  const navigationItems = [
-    {
-      name: "Dashboard",
-      href: "/dashboard",
-      icon: <LayoutDashboard className="w-5 h-5" />
-    },
-    {
-      name: "Projects",
-      href: "/dashboard/projects",
-      icon: <FolderOpen className="w-5 h-5" />
-    },
-    {
-      name: "AI Builder",
-      href: "/dashboard/ai-builder",
-      icon: <Sparkles className="w-5 h-5" />
-    },
-    {
-      name: "Team",
-      href: "/dashboard/team",
-      icon: <Users className="w-5 h-5" />
-    },
-    {
-      name: "Settings",
-      href: "/dashboard/settings",
-      icon: <Settings className="w-5 h-5" />
-    },
-    {
-      name: "Help",
-      href: "/dashboard/help",
-      icon: <HelpCircle className="w-5 h-5" />
-    }
-  ];
-  
-  const isActive = (path: string) => {
-    return location.pathname === path || (path !== '/dashboard' && location.pathname.startsWith(path));
-  };
-  
-  const handleMouseEnter = () => {
-    setIsHovering(true);
-  };
-  
-  const handleMouseLeave = () => {
-    setIsHovering(false);
-  };
-  
-  // Actual sidebar state based on hover and expanded state
-  const showExpanded = isExpanded || isHovering;
-  
   return (
-    <div 
-      className={cn(
-        "flex flex-col h-full bg-gradient-to-b from-amber-50 to-amber-100 dark:from-gray-900 dark:to-gray-800 border-r border-amber-200 dark:border-amber-700 transition-all duration-300",
-        showExpanded ? "w-64" : "w-16"
-      )}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <div className="p-4 border-b border-amber-200 dark:border-amber-700 flex items-center justify-between">
-        {showExpanded ? (
-          <Link to="/" className="flex items-center gap-2">
-            <img 
-              src="/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png" 
-              alt="Blossom Logo" 
-              className="w-8 h-8 object-contain"
-            />
-            <span className="font-bold text-xl bg-gradient-to-r from-amber-600 to-amber-800 dark:from-amber-400 dark:to-amber-300 inline-block text-transparent bg-clip-text">
-              {APP_NAME}
-            </span>
-          </Link>
-        ) : (
-          <Link to="/" className="mx-auto">
-            <img 
-              src="/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png" 
-              alt="Blossom Logo" 
-              className="w-8 h-8 object-contain"
-            />
-          </Link>
-        )}
-        
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleExpanded}
-          className={cn("flex-shrink-0", !showExpanded && "hidden")}
-        >
-          {isExpanded ? <ChevronLeft className="h-4 w-4 text-amber-700 dark:text-amber-300" /> : <ChevronRight className="h-4 w-4 text-amber-700 dark:text-amber-300" />}
-        </Button>
+    <aside className="w-64 border-r border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-900 hidden md:flex flex-col">
+      <div className="p-4 border-b border-amber-200 dark:border-amber-800">
+        <NavLink to="/" className="flex items-center">
+          <img src="/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png" alt="Blossom AI" className="h-8 w-8 mr-2" />
+          <span className="text-xl font-bold text-amber-600 dark:text-amber-400">Blossom AI</span>
+        </NavLink>
       </div>
       
-      <nav className="flex-1 overflow-y-auto p-2 space-y-1">
-        {navigationItems.map((item) => (
-          <Link 
-            key={item.name} 
-            to={item.href}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-              isActive(item.href)
-                ? "bg-amber-200/50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-300"
-                : "hover:bg-amber-100/50 dark:hover:bg-amber-900/20 text-amber-700 dark:text-amber-400",
-              !showExpanded && "justify-center"
-            )}
-          >
-            {item.icon}
-            {showExpanded && <span>{item.name}</span>}
-          </Link>
-        ))}
+      <nav className="flex-1 py-4 px-2">
+        <ul className="space-y-1">
+          <li>
+            <NavLink 
+              to="/dashboard" 
+              className={({ isActive }) => 
+                `flex items-center px-4 py-2 rounded-lg ${
+                  isActive 
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                }`
+              }
+              end
+            >
+              <Home className="h-5 w-5 mr-3" />
+              Dashboard
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/dashboard/projects" 
+              className={({ isActive }) => 
+                `flex items-center px-4 py-2 rounded-lg ${
+                  isActive 
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                }`
+              }
+            >
+              <Layers className="h-5 w-5 mr-3" />
+              Projects
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/dashboard/ai-builder" 
+              className={({ isActive }) => 
+                `flex items-center px-4 py-2 rounded-lg ${
+                  isActive 
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                }`
+              }
+            >
+              <Sparkles className="h-5 w-5 mr-3" />
+              AI Builder
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/dashboard/team" 
+              className={({ isActive }) => 
+                `flex items-center px-4 py-2 rounded-lg ${
+                  isActive 
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                }`
+              }
+            >
+              <Users className="h-5 w-5 mr-3" />
+              Team
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/dashboard/help" 
+              className={({ isActive }) => 
+                `flex items-center px-4 py-2 rounded-lg ${
+                  isActive 
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                }`
+              }
+            >
+              <LifeBuoy className="h-5 w-5 mr-3" />
+              Help & Support
+            </NavLink>
+          </li>
+        </ul>
       </nav>
       
-      <div className="p-2 border-t border-amber-200 dark:border-amber-700">
-        <Button 
-          variant="ghost" 
-          className={cn(
-            "text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/20",
-            showExpanded ? "w-full justify-start" : "w-full justify-center"
-          )}
-          onClick={handleSignOut}
+      <div className="p-4 border-t border-amber-200 dark:border-amber-800">
+        <NavLink 
+          to="/dashboard/settings" 
+          className={({ isActive }) => 
+            `flex items-center px-4 py-2 rounded-lg ${
+              isActive 
+                ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300' 
+                : 'text-gray-700 dark:text-gray-300 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+            }`
+          }
         >
-          <LogOut className="w-5 h-5" />
-          {showExpanded && <span className="ml-3">Sign Out</span>}
-        </Button>
+          <Settings className="h-5 w-5 mr-3" />
+          Settings
+        </NavLink>
       </div>
-    </div>
+    </aside>
   );
 }

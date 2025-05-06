@@ -1,89 +1,25 @@
 
-// Application name
-export const APP_NAME = 'Blossom';
+// API keys should come from environment variables or Supabase secrets
+// These are placeholders that will be replaced at runtime
+export const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY || '';
+export const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || '';
+export const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
+export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
-// System prompt for AI
-export const SYSTEM_PROMPT = `
-You are an expert AI assistant specialized in generating complete web applications using React and Tailwind CSS.
-Your task is to create fully functional, responsive, and beautiful websites based on user descriptions.
+// Project constants
+export const PROJECT_NAME = 'Blossom AI';
+export const PROJECT_DESCRIPTION = 'AI-powered web application builder';
 
-When generating code:
-1. Create all necessary files including components, styles, and utilities
-2. Use TypeScript for all components
-3. Implement responsive design using Tailwind CSS
-4. Structure the application logically with separate components
-5. Add detailed comments to help understand complex logic
-6. Ensure proper error handling and fallbacks
-7. Create a complete solution that works out of the box
-8. Use Shadcn UI components where appropriate
-
-Always aim to create a complete solution that works out of the box.
-`;
-
-// Available AI models
-export const MODEL_LIST = [
-  {
-    name: 'claude',
-    label: 'Claude 3.7 Sonnet',
-  }
-];
-
-// Default AI model
-export const DEFAULT_MODEL = 'claude';
-
-// Cache duration in milliseconds (30 minutes)
-export const CACHE_DURATION = 30 * 60 * 1000;
-
-// API Keys (these will be empty by default for security)
-export const ANTHROPIC_API_KEY = '';
-export const GEMINI_API_KEY = '';
-
-// Pricing plans - change from array to object with named properties
-export const PLANS = {
-  FREE: {
-    name: 'Free',
-    price: 0,
-    description: 'Get started with basic features',
-    features: [
-      '5 projects',
-      'Basic templates',
-      'Community support',
-      '1,000 AI credits per month'
-    ],
-    highlight: false,
-    buttonText: 'Get Started'
-  },
-  STANDARD: {
-    name: 'Pro',
-    price: 19,
-    description: 'For professionals and small teams',
-    features: [
-      'Unlimited projects',
-      'All templates',
-      'Priority support',
-      '10,000 AI credits per month',
-      'Custom domains',
-      'Remove Blossom branding'
-    ],
-    highlight: true,
-    buttonText: 'Upgrade to Pro'
-  },
-  PREMIUM: {
-    name: 'Enterprise',
-    price: 49,
-    description: 'For businesses with custom needs',
-    features: [
-      'Everything in Pro',
-      'Dedicated support',
-      '50,000 AI credits per month',
-      'Custom integrations',
-      'Team collaboration',
-      'Advanced analytics'
-    ],
-    highlight: false,
-    buttonText: 'Contact Sales'
-  }
+// Feature flags
+export const FEATURES = {
+  AI_BUILDER: true,
+  WEB_CONTAINER: false,
+  CODE_EDITOR: true,
 };
 
-// For backward compatibility, also export PLANS as an array
-export const PLANS_ARRAY = [PLANS.FREE, PLANS.STANDARD, PLANS.PREMIUM];
+// Theme colors
+export const THEME_COLORS = {
+  primary: 'amber',
+  secondary: 'blue',
+  accent: 'emerald',
+};

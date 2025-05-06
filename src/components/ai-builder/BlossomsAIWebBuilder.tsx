@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { FileCode, Smartphone, Tablet, Code, Send, Loader2, Download, Sparkles } from 'lucide-react';
 import WebsitePreview from './WebsitePreview';
 import { extractCodeBlocks } from '@/utils/codeGeneration';
+import { toast } from 'sonner';
 
 type PromptStatus = 'idle' | 'loading' | 'success' | 'error';
 type ViewportSize = 'desktop' | 'tablet' | 'mobile';
@@ -28,51 +29,29 @@ export default function BlossomsAIWebBuilder() {
     try {
       setStatus('loading');
       setError(null);
+      toast.info("Generating your website...");
       
-      // Simulate website generation (would normally call an API)
-      const mockResponse = `
-        \`\`\`jsx src/components/Header.jsx
-        import React from 'react';
-        
-        export default function Header() {
-          return (
-            <header className="bg-amber-50 p-4">
-              <h1 className="text-2xl font-bold">Generated Website</h1>
-            </header>
-          );
-        }
-        \`\`\`
-        
-        \`\`\`jsx src/components/MainContent.jsx
-        import React from 'react';
-        
-        export default function MainContent() {
-          return (
-            <main className="p-4">
-              <p>This is the main content of your generated website.</p>
-            </main>
-          );
-        }
-        \`\`\`
-        
-        \`\`\`jsx src/App.jsx
-        import React from 'react';
-        import Header from './components/Header';
-        import MainContent from './components/MainContent';
-        
-        export default function App() {
-          return (
-            <div className="min-h-screen bg-amber-50">
-              <Header />
-              <MainContent />
-            </div>
-          );
-        }
-        \`\`\`
-      `;
+      // Call the AI API to generate website code
+      const response = await fetch('/api/generate-website', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt }),
+      });
       
-      // Extract code blocks from the mock response
-      const extractedFiles = extractCodeBlocks(mockResponse);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      // Extract code blocks from the response
+      const extractedFiles = extractCodeBlocks(data.content);
       
       // Format files for the preview component
       const formattedFiles = Object.entries(extractedFiles).map(([path, content]) => {
@@ -86,10 +65,12 @@ export default function BlossomsAIWebBuilder() {
       
       setFiles(formattedFiles);
       setStatus('success');
+      toast.success("Website generated successfully!");
     } catch (err) {
       console.error('Error generating website:', err);
       setError('Failed to generate website. Please try again.');
       setStatus('error');
+      toast.error("Failed to generate website");
     }
   };
 
