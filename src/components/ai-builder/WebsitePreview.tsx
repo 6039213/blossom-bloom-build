@@ -2,104 +2,67 @@
 import React from 'react';
 
 interface WebsitePreviewProps {
-  files: Array<{
-    path: string;
-    content: string;
-    type: string;
-  }>;
+  files: Array<{path: string; content: string; type: string}>;
   viewportSize: string;
 }
 
 export default function WebsitePreview({ files, viewportSize }: WebsitePreviewProps) {
-  // Check if we have any files to show
-  const hasFiles = files.length > 0;
-
-  // Viewport styling based on selected size
-  const getPreviewStyle = () => {
-    switch (viewportSize) {
-      case 'mobile':
-        return { maxWidth: '375px', height: '667px' };
-      case 'tablet':
-        return { maxWidth: '768px', height: '1024px' };
-      case 'desktop':
-      default:
-        return { width: '100%', height: '100%' };
-    }
-  };
-
-  // Generate HTML content from files for preview
-  const generatePreviewHTML = () => {
-    // Look for index.tsx, App.tsx, or any component file
-    const indexFile = files.find(file => 
-      file.path.includes('index.tsx') || 
-      file.path.includes('App.tsx') || 
-      file.path.includes('Index.tsx')
-    );
-
-    // Extract CSS files
-    const cssFiles = files.filter(file => file.path.endsWith('.css'));
-    const cssContent = cssFiles.map(file => file.content).join('\n');
-
-    // Generate HTML with Tailwind included
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-          body { 
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 
-                         'Helvetica Neue', Arial, sans-serif;
-            margin: 0; 
-          }
-          ${cssContent}
-        </style>
-      </head>
-      <body>
-        <div id="root" class="min-h-screen bg-gray-50 dark:bg-gray-900">
-          ${hasFiles ? 
-            `<div class="min-h-screen p-4 flex items-center justify-center">
-               <div class="text-center">
-                 <h2 class="text-xl font-medium mb-2">Your Blossom AI-generated website</h2>
-                 <p class="text-gray-600 dark:text-gray-400">Preview is available in browser</p>
-               </div>
-             </div>` 
-            : ''}
+  if (files.length === 0) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-center p-6">
+        <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center mb-4">
+          <span className="text-2xl">✨</span>
         </div>
-      </body>
-      </html>
-    `;
-  };
-
-  return (
-    <div className="h-full flex items-center justify-center">
-      <div 
-        className="bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-black rounded-lg border border-border/40 overflow-hidden transition-all duration-300 flex flex-col items-center justify-center"
-        style={getPreviewStyle()}
-      >
-        {hasFiles ? (
-          <iframe
-            srcDoc={generatePreviewHTML()}
-            className="w-full h-full border-0"
-            title="Preview"
-            sandbox="allow-scripts"
-          />
-        ) : (
-          <div className="text-center p-6 max-w-lg">
-            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mx-auto flex items-center justify-center mb-4">
-              <svg className="h-8 w-8 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h3 className="text-2xl font-bold mb-4">Website Preview</h3>
-            <p className="text-muted-foreground mb-6">
-              Enter your website description and click "Generate Website" to create your custom website with Blossom AI.
-            </p>
-          </div>
-        )}
+        <h2 className="text-xl font-bold text-amber-900 dark:text-amber-300 mb-2">
+          No Preview Available
+        </h2>
+        <p className="text-amber-700 dark:text-amber-400 max-w-md">
+          Enter a prompt and click "Generate Website" to create your custom website code.
+        </p>
       </div>
+    );
+  }
+  
+  // Find HTML or JSX files to render
+  const mainFile = files.find(file => file.path.includes('App.tsx') || file.path.includes('index.tsx')) || files[0];
+  
+  return (
+    <div className={`h-full w-full overflow-auto transition-all duration-300 ${
+      viewportSize === 'mobile' ? 'max-w-[320px] mx-auto' : 
+      viewportSize === 'tablet' ? 'max-w-[768px] mx-auto' : 
+      'w-full'
+    }`}>
+      <iframe 
+        className="w-full h-full border-0"
+        title="preview"
+        srcDoc={`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <script src="https://cdn.tailwindcss.com"></script>
+              <style>
+                body { font-family: system-ui, sans-serif; margin: 0; padding: 0; }
+              </style>
+            </head>
+            <body>
+              <div id="root" class="min-h-screen bg-gradient-to-b from-amber-50 to-amber-100 dark:from-gray-900 dark:to-gray-800 p-6">
+                <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-amber-200 dark:border-amber-900/20">
+                  <h2 class="text-2xl font-bold text-amber-800 dark:text-amber-300 mb-4">Preview</h2>
+                  <p class="text-amber-700 dark:text-amber-400">
+                    This is a simplified preview. In a production environment, this would render the actual generated React components.
+                  </p>
+                  <div class="mt-6 p-4 bg-amber-50 dark:bg-gray-900 rounded-lg border border-amber-200 dark:border-amber-900/20">
+                    <pre class="whitespace-pre-wrap text-sm font-mono text-amber-800 dark:text-amber-300">${mainFile?.path || 'No file selected'}</pre>
+                  </div>
+                </div>
+              </div>
+            </body>
+          </html>
+        `}
+        sandbox="allow-scripts"
+      />
     </div>
   );
 }

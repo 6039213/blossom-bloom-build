@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Copy, Download, Send, Smartphone, Tablet, Monitor, Code, Play } from 'lucide-react';
-import WebsitePreview from './WebsitePreview';
 import { v4 as uuidv4 } from 'uuid';
 
 export default function BlossomsAIWebBuilder() {
@@ -111,6 +110,7 @@ export default function BlossomsAIWebBuilder() {
         },
         body: JSON.stringify({
           model: "claude-3-7-sonnet-20250219",
+          max_tokens: 4000,
           messages: [
             {
               role: "system",
@@ -134,7 +134,6 @@ export default function BlossomsAIWebBuilder() {
               Please provide all necessary files to implement this.`
             }
           ],
-          max_tokens: 4000,
         }),
       });
 
@@ -180,6 +179,68 @@ export default function BlossomsAIWebBuilder() {
     } catch (error) {
       toast.error('Error downloading files');
     }
+  };
+
+  // Simple website preview component
+  const WebsitePreview = () => {
+    if (generatedFiles.length === 0) {
+      return (
+        <div className="h-full flex flex-col items-center justify-center text-center p-6">
+          <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center mb-4">
+            <Play className="h-6 w-6 text-amber-800 dark:text-amber-300" />
+          </div>
+          <h2 className="text-xl font-bold text-amber-900 dark:text-amber-300 mb-2">
+            No Preview Available
+          </h2>
+          <p className="text-amber-700 dark:text-amber-400 max-w-md">
+            Enter a prompt and click "Generate Website" to create your custom website code.
+          </p>
+        </div>
+      );
+    }
+    
+    // Find HTML or JSX files to render
+    const mainFile = generatedFiles.find(file => file.path.includes('App.tsx') || file.path.includes('index.tsx')) || generatedFiles[0];
+    
+    return (
+      <div className={`h-full w-full overflow-auto transition-all duration-300 ${
+        viewportSize === 'mobile' ? 'max-w-[320px] mx-auto' : 
+        viewportSize === 'tablet' ? 'max-w-[768px] mx-auto' : 
+        'w-full'
+      }`}>
+        <iframe 
+          className="w-full h-full border-0"
+          title="preview"
+          srcDoc={`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <script src="https://cdn.tailwindcss.com"></script>
+                <style>
+                  body { font-family: system-ui, sans-serif; margin: 0; padding: 0; }
+                </style>
+              </head>
+              <body>
+                <div id="root" class="min-h-screen bg-gradient-to-b from-amber-50 to-amber-100 dark:from-gray-900 dark:to-gray-800 p-6">
+                  <div class="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-amber-200 dark:border-amber-900/20">
+                    <h2 class="text-2xl font-bold text-amber-800 dark:text-amber-300 mb-4">Preview</h2>
+                    <p class="text-amber-700 dark:text-amber-400">
+                      This is a simplified preview. In a production environment, this would render the actual generated React components.
+                    </p>
+                    <div class="mt-6 p-4 bg-amber-50 dark:bg-gray-900 rounded-lg border border-amber-200 dark:border-amber-900/20">
+                      <pre class="whitespace-pre-wrap text-sm font-mono text-amber-800 dark:text-amber-300">${mainFile?.path || 'No file selected'}</pre>
+                    </div>
+                  </div>
+                </div>
+              </body>
+            </html>
+          `}
+          sandbox="allow-scripts"
+        />
+      </div>
+    );
   };
 
   return (
@@ -375,64 +436,63 @@ export default function BlossomsAIWebBuilder() {
         </div>
         
         <div className="flex-1 overflow-hidden">
-          <TabsContent value="preview" className="h-full">
-            <WebsitePreview 
-              files={generatedFiles} 
-              viewportSize={viewportSize} 
-            />
-          </TabsContent>
-          
-          <TabsContent value="code" className="h-full p-4 overflow-auto">
-            {generatedFiles.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center mb-4">
-                  <Code className="h-6 w-6 text-amber-800 dark:text-amber-300" />
-                </div>
-                <h2 className="text-xl font-bold text-amber-900 dark:text-amber-300 mb-2">
-                  No Code Generated Yet
-                </h2>
-                <p className="text-amber-700 dark:text-amber-400 max-w-md">
-                  Enter a prompt and click "Generate Website" to create your custom website code.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-300">
-                    Generated Files ({generatedFiles.length})
+          <Tabs value={activeTab}>
+            <TabsContent value="preview" className="h-full">
+              <WebsitePreview />
+            </TabsContent>
+            
+            <TabsContent value="code" className="h-full p-4 overflow-auto">
+              {generatedFiles.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                  <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center mb-4">
+                    <Code className="h-6 w-6 text-amber-800 dark:text-amber-300" />
+                  </div>
+                  <h2 className="text-xl font-bold text-amber-900 dark:text-amber-300 mb-2">
+                    No Code Generated Yet
                   </h2>
+                  <p className="text-amber-700 dark:text-amber-400 max-w-md">
+                    Enter a prompt and click "Generate Website" to create your custom website code.
+                  </p>
                 </div>
-                
-                {generatedFiles.map((file, index) => (
-                  <Card key={index} className="overflow-hidden border-amber-200 dark:border-amber-900/20">
-                    <div className="bg-amber-50 dark:bg-gray-800 px-4 py-2 border-b border-amber-200 dark:border-amber-900/20 flex justify-between items-center">
-                      <span className="font-mono text-sm text-amber-900 dark:text-amber-300">
-                        {file.path}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText(file.content);
-                          toast.success(`Copied ${file.path}`);
-                        }}
-                        className="text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <pre className="p-4 overflow-x-auto bg-gray-50 dark:bg-gray-900 text-sm font-mono">
-                      <code
-                        dangerouslySetInnerHTML={{
-                          __html: formatCodeForDisplay(file.content),
-                        }}
-                      />
-                    </pre>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
+              ) : (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-300">
+                      Generated Files ({generatedFiles.length})
+                    </h2>
+                  </div>
+                  
+                  {generatedFiles.map((file, index) => (
+                    <Card key={index} className="overflow-hidden border-amber-200 dark:border-amber-900/20">
+                      <div className="bg-amber-50 dark:bg-gray-800 px-4 py-2 border-b border-amber-200 dark:border-amber-900/20 flex justify-between items-center">
+                        <span className="font-mono text-sm text-amber-900 dark:text-amber-300">
+                          {file.path}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(file.content);
+                            toast.success(`Copied ${file.path}`);
+                          }}
+                          className="text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <pre className="p-4 overflow-x-auto bg-gray-50 dark:bg-gray-900 text-sm font-mono">
+                        <code
+                          dangerouslySetInnerHTML={{
+                            __html: formatCodeForDisplay(file.content),
+                          }}
+                        />
+                      </pre>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
