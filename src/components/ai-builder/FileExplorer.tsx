@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Folder, File, ChevronRight, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Folder, FileText, ChevronRight, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface FileExplorerProps {
   files: Array<{
@@ -14,117 +14,120 @@ interface FileExplorerProps {
 }
 
 export default function FileExplorer({ files, activeFile, onFileSelect }: FileExplorerProps) {
-  // Build a file tree structure from flat file paths
-  const buildFileTree = () => {
-    const tree: any = {};
+  // Organize files into a directory structure
+  const fileSystem = React.useMemo(() => {
+    const system: Record<string, any> = { 
+      children: {},
+      isDirectory: true,
+      name: 'root'
+    };
     
-    files.forEach(file => {
+    // Sort files by path to ensure consistent ordering
+    const sortedFiles = [...files].sort((a, b) => a.path.localeCompare(b.path));
+    
+    sortedFiles.forEach(file => {
       const parts = file.path.split('/');
-      let current = tree;
+      let current = system;
       
+      // Build the directory structure
       parts.forEach((part, index) => {
-        if (index === parts.length - 1) {
-          // This is a file
-          if (!current[part]) {
-            current[part] = { 
-              type: 'file', 
-              path: file.path, 
-              fileType: file.type 
-            };
-          }
-        } else {
-          // This is a directory
-          if (!current[part]) {
-            current[part] = { type: 'directory', children: {} };
-          }
-          current = current[part].children;
+        const isFile = index === parts.length - 1;
+        
+        if (!current.children[part]) {
+          current.children[part] = {
+            children: {},
+            isDirectory: !isFile,
+            name: part,
+            ...(isFile ? { content: file.content, type: file.type, path: file.path } : {})
+          };
         }
+        
+        current = current.children[part];
       });
     });
     
-    return tree;
-  };
-
-  // Render the file tree recursively
-  const renderTree = (tree: any, path = '', level = 0) => {
-    return Object.entries(tree).map(([key, value]: [string, any]) => {
-      const currentPath = path ? `${path}/${key}` : key;
-      
-      if (value.type === 'directory') {
-        // Render a directory
-        const [isOpen, setIsOpen] = React.useState(level < 2); // Auto-expand first two levels
-        
-        return (
-          <div key={currentPath}>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start px-2 py-1 h-auto text-sm font-normal"
-              onClick={() => setIsOpen(!isOpen)}
-            >
-              <span className="mr-1">
-                {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-              </span>
-              <Folder className="h-3.5 w-3.5 mr-1 text-blue-500" />
-              <span>{key}</span>
-            </Button>
-            
-            {isOpen && (
-              <div className="pl-4">
-                {renderTree(value.children, currentPath, level + 1)}
-              </div>
-            )}
-          </div>
-        );
-      } else {
-        // Render a file
-        const isActive = currentPath === activeFile;
-        const getFileIcon = () => {
-          switch (value.fileType) {
-            case 'javascript':
-            case 'javascriptreact':
-              return <File className="h-3.5 w-3.5 mr-1 text-yellow-500" />;
-            case 'typescript':
-            case 'typescriptreact':
-              return <File className="h-3.5 w-3.5 mr-1 text-blue-500" />;
-            case 'css':
-              return <File className="h-3.5 w-3.5 mr-1 text-purple-500" />;
-            case 'html':
-              return <File className="h-3.5 w-3.5 mr-1 text-orange-500" />;
-            default:
-              return <File className="h-3.5 w-3.5 mr-1 text-gray-500" />;
-          }
-        };
-        
-        return (
-          <Button
-            key={currentPath}
-            variant={isActive ? "secondary" : "ghost"}
-            size="sm"
-            className={`w-full justify-start px-2 py-1 h-auto text-sm font-normal ${
-              isActive ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300' : ''
-            }`}
-            onClick={() => onFileSelect(currentPath)}
-          >
-            {getFileIcon()}
-            <span className="truncate">{key}</span>
-          </Button>
-        );
-      }
-    });
-  };
+    return system;
+  }, [files]);
   
-  const fileTree = buildFileTree();
+  const renderFileTree = (node: any, path: string[] = [], level: number = 0) => {
+    if (!node) return null;
+    
+    const nodePath = [...path, node.name].filter(p => p !== 'root').join('/');
+    const isActive = nodePath === activeFile;
+    
+    // For files
+    if (!node.isDirectory) {
+      const fileExtension = node.name.split('.').pop()?.toLowerCase();
+      
+      return (
+        <div
+          key={nodePath}
+          className={cn(
+            "flex items-center py-1 px-2 rounded-md cursor-pointer text-sm",
+            isActive 
+              ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300" 
+              : "hover:bg-gray-100 dark:hover:bg-gray-800"
+          )}
+          style={{ paddingLeft: `${(level + 1) * 12}px` }}
+          onClick={() => onFileSelect(nodePath)}
+        >
+          <FileText className="h-4 w-4 mr-2 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+          <span className="truncate">{node.name}</span>
+        </div>
+      );
+    }
+    
+    // For directories
+    const [isOpen, setIsOpen] = React.useState(true);
+    const hasChildren = Object.keys(node.children).length > 0;
+    
+    return (
+      <div key={`dir-${nodePath || 'root'}`}>
+        {node.name !== 'root' && (
+          <div
+            className="flex items-center py-1 px-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md text-sm font-medium"
+            style={{ paddingLeft: `${level * 12}px` }}
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            {hasChildren ? (
+              isOpen ? 
+                <ChevronDown className="h-4 w-4 mr-1 text-gray-500" /> :
+                <ChevronRight className="h-4 w-4 mr-1 text-gray-500" />
+            ) : (
+              <span className="w-4 mr-1" />
+            )}
+            <Folder className="h-4 w-4 mr-2 text-blue-500" />
+            <span>{node.name}</span>
+          </div>
+        )}
+        
+        {isOpen && hasChildren && (
+          <div className={node.name === 'root' ? '' : 'ml-2'}>
+            {Object.values(node.children)
+              .sort((a: any, b: any) => {
+                // Directories first, then by name
+                if (a.isDirectory && !b.isDirectory) return -1;
+                if (!a.isDirectory && b.isDirectory) return 1;
+                return a.name.localeCompare(b.name);
+              })
+              .map((child: any) => renderFileTree(child, [...path, node.name], level + (node.name === 'root' ? 0 : 1)))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="overflow-y-auto h-full p-1">
-      {files.length === 0 ? (
-        <div className="p-4 text-center text-muted-foreground text-sm">
-          No files generated yet. Create a website using the prompt to see files here.
-        </div>
+    <div className="h-full overflow-auto">
+      {files.length > 0 ? (
+        renderFileTree(fileSystem)
       ) : (
-        <div className="space-y-1">
-          {renderTree(fileTree)}
+        <div className="flex flex-col items-center justify-center h-full text-center p-4">
+          <Folder className="h-12 w-12 text-gray-400 mb-2" />
+          <p className="text-muted-foreground">No files generated yet</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Generate a website to see files here
+          </p>
         </div>
       )}
     </div>

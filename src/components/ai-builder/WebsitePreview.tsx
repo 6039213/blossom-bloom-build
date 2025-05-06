@@ -11,98 +11,94 @@ interface WebsitePreviewProps {
 }
 
 export default function WebsitePreview({ files, viewportSize }: WebsitePreviewProps) {
-  // Generate HTML content from files
-  const generateHtmlContent = () => {
-    // Get any CSS files
-    const cssFiles = files.filter(file => file.path.endsWith('.css'));
-    const cssContent = cssFiles.map(file => file.content).join('\n');
-    
-    // Find potential entry point files
-    const entryFiles = files.filter(file => 
-      file.path.includes('App.') || 
-      file.path.includes('app.') || 
-      file.path.includes('index.') || 
-      file.path.includes('main.')
-    );
-    
-    // Find any HTML files
-    const htmlFiles = files.filter(file => file.path.endsWith('.html'));
-    
-    // Create HTML document
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <script src="https://cdn.tailwindcss.com"></script>
-          <style>
-            body { font-family: system-ui, sans-serif; margin: 0; }
-            ${cssContent}
-          </style>
-        </head>
-        <body>
-          <div id="root">
-            ${htmlFiles.length > 0 ? htmlFiles[0].content : ''}
-            ${files.length > 0 && htmlFiles.length === 0 ? 
-              '<div class="flex min-h-screen items-center justify-center p-4 bg-gray-50">' +
-              '<div class="text-center max-w-md">' +
-              '<h2 class="text-2xl font-bold mb-4">Generated Website</h2>' +
-              '<p class="text-gray-600 mb-4">Your code has been generated successfully. This is a static preview.</p>' +
-              '<p class="text-sm text-blue-500">For a fully interactive preview, the code needs to be exported and run in a development environment.</p>' +
-              '</div></div>' : ''}
-          </div>
-        </body>
-      </html>
-    `;
-  };
-  
-  // Get viewport style based on selected size
-  const getViewportStyle = () => {
+  // Check if we have any files to show
+  const hasFiles = files.length > 0;
+
+  // Viewport styling based on selected size
+  const getPreviewStyle = () => {
     switch (viewportSize) {
       case 'mobile':
-        return { maxWidth: '375px', margin: '0 auto', height: '667px' };
+        return { maxWidth: '375px', height: '667px' };
       case 'tablet':
-        return { maxWidth: '768px', margin: '0 auto', height: '1024px' };
+        return { maxWidth: '768px', height: '1024px' };
       case 'desktop':
       default:
         return { width: '100%', height: '100%' };
     }
   };
-  
-  if (files.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full p-6">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mx-auto flex items-center justify-center mb-4">
-            <span className="text-2xl">✨</span>
-          </div>
-          <h3 className="text-2xl font-bold mb-4">Website Preview</h3>
-          <p className="text-muted-foreground mb-6">
-            Generate a website from the chat panel to see a preview here. Enter a description and click "Generate Website".
-          </p>
-        </div>
-      </div>
+
+  // Generate HTML content from files for preview
+  const generatePreviewHTML = () => {
+    // Look for index.tsx, App.tsx, or any component file
+    const indexFile = files.find(file => 
+      file.path.includes('index.tsx') || 
+      file.path.includes('App.tsx') || 
+      file.path.includes('Index.tsx')
     );
-  }
-  
+
+    // Extract CSS files
+    const cssFiles = files.filter(file => file.path.endsWith('.css'));
+    const cssContent = cssFiles.map(file => file.content).join('\n');
+
+    // Generate HTML with Tailwind included
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+          body { 
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 
+                         'Helvetica Neue', Arial, sans-serif;
+            margin: 0; 
+          }
+          ${cssContent}
+        </style>
+      </head>
+      <body>
+        <div id="root" class="min-h-screen bg-gray-50 dark:bg-gray-900">
+          ${hasFiles ? 
+            `<div class="min-h-screen p-4 flex items-center justify-center">
+               <div class="text-center">
+                 <h2 class="text-xl font-medium mb-2">Your Blossom AI-generated website</h2>
+                 <p class="text-gray-600 dark:text-gray-400">Preview is available in browser</p>
+               </div>
+             </div>` 
+            : ''}
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-800 p-4">
-        <div 
-          className="bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden h-full transition-all duration-300"
-          style={getViewportStyle()}
-        >
+    <div className="h-full flex items-center justify-center">
+      <div 
+        className="bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-black rounded-lg border border-border/40 overflow-hidden transition-all duration-300 flex flex-col items-center justify-center"
+        style={getPreviewStyle()}
+      >
+        {hasFiles ? (
           <iframe
-            srcDoc={generateHtmlContent()}
+            srcDoc={generatePreviewHTML()}
             className="w-full h-full border-0"
-            title="Website Preview"
+            title="Preview"
             sandbox="allow-scripts"
           />
-        </div>
-      </div>
-      <div className="p-2 border-t border-border bg-white dark:bg-gray-900 text-xs text-muted-foreground">
-        <p>Preview is limited to static content. Some dynamic features may not work in this environment.</p>
+        ) : (
+          <div className="text-center p-6 max-w-lg">
+            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mx-auto flex items-center justify-center mb-4">
+              <svg className="h-8 w-8 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold mb-4">Website Preview</h3>
+            <p className="text-muted-foreground mb-6">
+              Enter your website description and click "Generate Website" to create your custom website with Blossom AI.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

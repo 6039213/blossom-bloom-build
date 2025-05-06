@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { extractCodeBlocks } from "@/utils/codeGeneration";
+import { extractCodeBlocks, getFileType } from "@/utils/codeGeneration";
 import WebsitePreview from './WebsitePreview';
 import FileExplorer from './FileExplorer';
 import CodePane from './CodePane';
@@ -137,7 +137,7 @@ export default function BoltAIWebBuilder() {
         });
       }, 300);
       
-      // Call Claude API through proxy
+      // Call Claude API through our API endpoint
       const response = await callClaudeAPI(prompt);
       clearInterval(progressInterval);
       
@@ -198,7 +198,7 @@ export default function BoltAIWebBuilder() {
     }
   };
 
-  // Call Claude API through our proxy
+  // Call Claude API through our proxy endpoint
   const callClaudeAPI = async (userPrompt: string): Promise<string> => {
     try {
       const apiKey = import.meta.env.VITE_CLAUDE_API_KEY || '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';
@@ -227,8 +227,8 @@ When given a website description, you will:
 
 The code will be directly executed in a preview environment, so it must be complete and error-free.`;
 
-      // Use our proxy endpoint instead of direct API call
-      const response = await fetch('/api/claude-proxy', {
+      // Use our API endpoint for the Claude proxy
+      const response = await fetch('/api/claude', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -262,23 +262,6 @@ The code will be directly executed in a preview environment, so it must be compl
   // Handle sample prompt selection
   const handleSelectSample = (samplePrompt: string) => {
     setPrompt(samplePrompt);
-  };
-
-  // Get file type from path
-  const getFileType = (filePath: string): string => {
-    const extension = filePath.split('.').pop()?.toLowerCase() || '';
-    
-    switch (extension) {
-      case 'ts': return 'typescript';
-      case 'tsx': return 'typescriptreact';
-      case 'js': return 'javascript';
-      case 'jsx': return 'javascriptreact';
-      case 'css': return 'css';
-      case 'json': return 'json';
-      case 'html': return 'html';
-      case 'md': return 'markdown';
-      default: return 'plaintext';
-    }
   };
 
   // Download all files as zip

@@ -17,6 +17,9 @@ import AIBuilder from './pages/AIBuilder';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetail from './pages/ProjectDetail';
 
+// Update favicon in index.html
+document.querySelector('link[rel="icon"]')?.setAttribute('href', '/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png');
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -64,11 +67,11 @@ const router = createBrowserRouter([
   },
   {
     path: '/team',
-    element: <Team />
+    element: <Dashboard />
   },
   {
     path: '/settings',
-    element: <Settings />
+    element: <Dashboard />
   },
   {
     path: '*',
