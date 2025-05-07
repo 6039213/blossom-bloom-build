@@ -439,45 +439,42 @@ export default function BlossomAIWebBuilder() {
         
         {/* Editor/Preview main area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Editor Tab Content */}
-          <div className="flex-1 p-0 overflow-hidden flex flex-col">
-            {activeView === "editor" ? (
-              <>
-                <EditorTabs 
-                  openFiles={openFiles} 
-                  activeFile={activeFile} 
-                  onSelectTab={handleSelectTab} 
-                  onCloseTab={handleCloseTab} 
-                />
-                
-                {activeFile ? (
-                  <div className="flex-1">
-                    {files.find(f => f.path === activeFile) ? (
-                      <MonacoEditor
-                        value={files.find(f => f.path === activeFile)?.content || ''}
-                        language={getFileLanguage(activeFile)}
-                        onChange={handleFileContentChange}
-                      />
-                    ) : (
-                      <div className="h-full flex items-center justify-center bg-gray-800 text-gray-400">
-                        File not found: {activeFile}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center bg-gray-800 text-gray-400">
-                    Select a file from the file tree to edit
-                  </div>
-                )}
-              </>
-            ) : (
-              <LivePreview 
-                files={files} 
-                viewportSize={viewportSize}
-                onViewportChange={setViewportSize}
+          {activeView === "editor" ? (
+            <>
+              <EditorTabs 
+                openFiles={openFiles} 
+                activeFile={activeFile} 
+                onSelectTab={handleSelectTab} 
+                onCloseTab={handleCloseTab} 
               />
-            )}
-          </div>
+              
+              {activeFile ? (
+                <div className="flex-1">
+                  {files.find(f => f.path === activeFile) ? (
+                    <MonacoEditor
+                      value={files.find(f => f.path === activeFile)?.content || ''}
+                      language={getFileLanguage(activeFile)}
+                      onChange={handleFileContentChange}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center bg-gray-800 text-gray-400">
+                      File not found: {activeFile}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center bg-gray-800 text-gray-400">
+                  Select a file from the file tree to edit
+                </div>
+              )}
+            </>
+          ) : (
+            <LivePreview 
+              files={files} 
+              viewportSize={viewportSize}
+              onViewportChange={setViewportSize}
+            />
+          )}
         </div>
       </div>
       
