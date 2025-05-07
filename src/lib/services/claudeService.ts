@@ -44,7 +44,7 @@ export const generateCode = async (
     
     console.log("Sending request to Claude API with files:", existingFiles.length);
     
-    // Make the API call
+    // Make the API call to our backend endpoint
     const response = await fetch('/api/claude', {
       method: 'POST',
       headers: {
@@ -75,6 +75,7 @@ export const generateCode = async (
     return responseText;
   } catch (error) {
     console.error("Error calling Claude API:", error);
+    toast.error(`Failed to generate code: ${error.message}`);
     throw new Error(`Failed to generate code: ${error.message}`);
   }
 };

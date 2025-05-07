@@ -11,14 +11,14 @@ export async function POST(req: Request) {
   // Extract the Claude API key from environment variables
   const API_KEY = process.env.VITE_CLAUDE_API_KEY || 
                   "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";
-  const MODEL = process.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20250219";
+  const MODEL = process.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229";
   
   try {
     // Parse request body
     const body = await req.json();
     
     // Add the existing files to the system prompt if provided
-    const systemPrompt = body.system || "You are an AI that generates React web applications using React and Tailwind CSS. Always return your response as a JSON object where keys are file paths and values are file contents. Do not include any explanations or markdown - ONLY JSON. Example format: {\"App.jsx\": \"import React from 'react'...\"}. For component files, use JSX extension. Follow React best practices.";
+    const systemPrompt = body.system || "Je bent een programmeerassistent. Je genereert en wijzigt React + Tailwind componenten. Geef alleen gewijzigde bestanden als JSON terug, geen uitleg.";
     
     // Create messages array with files context if provided
     let messages = body.messages || [];
@@ -32,17 +32,17 @@ export async function POST(req: Request) {
       
       // Add files context to the first user message if it exists
       if (messages.length > 0 && messages[0].role === 'user') {
-        messages[0].content = `Current files:\n${filesContext}\n\nPrompt: ${messages[0].content}`;
+        messages[0].content = `Bestaande bestanden:\n${filesContext}\n\nPrompt: ${messages[0].content}`;
       }
     }
     
-    console.log("Calling Claude API with body:", JSON.stringify({
+    console.log("Calling Claude API with request:", {
       model: MODEL,
       temperature: body.temperature || 0.7,
       max_tokens: body.max_tokens || 4000,
       system: systemPrompt,
       messages
-    }));
+    });
     
     // Forward the request to Claude API
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
