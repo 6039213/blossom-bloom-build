@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Send, Smartphone, Tablet, Monitor, Copy, Download, Code, Eye, RefreshCw, FileText } from 'lucide-react';
@@ -62,7 +63,7 @@ export default function BoltAIWebBuilder() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [viewportSize, setViewportSize] = useState('desktop');
+  const [viewportSize, setViewportSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [files, setFiles] = useState<WebsiteFile[]>([]);
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [generationProgress, setGenerationProgress] = useState(0);
