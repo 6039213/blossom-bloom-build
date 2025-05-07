@@ -9,31 +9,38 @@ const corsHeaders = {
 
 export async function POST(req: Request) {
   // Extract the Claude API key from environment variables
-  const API_KEY = process.env.VITE_CLAUDE_API_KEY || 
+  const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY || 
                   "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";
-  const MODEL = process.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229";
+  const MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229";
   
   try {
     // Parse request body
     const body = await req.json();
     
     // Add the existing files to the system prompt if provided
-    const systemPrompt = body.system || "Je bent een programmeerassistent. Je genereert en wijzigt React + Tailwind componenten. Geef alleen gewijzigde bestanden als JSON terug, geen uitleg.";
+    const systemPrompt = "Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON.";
     
     // Create messages array with files context if provided
-    let messages = body.messages || [];
+    let messages = [];
+    
+    // Add the user's prompt as the first message
+    messages.push({
+      role: 'user',
+      content: `Prompt: ${body.prompt || ''}`
+    });
     
     // Include existing files context if provided
-    if (body.files && Array.isArray(body.files) && body.files.length > 0) {
+    if (body.files && typeof body.files === 'object' && Object.keys(body.files).length > 0) {
       // Format files for the context
-      const filesContext = body.files.map(file => 
-        `${file.path}:\n${file.content}`
-      ).join('\n\n');
+      const filesContext = Object.entries(body.files)
+        .map(([path, content]) => `${path}:\n${content}`)
+        .join('\n\n');
       
-      // Add files context to the first user message if it exists
-      if (messages.length > 0 && messages[0].role === 'user') {
-        messages[0].content = `Bestaande bestanden:\n${filesContext}\n\nPrompt: ${messages[0].content}`;
-      }
+      // Add files context as a separate user message
+      messages.push({
+        role: 'user',
+        content: `Bestaande bestanden:\n${filesContext}`
+      });
     }
     
     console.log("Calling Claude API with request:", {
@@ -61,32 +68,87 @@ export async function POST(req: Request) {
       })
     });
     
+    // Check if the response is successful
+    if (!claudeResponse.ok) {
+      const errorText = await claudeResponse.text();
+      console.error("Claude API error response:", errorText);
+      return new Response(
+        JSON.stringify({ error: `Claude API error: ${claudeResponse.status} ${claudeResponse.statusText}` }), 
+        { 
+          status: claudeResponse.status,
+          headers: corsHeaders
+        }
+      );
+    }
+    
     // Get response data
     const data = await claudeResponse.json();
     console.log("Claude API response status:", claudeResponse.status);
     
-    // Validate the response is valid JSON
-    if (data.content && data.content[0]?.type === 'text') {
-      try {
-        // Try to parse the response as JSON to ensure it's valid
-        const responseText = data.content[0].text;
-        // Look for JSON objects in the text (ignore any markdown or explanations)
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          JSON.parse(jsonMatch[0]);
-          console.log("Successfully validated response as JSON");
+    // Check if the response contains text content
+    if (!data.content || !data.content[0] || data.content[0].type !== 'text') {
+      return new Response(
+        JSON.stringify({ error: "Invalid response format from Claude API" }), 
+        { 
+          status: 500,
+          headers: corsHeaders
         }
-      } catch (parseError) {
-        console.warn("Claude did not return valid JSON:", parseError);
-        // We don't throw here, we'll let the front end handle this
-      }
+      );
     }
     
-    // Return the response with CORS headers
-    return new Response(JSON.stringify(data), {
-      status: claudeResponse.status,
-      headers: corsHeaders
-    });
+    // Extract the text content
+    const responseText = data.content[0].text;
+    
+    // Try to extract JSON from the response text
+    try {
+      // Look for a JSON object in the text
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("No valid JSON found in Claude's response");
+      }
+      
+      // Parse the JSON to verify it's valid
+      const parsedJson = JSON.parse(jsonMatch[0]);
+      
+      // Return the parsed JSON
+      return new Response(
+        JSON.stringify({ content: parsedJson }), 
+        { 
+          status: 200,
+          headers: corsHeaders
+        }
+      );
+    } catch (parseError) {
+      console.error("Failed to parse Claude's response as JSON:", parseError);
+      console.log("Response text:", responseText);
+      
+      // Check if the response contains HTML (common error case)
+      if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Claude API returned HTML instead of JSON", 
+            details: "The response appears to be an HTML page rather than the expected JSON" 
+          }), 
+          { 
+            status: 500,
+            headers: corsHeaders
+          }
+        );
+      }
+      
+      // Return the raw response text as a fallback
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to parse Claude's response as JSON",
+          rawResponse: responseText
+        }), 
+        { 
+          status: 500,
+          headers: corsHeaders
+        }
+      );
+    }
+    
   } catch (error) {
     console.error('Error proxying request to Claude API:', error);
     return new Response(

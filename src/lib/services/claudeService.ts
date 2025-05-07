@@ -7,11 +7,7 @@ export interface FileContent {
 }
 
 // Standard prompt system message that ensures Claude returns pure JSON
-const DEFAULT_SYSTEM_PROMPT = `You are an AI that generates React web applications using React and Tailwind CSS.
-Always return your response as a JSON object where keys are file paths and values are file contents.
-Do not include any explanations or markdown - ONLY JSON.
-Example format: {"App.jsx": "import React from 'react'..."}.
-For component files, use JSX extension. Follow React best practices.`;
+const DEFAULT_SYSTEM_PROMPT = `Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON.`;
 
 /**
  * Generate code based on a prompt and existing files
@@ -27,19 +23,19 @@ export const generateCode = async (
   } = {}
 ): Promise<string> => {
   try {
-    // Create the user message with the prompt
-    const userMessage = {
-      role: 'user',
-      content: prompt
-    };
+    // Convert files array to object format expected by the API
+    const filesObj: Record<string, string> = {};
+    existingFiles.forEach(file => {
+      filesObj[file.path] = file.content;
+    });
     
     // Format the request body
     const requestBody = {
+      prompt: prompt,
       system: options.system || DEFAULT_SYSTEM_PROMPT,
       temperature: options.temperature || 0.7,
       max_tokens: options.maxOutputTokens || 4000,
-      messages: [userMessage],
-      files: existingFiles // Pass all existing files in the context
+      files: filesObj
     };
     
     console.log("Sending request to Claude API with files:", existingFiles.length);
@@ -54,18 +50,28 @@ export const generateCode = async (
     });
     
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Claude API error response:", errorText);
       throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
     }
     
     const data = await response.json();
     console.log("Claude API response:", data);
     
-    // Extract the text content from Claude's response
-    if (!data.content || !data.content[0] || data.content[0].type !== 'text') {
+    // Handle different response formats
+    let responseText = '';
+    
+    if (data.content && typeof data.content === 'object') {
+      // The backend already extracted and parsed the JSON for us
+      responseText = JSON.stringify(data.content, null, 2);
+    } else if (data.content && data.content[0] && data.content[0].type === 'text') {
+      // Standard Claude API response format
+      responseText = data.content[0].text;
+    } else if (data.error) {
+      throw new Error(data.error);
+    } else {
       throw new Error("Unexpected response format from Claude API");
     }
-    
-    const responseText = data.content[0].text;
     
     // Call the stream update callback with the full response
     if (onStreamUpdate) {
