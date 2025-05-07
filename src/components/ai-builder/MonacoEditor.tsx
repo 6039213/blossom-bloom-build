@@ -1,24 +1,28 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import * as monaco from 'monaco-editor';
-import { Spinner } from '@/components/ui/spinner';
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
+import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
+import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
+import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
 
-// Ensure editor types are available
+// Set up workers using URL.createObjectURL
 self.MonacoEnvironment = {
-  getWorkerUrl: function (_moduleId: any, label: string) {
+  getWorker(_, label) {
     if (label === 'json') {
-      return '/monaco-editor/json.worker.js';
+      return new jsonWorker();
     }
     if (label === 'css' || label === 'scss' || label === 'less') {
-      return '/monaco-editor/css.worker.js';
+      return new cssWorker();
     }
     if (label === 'html' || label === 'handlebars' || label === 'razor') {
-      return '/monaco-editor/html.worker.js';
+      return new htmlWorker();
     }
     if (label === 'typescript' || label === 'javascript') {
-      return '/monaco-editor/ts.worker.js';
+      return new tsWorker();
     }
-    return '/monaco-editor/editor.worker.js';
+    return new editorWorker();
   }
 };
 
@@ -32,8 +36,8 @@ interface MonacoEditorProps {
   className?: string;
 }
 
-const getLanguageFromPath = (path: string): string => {
-  const extension = path.split('.').pop()?.toLowerCase() || '';
+export const getFileLanguage = (filePath: string): string => {
+  const extension = filePath.split('.').pop()?.toLowerCase() || '';
   switch (extension) {
     case 'js':
       return 'javascript';
@@ -54,10 +58,6 @@ const getLanguageFromPath = (path: string): string => {
     default:
       return 'plaintext';
   }
-};
-
-export const getFileLanguage = (filePath: string): string => {
-  return getLanguageFromPath(filePath);
 };
 
 const MonacoEditor: React.FC<MonacoEditorProps> = ({
@@ -102,18 +102,22 @@ const MonacoEditor: React.FC<MonacoEditorProps> = ({
       },
     };
 
-    // Create editor instance
-    editor.current = monaco.editor.create(divEl.current, options);
+    try {
+      // Create editor instance
+      editor.current = monaco.editor.create(divEl.current, options);
 
-    // Set up change event handler
-    if (!readOnly) {
-      editor.current.onDidChangeModelContent(() => {
-        onChange(editor.current?.getValue() || '');
-      });
+      // Set up change event handler
+      if (!readOnly) {
+        editor.current.onDidChangeModelContent(() => {
+          onChange(editor.current?.getValue() || '');
+        });
+      }
+
+      // Update loaded state
+      setIsLoaded(true);
+    } catch (error) {
+      console.error("Error initializing Monaco editor:", error);
     }
-
-    // Update loaded state
-    setIsLoaded(true);
 
     return () => {
       model.dispose();
@@ -132,7 +136,7 @@ const MonacoEditor: React.FC<MonacoEditorProps> = ({
     <div className={`relative ${className}`} style={{ width, height }}>
       {!isLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-          <Spinner className="h-8 w-8" />
+          <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
         </div>
       )}
       <div ref={divEl} style={{ width, height }} className="monaco-editor-container" />

@@ -1,7 +1,5 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Send, Download, Code, Eye, Loader2 } from 'lucide-react';
@@ -12,7 +10,6 @@ import FileTree from './FileTree';
 import EditorTabs from './EditorTabs';
 import LivePreview from './LivePreview';
 import MonacoEditor, { getFileLanguage } from './MonacoEditor';
-import { Spinner } from '@/components/ui/spinner';
 
 // Import services
 import { generateCode, extractFilesFromResponse, FileContent } from '@/lib/services/claudeService';
@@ -137,7 +134,7 @@ export default function BlossomAIWebBuilder() {
   const [activeFile, setActiveFile] = useState<string | null>(files[0]?.path || null);
   const [openFiles, setOpenFiles] = useState<string[]>([files[0]?.path || '']);
   const [viewportSize, setViewportSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
-  const [activeTab, setActiveTab] = useState<string>('editor'); // 'editor' or 'preview'
+  const [activeView, setActiveView] = useState<'editor' | 'preview'>('editor');
   
   // State for prompt and generation
   const [prompt, setPrompt] = useState<string>('');
@@ -145,6 +142,7 @@ export default function BlossomAIWebBuilder() {
   const [streamingResponse, setStreamingResponse] = useState<string>('');
   const [isFirstGeneration, setIsFirstGeneration] = useState<boolean>(true);
   const [showFileTree, setShowFileTree] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Refs
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
@@ -192,6 +190,7 @@ export default function BlossomAIWebBuilder() {
 
     setIsGenerating(true);
     setStreamingResponse('');
+    setError(null);
 
     try {
       toast.info("Generating code with Claude 3.7 Sonnet...");
@@ -199,71 +198,78 @@ export default function BlossomAIWebBuilder() {
       // Generate code based on prompt and existing files (if not first generation)
       const existingFiles = isFirstGeneration ? [] : files;
       
-      // Call Claude API and handle streaming response
-      const response = await generateCode(
-        prompt, 
-        existingFiles,
-        (accumulatedText) => {
-          setStreamingResponse(accumulatedText);
-        }
-      );
-      
-      // Process the response to extract files
-      let extractedFiles: FileContent[];
       try {
-        extractedFiles = extractFilesFromResponse(response);
-      } catch (error) {
-        console.error("Failed to extract files from response:", error);
-        toast.error("Failed to parse Claude's response into files");
-        return;
-      }
-
-      if (extractedFiles.length === 0) {
-        toast.error("No files were generated from the prompt");
-        return;
-      }
-
-      // If this is the first generation, replace all files
-      // Otherwise, merge with existing files (update existing, add new)
-      if (isFirstGeneration) {
-        setFiles(extractedFiles);
-        setIsFirstGeneration(false);
-      } else {
-        // Merge files: update existing ones and add new ones
-        setFiles(prevFiles => {
-          const updatedFiles = [...prevFiles];
-          
-          // Update existing files or add new ones
-          extractedFiles.forEach(newFile => {
-            const existingIndex = updatedFiles.findIndex(f => f.path === newFile.path);
-            if (existingIndex >= 0) {
-              updatedFiles[existingIndex] = newFile;
-            } else {
-              updatedFiles.push(newFile);
-            }
-          });
-          
-          return updatedFiles;
-        });
-      }
-      
-      // Open the first generated file
-      if (extractedFiles.length > 0) {
-        const mainFile = extractedFiles.find(f => 
-          f.path === 'App.jsx' || 
-          f.path === 'index.jsx' || 
-          f.path === 'main.jsx'
-        ) || extractedFiles[0];
+        // Call Claude API and handle streaming response
+        const response = await generateCode(
+          prompt, 
+          existingFiles,
+          (accumulatedText) => {
+            setStreamingResponse(accumulatedText);
+          }
+        );
         
-        handleFileSelect(mainFile.path);
-        setActiveTab('preview'); // Switch to preview tab
+        // Process the response to extract files
+        let extractedFiles: FileContent[];
+        try {
+          extractedFiles = extractFilesFromResponse(response);
+          
+          if (extractedFiles.length === 0) {
+            throw new Error("No valid code files could be extracted from Claude's response");
+          }
+        } catch (parseError) {
+          console.error("Failed to extract files from response:", parseError);
+          toast.error("Failed to parse Claude's response into files");
+          setError(`Failed to parse response: ${parseError.message}`);
+          return;
+        }
+
+        // If this is the first generation, replace all files
+        // Otherwise, merge with existing files (update existing, add new)
+        if (isFirstGeneration) {
+          setFiles(extractedFiles);
+          setIsFirstGeneration(false);
+        } else {
+          // Merge files: update existing ones and add new ones
+          setFiles(prevFiles => {
+            const updatedFiles = [...prevFiles];
+            
+            // Update existing files or add new ones
+            extractedFiles.forEach(newFile => {
+              const existingIndex = updatedFiles.findIndex(f => f.path === newFile.path);
+              if (existingIndex >= 0) {
+                updatedFiles[existingIndex] = newFile;
+              } else {
+                updatedFiles.push(newFile);
+              }
+            });
+            
+            return updatedFiles;
+          });
+        }
+        
+        // Open the first generated file
+        if (extractedFiles.length > 0) {
+          const mainFile = extractedFiles.find(f => 
+            f.path === 'App.jsx' || 
+            f.path === 'index.jsx' || 
+            f.path === 'main.jsx'
+          ) || extractedFiles[0];
+          
+          handleFileSelect(mainFile.path);
+          setActiveView('preview'); // Switch to preview tab
+        }
+        
+        toast.success(`Generated ${extractedFiles.length} files successfully!`);
+        setPrompt('');
+      } catch (apiError) {
+        console.error("API Error:", apiError);
+        toast.error(`Claude API error: ${apiError.message}`);
+        setError(`Claude API error: ${apiError.message}`);
       }
-      
-      toast.success(`Generated ${extractedFiles.length} files successfully!`);
-      setPrompt('');
     } catch (error) {
       console.error("Error generating code:", error);
       toast.error(`Error generating code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setError(`Error generating code: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGenerating(false);
     }
@@ -360,7 +366,7 @@ export default function BlossomAIWebBuilder() {
             >
               {isGenerating ? (
                 <>
-                  <Spinner size="sm" className="border-white" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
@@ -378,6 +384,24 @@ export default function BlossomAIWebBuilder() {
                 onClick={toggleFileTree}
               >
                 {showFileTree ? 'Hide Files' : 'Show Files'}
+              </Button>
+              
+              <Button
+                variant={activeView === 'editor' ? 'default' : 'outline'}
+                className={activeView === 'editor' ? 'bg-blue-600' : ''}
+                onClick={() => setActiveView('editor')}
+              >
+                <Code className="h-4 w-4 mr-1" />
+                Editor
+              </Button>
+              
+              <Button
+                variant={activeView === 'preview' ? 'default' : 'outline'}
+                className={activeView === 'preview' ? 'bg-blue-600' : ''}
+                onClick={() => setActiveView('preview')}
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                Preview
               </Button>
             </div>
           </div>
@@ -415,25 +439,9 @@ export default function BlossomAIWebBuilder() {
         
         {/* Editor/Preview main area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Tabs for switching between editor and preview */}
-          <div className="bg-gray-900 border-b border-gray-800">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="bg-gray-800">
-                <TabsTrigger value="editor" className="flex items-center gap-1 data-[state=active]:bg-gray-900">
-                  <Code className="h-4 w-4" />
-                  Editor
-                </TabsTrigger>
-                <TabsTrigger value="preview" className="flex items-center gap-1 data-[state=active]:bg-gray-900">
-                  <Eye className="h-4 w-4" />
-                  Preview
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          
           {/* Editor Tab Content */}
           <div className="flex-1 p-0 overflow-hidden flex flex-col">
-            {activeTab === "editor" ? (
+            {activeView === "editor" ? (
               <>
                 <EditorTabs 
                   openFiles={openFiles} 
@@ -492,6 +500,22 @@ export default function BlossomAIWebBuilder() {
             </div>
           </div>
         </motion.div>
+      )}
+      
+      {/* Error message display */}
+      {error && !isGenerating && (
+        <div className="border-t border-red-800 bg-red-900/20 p-4">
+          <h4 className="text-red-400 font-medium mb-2">Error</h4>
+          <p className="text-sm text-red-300">{error}</p>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="mt-2 border-red-600 text-red-400 hover:bg-red-900/30"
+            onClick={() => setError(null)}
+          >
+            Dismiss
+          </Button>
+        </div>
       )}
     </div>
   );

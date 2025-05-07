@@ -1,18 +1,22 @@
 
 import JSZip from 'jszip';
-import { FileContent } from '@/lib/services/claudeService';
+
+export interface FileContent {
+  path: string;
+  content: string;
+}
 
 export const createProjectZip = async (files: FileContent[]): Promise<Blob> => {
   const zip = new JSZip();
   
   // Add files to the zip
-  files.forEach(file => {
+  files.forEach((file) => {
     const { path, content } = file;
     zip.file(path, content);
   });
   
   // Add package.json if it doesn't exist
-  if (!files.some(file => file.path === 'package.json')) {
+  if (!files.some((file) => file.path === 'package.json')) {
     zip.file('package.json', JSON.stringify({
       name: "blossom-ai-generated-project",
       version: "1.0.0",
@@ -27,6 +31,9 @@ export const createProjectZip = async (files: FileContent[]): Promise<Blob> => {
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-scripts": "5.0.1"
+      },
+      devDependencies: {
+        "tailwindcss": "^3.3.0"
       },
       browserslist: {
         "production": [
@@ -44,7 +51,7 @@ export const createProjectZip = async (files: FileContent[]): Promise<Blob> => {
   }
   
   // Add README.md if it doesn't exist
-  if (!files.some(file => file.path === 'README.md')) {
+  if (!files.some((file) => file.path === 'README.md')) {
     zip.file('README.md', `# Blossom AI Generated Project
 
 This project was generated with Blossom AI Builder.
@@ -64,7 +71,23 @@ Builds the app for production to the \`build\` folder.
 `);
   }
   
+  // Add tailwind.config.js if it doesn't exist
+  if (!files.some((file) => file.path === 'tailwind.config.js')) {
+    zip.file('tailwind.config.js', `/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+    "./*.{js,jsx,ts,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}`);
+  }
+  
   // Generate the zip file
-  const content = await zip.generateAsync({ type: 'blob' });
-  return content;
+  return await zip.generateAsync({
+    type: 'blob'
+  });
 };
