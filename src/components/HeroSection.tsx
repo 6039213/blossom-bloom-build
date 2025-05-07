@@ -1,18 +1,17 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { getSupabaseClient } from '@/lib/supabase-client';
-
 export default function HeroSection() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const supabase = getSupabaseClient();
-
   const handleGetStarted = async () => {
     setIsLoading(true);
     try {
-      const { data } = await supabase.auth.getSession();
+      const {
+        data
+      } = await supabase.auth.getSession();
       if (data.session) {
         // User is logged in, navigate to dashboard
         navigate('/dashboard');
@@ -27,9 +26,7 @@ export default function HeroSection() {
       setIsLoading(false);
     }
   };
-
-  return (
-    <div className="relative overflow-hidden">
+  return <div className="relative overflow-hidden">
       {/* Background with radial gradient */}
       <div className="absolute inset-0 bg-gradient-radial from-blossom-100/70 to-transparent dark:from-blossom-900/20" />
       
@@ -47,20 +44,10 @@ export default function HeroSection() {
               Just describe what you want, and watch your vision come to life.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button 
-                onClick={handleGetStarted}
-                disabled={isLoading}
-                className="text-white bg-blossom-gradient hover:opacity-90 shadow-blossom text-base py-6 px-8"
-                size="lg"
-              >
+              <Button onClick={handleGetStarted} disabled={isLoading} className="text-white bg-blossom-gradient hover:opacity-90 shadow-blossom text-base py-6 px-8" size="lg">
                 {isLoading ? "Loading..." : "Get Started — It's Free"}
               </Button>
-              <Button 
-                onClick={() => navigate('/templates')}
-                className="bg-background text-foreground border border-blossom-300 hover:bg-blossom-50 dark:hover:bg-blossom-950/50 text-base py-6 px-8"
-                size="lg"
-                variant="outline"
-              >
+              <Button onClick={() => navigate('/templates')} className="bg-background text-foreground border border-blossom-300 hover:bg-blossom-50 dark:hover:bg-blossom-950/50 text-base py-6 px-8" size="lg" variant="outline">
                 Explore Templates
               </Button>
             </div>
@@ -85,18 +72,10 @@ export default function HeroSection() {
               </div>
               
               <div className="relative">
-                <img
-                  src="/placeholder.svg"
-                  alt="Blossom Website Builder Interface"
-                  className="w-full aspect-video object-cover opacity-70 dark:opacity-90"
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
+                <img src="/placeholder.svg" alt="Blossom Website Builder Interface" className="w-full aspect-video object-cover opacity-70 dark:opacity-90" />
+                <div className="absolute inset-0 flex items-center justify-center bg-amber-100">
                   <div className="text-center space-y-2">
-                    <img 
-                      src="/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png" 
-                      alt="Blossom Logo" 
-                      className="w-16 h-16 object-contain mx-auto blossom-glow-lg animate-glow"
-                    />
+                    <img src="/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png" alt="Blossom Logo" className="w-16 h-16 object-contain mx-auto blossom-glow-lg animate-glow" />
                     <div className="bg-background/80 dark:bg-background/60 backdrop-blur-sm rounded-md p-3 max-w-xs mx-auto">
                       <div className="text-xs text-muted-foreground mb-2">Generating website...</div>
                       <div className="w-full bg-blossom-100 dark:bg-blossom-900/50 h-2 rounded-full overflow-hidden">
@@ -130,6 +109,5 @@ export default function HeroSection() {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
