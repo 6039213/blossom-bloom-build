@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -16,9 +17,6 @@ import { Spinner } from '@/components/ui/spinner';
 // Import services
 import { generateCode, extractFilesFromResponse, FileContent } from '@/lib/services/claudeService';
 import { createProjectZip } from '@/lib/services/zipService';
-
-// Import JSZip for downloading the project
-import JSZip from 'jszip';
 
 // Helper function to add an initial set of files if none exist
 const createInitialFiles = (): FileContent[] => {
@@ -433,42 +431,45 @@ export default function BlossomAIWebBuilder() {
             </Tabs>
           </div>
           
-          <TabsContent value="editor" className="flex-1 p-0 m-0 overflow-hidden flex flex-col">
-            <EditorTabs 
-              openFiles={openFiles} 
-              activeFile={activeFile} 
-              onSelectTab={handleSelectTab} 
-              onCloseTab={handleCloseTab} 
-            />
-            
-            {activeFile ? (
-              <div className="flex-1">
-                {files.find(f => f.path === activeFile) ? (
-                  <MonacoEditor
-                    value={files.find(f => f.path === activeFile)?.content || ''}
-                    language={getFileLanguage(activeFile)}
-                    onChange={handleFileContentChange}
-                  />
+          {/* Editor Tab Content */}
+          <div className="flex-1 p-0 overflow-hidden flex flex-col">
+            {activeTab === "editor" ? (
+              <>
+                <EditorTabs 
+                  openFiles={openFiles} 
+                  activeFile={activeFile} 
+                  onSelectTab={handleSelectTab} 
+                  onCloseTab={handleCloseTab} 
+                />
+                
+                {activeFile ? (
+                  <div className="flex-1">
+                    {files.find(f => f.path === activeFile) ? (
+                      <MonacoEditor
+                        value={files.find(f => f.path === activeFile)?.content || ''}
+                        language={getFileLanguage(activeFile)}
+                        onChange={handleFileContentChange}
+                      />
+                    ) : (
+                      <div className="h-full flex items-center justify-center bg-gray-800 text-gray-400">
+                        File not found: {activeFile}
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="h-full flex items-center justify-center bg-gray-800 text-gray-400">
-                    File not found: {activeFile}
+                    Select a file from the file tree to edit
                   </div>
                 )}
-              </div>
+              </>
             ) : (
-              <div className="h-full flex items-center justify-center bg-gray-800 text-gray-400">
-                Select a file from the file tree to edit
-              </div>
+              <LivePreview 
+                files={files} 
+                viewportSize={viewportSize}
+                onViewportChange={setViewportSize}
+              />
             )}
-          </TabsContent>
-          
-          <TabsContent value="preview" className="flex-1 p-0 m-0 overflow-hidden">
-            <LivePreview 
-              files={files} 
-              viewportSize={viewportSize}
-              onViewportChange={setViewportSize}
-            />
-          </TabsContent>
+          </div>
         </div>
       </div>
       
