@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { v4 as uuidv4 } from 'uuid';
-import { Sparkles, Send, Code, Eye, Loader2, FileCode, CheckCircle } from 'lucide-react';
+import { Sparkles, Send, Code, Eye, Loader2, FileCode, CheckCircle, Terminal, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,7 @@ interface Message {
   content: string;
   timestamp: Date;
   files?: FileContent[];
+  isTyping?: boolean;
 }
 
 interface WebsiteFile extends FileContent {
@@ -84,7 +85,7 @@ const itemVariants = {
 };
 
 export default function BoltAIWebBuilder() {
-  const [activeTab, setActiveTab] = useState('chat');
+  const [activeTab, setActiveTab] = useState('preview');
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -126,6 +127,22 @@ export default function BoltAIWebBuilder() {
     setPrompt(sample);
   };
 
+  // Simulate typing effect
+  const simulateTyping = async (text: string, messageIndex: number) => {
+    const words = text.split(' ');
+    let currentText = '';
+    
+    for (const word of words) {
+      currentText += word + ' ';
+      setMessages(prev => {
+        const newMessages = [...prev];
+        newMessages[messageIndex].content = currentText;
+        return newMessages;
+      });
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  };
+
   // Handle prompt submission
   const handleSubmitPrompt = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,11 +162,12 @@ export default function BoltAIWebBuilder() {
     setResponseContent('');
 
     try {
-      // Add initial assistant message
+      // Add initial assistant message with typing effect
       const assistantMessage: Message = {
         role: 'assistant',
-        content: "I'll help you create your website. Let me generate the code...",
-        timestamp: new Date()
+        content: "I'll help you create your website. Let me analyze your request...",
+        timestamp: new Date(),
+        isTyping: true
       };
       setMessages(prev => [...prev, assistantMessage]);
 
@@ -187,10 +205,14 @@ export default function BoltAIWebBuilder() {
 
       // Update assistant message with file changes
       const fileChanges = websiteFiles.map(file => `Created/Updated: ${file.path}`).join('\n');
+      const finalMessage = `I've created/updated the following files:\n${fileChanges}\n\nYou can now preview the website or view the code.`;
+      
+      // Update the last message with typing effect
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMessage = newMessages[newMessages.length - 1];
-        lastMessage.content = `I've created/updated the following files:\n${fileChanges}\n\nYou can now preview the website or view the code.`;
+        lastMessage.isTyping = false;
+        lastMessage.content = finalMessage;
         lastMessage.files = extractedFiles;
         return newMessages;
       });
@@ -205,6 +227,7 @@ export default function BoltAIWebBuilder() {
       setMessages(prev => {
         const newMessages = [...prev];
         const lastMessage = newMessages[newMessages.length - 1];
+        lastMessage.isTyping = false;
         lastMessage.content = `Sorry, I encountered an error: ${error.message}`;
         return newMessages;
       });
@@ -228,65 +251,77 @@ export default function BoltAIWebBuilder() {
 
         {/* Chat messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-6 py-10">
+          <AnimatePresence>
+            {messages.length === 0 ? (
               <motion.div
-                className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center"
-                whileHover={{ scale: 1.05, rotate: 5 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <Sparkles className="h-10 w-10 text-blue-500" />
-              </motion.div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold">Blossom AI Website Builder</h3>
-                <p className="text-muted-foreground max-w-sm">
-                  Describe the website you want to create, and AI will generate it for you in seconds.
-                </p>
-              </div>
-              <Card className="w-full bg-blue-50/50 dark:bg-blue-900/20">
-                <CardContent className="p-4 text-sm">
-                  <h4 className="font-medium mb-2">Try prompts like:</h4>
-                  <ul className="space-y-2 list-disc list-inside">
-                    {samplePrompts.map((sample, index) => (
-                      <li key={index} className="cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSelectSample(sample)}>
-                        {sample}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            messages.map((message, index) => (
-              <motion.div
-                key={index}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className="h-full flex flex-col items-center justify-center text-center space-y-6 py-10"
               >
-                <div className={`max-w-[80%] rounded-lg p-3 ${
-                  message.role === 'user' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 dark:bg-gray-800'
-                }`}>
-                  <div className="whitespace-pre-wrap">{message.content}</div>
-                  {message.files && (
-                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                      <div className="text-xs font-medium mb-1">Files created/updated:</div>
-                      <ul className="space-y-1">
-                        {message.files.map((file, i) => (
-                          <li key={i} className="flex items-center text-xs">
-                            <FileCode className="w-3 h-3 mr-1" />
-                            {file.path}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                <motion.div
+                  className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center"
+                  whileHover={{ scale: 1.05, rotate: 5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <Sparkles className="h-10 w-10 text-blue-500" />
+                </motion.div>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-bold">Blossom AI Website Builder</h3>
+                  <p className="text-muted-foreground max-w-sm">
+                    Describe the website you want to create, and AI will generate it for you in seconds.
+                  </p>
                 </div>
+                <Card className="w-full bg-blue-50/50 dark:bg-blue-900/20">
+                  <CardContent className="p-4 text-sm">
+                    <h4 className="font-medium mb-2">Try prompts like:</h4>
+                    <ul className="space-y-2 list-disc list-inside">
+                      {samplePrompts.map((sample, index) => (
+                        <li key={index} className="cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSelectSample(sample)}>
+                          {sample}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
               </motion.div>
-            ))
-          )}
+            ) : (
+              messages.map((message, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className={`max-w-[80%] rounded-lg p-3 ${
+                    message.role === 'user' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-100 dark:bg-gray-800'
+                  }`}>
+                    <div className="whitespace-pre-wrap">
+                      {message.content}
+                      {message.isTyping && (
+                        <span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse" />
+                      )}
+                    </div>
+                    {message.files && (
+                      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-xs font-medium mb-1">Files created/updated:</div>
+                        <ul className="space-y-1">
+                          {message.files.map((file, i) => (
+                            <li key={i} className="flex items-center text-xs">
+                              <FileCode className="w-3 h-3 mr-1" />
+                              {file.path}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
 
