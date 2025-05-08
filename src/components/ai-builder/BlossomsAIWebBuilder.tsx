@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,30 +20,17 @@ export default function BlossomsAIWebBuilder() {
   const [generatedFiles, setGeneratedFiles] = useState<Record<string, string>>({});
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string>('');
-  const [apiKey, setApiKey] = useState<string>('');
+  const [apiKey, setApiKey] = useState<string>('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');
 
-  // Check for API key on component mount
   useEffect(() => {
-    const savedKey = localStorage.getItem('CLAUDE_API_KEY');
-    if (savedKey) {
-      setApiKey(savedKey);
-    } else {
-      const envKey = import.meta.env.VITE_CLAUDE_API_KEY;
-      if (envKey) {
-        setApiKey(envKey);
-      }
-    }
+    // Always use the provided API key
+    setApiKey('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');
   }, []);
 
   // Generate code based on prompt
   const handleGenerateCode = async () => {
     if (!prompt.trim()) {
       toast.error('Please enter a prompt');
-      return;
-    }
-
-    if (!apiKey) {
-      toast.error('Claude API key not found. Please add it in settings.');
       return;
     }
 
@@ -161,22 +149,6 @@ export default function BlossomsAIWebBuilder() {
     }
   };
 
-  // Save API key
-  const handleSaveApiKey = () => {
-    if (!apiKey.trim()) {
-      toast.error('Please enter a valid API key');
-      return;
-    }
-    
-    try {
-      localStorage.setItem('CLAUDE_API_KEY', apiKey.trim());
-      toast.success('API key saved successfully');
-    } catch (error) {
-      console.error('Error saving API key:', error);
-      toast.error('Failed to save API key');
-    }
-  };
-
   return (
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -241,32 +213,6 @@ export default function BlossomsAIWebBuilder() {
           
           {/* Add Claude Test Component */}
           <ClaudeTest />
-          
-          {/* API Key Configuration */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Claude API Key</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Input
-                  type="password"
-                  placeholder="sk-ant-..."
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                />
-                <Button 
-                  onClick={handleSaveApiKey}
-                  className="w-full"
-                  variant="outline"
-                  size="sm"
-                >
-                  <Settings className="h-3.5 w-3.5 mr-2" />
-                  Save API Key
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
         
         {/* Main content area */}
@@ -287,46 +233,48 @@ export default function BlossomsAIWebBuilder() {
               </Tabs>
             </CardHeader>
             <CardContent className="p-0 h-[calc(100%-4rem)]">
-              <TabsContent value="editor" className="m-0 h-full">
-                {selectedFile ? (
-                  <MonacoEditor
-                    value={generatedFiles[selectedFile]}
-                    language={getFileLanguage(selectedFile)}
-                    onChange={handleFileChange}
-                    height="100%"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center p-8">
-                      <Sparkles className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold mb-2">AI Web Builder</h3>
-                      <p className="text-muted-foreground max-w-md">
-                        Enter a description of the website you want to create, and our AI will generate the code for you.
-                      </p>
+              <Tabs value={activeTab} className="h-full">
+                <TabsContent value="editor" className="m-0 h-full">
+                  {selectedFile ? (
+                    <MonacoEditor
+                      value={generatedFiles[selectedFile]}
+                      language={getFileLanguage(selectedFile)}
+                      onChange={handleFileChange}
+                      height="100%"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center p-8">
+                        <Sparkles className="h-12 w-12 text-blue-500 mx-auto mb-4" />
+                        <h3 className="text-xl font-bold mb-2">AI Web Builder</h3>
+                        <p className="text-muted-foreground max-w-md">
+                          Enter a description of the website you want to create, and our AI will generate the code for you.
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </TabsContent>
-              <TabsContent value="preview" className="m-0 h-full">
-                {previewHtml ? (
-                  <iframe
-                    srcDoc={previewHtml}
-                    className="w-full h-full border-0"
-                    title="Preview"
-                    sandbox="allow-scripts"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center p-8">
-                      <Play className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-                      <h3 className="text-xl font-bold mb-2">Website Preview</h3>
-                      <p className="text-muted-foreground max-w-md">
-                        Generate a website first to see a preview here.
-                      </p>
+                  )}
+                </TabsContent>
+                <TabsContent value="preview" className="m-0 h-full">
+                  {previewHtml ? (
+                    <iframe
+                      srcDoc={previewHtml}
+                      className="w-full h-full border-0"
+                      title="Preview"
+                      sandbox="allow-scripts"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center p-8">
+                        <Play className="h-12 w-12 text-blue-500 mx-auto mb-4" />
+                        <h3 className="text-xl font-bold mb-2">Website Preview</h3>
+                        <p className="text-muted-foreground max-w-md">
+                          Generate a website first to see a preview here.
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </TabsContent>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>

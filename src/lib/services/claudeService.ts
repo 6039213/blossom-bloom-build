@@ -6,6 +6,10 @@ export interface FileContent {
   content: string;
 }
 
+// Hardcoded API key as requested by the user
+const CLAUDE_API_KEY = "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";
+const CLAUDE_MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+
 /**
  * Generate code based on a prompt and existing files
  */
@@ -26,26 +30,31 @@ export const generateCode = async (
       filesObj[file.path] = file.content;
     });
     
-    console.log("Generating code with Claude API using model:", import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229");
+    console.log("Generating code with Claude API using model:", CLAUDE_MODEL);
     
-    // Format the request body for our API endpoint
-    const requestBody = {
-      system: options.system || "You are an expert web developer who creates beautiful, modern React + Tailwind webapps. Return code as markdown code blocks with filename headers.",
-      prompt: enhancePrompt(prompt),
-      temperature: options.temperature || 0.7,
-      max_tokens: options.maxOutputTokens || 4000,
-      files: filesObj
-    };
-    
-    console.log("Sending request to Claude API with prompt:", prompt.substring(0, 50) + "...");
-    
-    // Use our local API endpoint that will proxy to Anthropic
-    const response = await fetch('/api/claude', {
+    // Make a direct request to Claude API
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify({
+        model: CLAUDE_MODEL,
+        max_tokens: options.maxOutputTokens || 4000,
+        temperature: options.temperature || 0.7,
+        messages: [
+          {
+            role: 'system',
+            content: options.system || "You are an expert web developer who creates beautiful, modern React + Tailwind webapps. Return code as markdown code blocks with filename headers."
+          },
+          {
+            role: 'user',
+            content: enhancePrompt(prompt)
+          }
+        ]
+      })
     });
     
     if (!response.ok) {
@@ -60,8 +69,8 @@ export const generateCode = async (
     // Extract content from response
     let responseText = '';
     
-    if (data.content) {
-      responseText = data.content;
+    if (data.content && data.content[0] && data.content[0].text) {
+      responseText = data.content[0].text;
     } else if (data.error) {
       throw new Error(data.error);
     } else {
