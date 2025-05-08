@@ -30,8 +30,8 @@ export const generateCode = async (
     
     // Format the request body for our API endpoint
     const requestBody = {
-      system: options.system || "You are an AI that generates React + Tailwind webapps. Return code as markdown code blocks.",
-      prompt: prompt,
+      system: options.system || "You are an expert web developer who creates beautiful, modern React + Tailwind webapps. Return code as markdown code blocks with filename headers.",
+      prompt: enhancePrompt(prompt),
       temperature: options.temperature || 0.7,
       max_tokens: options.maxOutputTokens || 4000,
       files: filesObj
@@ -39,7 +39,7 @@ export const generateCode = async (
     
     console.log("Sending request to Claude API with prompt:", prompt.substring(0, 50) + "...");
     
-    // Use the local API endpoint (important! Not directly to anthropic.com)
+    // Use our local API endpoint that will proxy to Anthropic
     const response = await fetch('/api/claude', {
       method: 'POST',
       headers: {
@@ -101,6 +101,38 @@ export const extractFilesFromResponse = (responseText: string): FileContent[] =>
     toast.error(`Error extracting files: ${error.message}`);
     return [];
   }
+};
+
+/**
+ * Enhance the prompt to guide Claude to generate better code
+ */
+const enhancePrompt = (userPrompt: string): string => {
+  return `I need you to generate high-quality, production-ready React+Tailwind code for a web application based on this description:
+
+"${userPrompt}"
+
+Guidelines:
+- Create beautiful, modern UI with Tailwind CSS
+- Use functional React components with TypeScript
+- Make the design responsive for all devices
+- Use best practices for accessibility and performance
+- Implement professional animations and transitions where appropriate
+- Include realistic placeholder content
+- Use a cohesive color scheme with attention to design details
+
+Please generate each file as a markdown code block with the filename as the header:
+
+\`\`\`tsx src/components/Example.tsx
+// Code here
+\`\`\`
+
+Include all necessary files to make the application work, including:
+- Component files (.tsx)
+- Utility files (.ts)
+- CSS files if needed (but prefer Tailwind classes)
+- Type definitions
+
+The code should be complete, well-structured, and ready to run without additional modifications.`;
 };
 
 // Extract code blocks from text response

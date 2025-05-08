@@ -35,7 +35,7 @@ export async function POST(req) {
     // Add system message
     messages.push({
       role: 'system',
-      content: body.system || "You are an AI that generates React + Tailwind webapps. Return code as markdown code blocks."
+      content: body.system || "You are an expert web developer who creates beautiful, modern React + Tailwind webapps. Return code as markdown code blocks with filename headers."
     });
     
     // Add the user's prompt as a message
