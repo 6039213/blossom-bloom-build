@@ -6,9 +6,6 @@ export interface FileContent {
   content: string;
 }
 
-// Standard prompt system message that ensures Claude returns pure JSON
-const DEFAULT_SYSTEM_PROMPT = `Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON.`;
-
 /**
  * Generate code based on a prompt and existing files
  */
@@ -32,7 +29,7 @@ export const generateCode = async (
     // Format the request body
     const requestBody = {
       prompt: prompt,
-      system: options.system || DEFAULT_SYSTEM_PROMPT,
+      system: options.system || "You are an AI that generates React + Tailwind webapps. Return modified files as JSON. No explanation, no markdown, only JSON.",
       temperature: options.temperature || 0.7,
       max_tokens: options.maxOutputTokens || 4000,
       files: filesObj
@@ -50,24 +47,7 @@ export const generateCode = async (
     });
     
     if (!response.ok) {
-      const responseText = await response.text();
-      console.error("Error response from Claude API:", responseText);
-      
-      // Check for HTML response which indicates an error
-      if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-        console.error("Claude API returned HTML instead of JSON:", responseText.substring(0, 200));
-        throw new Error(`Claude API endpoint error: The server returned HTML instead of JSON. This might indicate a server-side error or incorrect endpoint configuration.`);
-      }
-      
-      // Try to parse as JSON to get error details
-      try {
-        const errorData = JSON.parse(responseText);
-        console.error("Claude API error response:", errorData);
-        throw new Error(`Claude API error: ${errorData.error || response.statusText}`);
-      } catch (parseError) {
-        console.error("Claude API error response (not JSON):", responseText);
-        throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
-      }
+      throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
     }
     
     const data = await response.json();
@@ -76,20 +56,10 @@ export const generateCode = async (
     // Handle different response formats
     let responseText = '';
     
-    if (data.content && typeof data.content === 'object') {
-      // The backend already extracted and parsed the JSON for us
-      responseText = JSON.stringify(data.content, null, 2);
-      console.log("Processed JSON content successfully");
-    } else if (data.content && data.content[0] && data.content[0].type === 'text') {
-      // Standard Claude API response format
-      responseText = data.content[0].text;
-      console.log("Extracted text content from Claude response");
+    if (data.content) {
+      responseText = data.content;
     } else if (data.error) {
       throw new Error(data.error);
-    } else if (data.rawResponse) {
-      // Use raw response as fallback
-      responseText = data.rawResponse;
-      console.log("Using raw response as fallback");
     } else {
       throw new Error("Unexpected response format from Claude API");
     }
@@ -112,19 +82,13 @@ export const generateCode = async (
  */
 export const extractFilesFromResponse = (responseText: string): FileContent[] => {
   try {
-    // Look for JSON in the response (ignore any markdown or explanations)
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No valid JSON found in the response");
-    }
-    
-    // Parse the JSON object from Claude's response
-    const filesObject = JSON.parse(jsonMatch[0]);
+    // Use the external utility to extract code blocks
+    const codeBlocks = extractCodeBlocks(responseText);
     
     // Convert the object into an array of FileContent objects
-    const files: FileContent[] = Object.entries(filesObject).map(([path, content]) => ({
+    const files: FileContent[] = Object.entries(codeBlocks).map(([path, content]) => ({
       path,
-      content: content as string
+      content: content
     }));
     
     return files;
@@ -133,4 +97,24 @@ export const extractFilesFromResponse = (responseText: string): FileContent[] =>
     toast.error(`Error extracting files: ${error.message}`);
     return [];
   }
+};
+
+// Import the utility function
+const extractCodeBlocks = (text: string): Record<string, string> => {
+  const files: Record<string, string> = {};
+  
+  // Match code blocks with format: ```jsx filename.jsx ... ```
+  const codeBlockRegex = /```(?:jsx|tsx|ts|js|css|html|json)?\s+([^\n]+)\s*\n([\s\S]*?)```/g;
+  let match;
+  
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    const [_, filePath, code] = match;
+    if (filePath && code) {
+      // Clean up the file path
+      const cleanPath = filePath.trim();
+      files[cleanPath] = code.trim();
+    }
+  }
+  
+  return files;
 };

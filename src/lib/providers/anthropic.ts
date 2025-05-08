@@ -2,9 +2,8 @@
 import type { LLMProvider, StreamResult } from "../types";
 
 // Get the API key and model name from environment variables
-const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY || 
-               "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";
-const MODEL_NAME = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229";
+const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY || "";
+const MODEL_NAME = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
 
 /**
  * Call Claude API through our backend endpoint
@@ -27,9 +26,7 @@ export const callClaude = async (prompt: string, system?: string, files: Record<
     });
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Error from Claude API endpoint:", errorText);
-      throw new Error(`Claude API error: ${errorText}`);
+      throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
     }
     
     const data = await response.json();
@@ -45,17 +42,6 @@ export const anthropicProvider: LLMProvider = {
   name: "claude",
   models: [MODEL_NAME],
   
-  async stream(opts: any) {
-    try {
-      console.log("Connecting to Claude AI...");
-      opts.onToken("Claude is initializing. Please wait while we prepare to build your application.");
-      await new Promise(resolve => setTimeout(resolve, 500));
-    } catch (error) {
-      console.error("Error connecting to Claude AI:", error);
-      opts.onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error connecting to Claude AI'}`);
-    }
-  },
-  
   async generateStream(
     prompt: string, 
     onToken: (token: string) => void, 
@@ -64,9 +50,9 @@ export const anthropicProvider: LLMProvider = {
     try {
       // Prepare system message if provided
       const systemMessage = options.system || 
-        "Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON.";
+        "You are an AI that generates React + Tailwind webapps. Return modified files as JSON. No explanation, no markdown, only JSON.";
       
-      onToken("Verbinding maken met Claude 3.7 Sonnet...");
+      onToken("Connecting to Claude 3.7 Sonnet...");
       
       try {
         // Make a request to our local API endpoint
@@ -84,19 +70,7 @@ export const anthropicProvider: LLMProvider = {
         });
         
         if (!response.ok) {
-          // Check if the response is HTML (indicates a server error)
-          const responseText = await response.text();
-          if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-            throw new Error("Server error: The API endpoint returned HTML instead of JSON. This likely means the endpoint does not exist or is misconfigured.");
-          }
-          
-          // Try to parse as JSON to get error details
-          try {
-            const errorData = JSON.parse(responseText);
-            throw new Error(`Claude API error: ${errorData.error || response.statusText}`);
-          } catch (parseError) {
-            throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
-          }
+          throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
@@ -104,21 +78,11 @@ export const anthropicProvider: LLMProvider = {
         let fullResponse = '';
         
         // Handle different response formats
-        if (data.content && typeof data.content === 'object') {
-          // The backend already extracted and parsed the JSON
-          const jsonStr = JSON.stringify(data.content, null, 2);
-          fullResponse = jsonStr;
-          onToken(jsonStr);
-        } else if (data.content && data.content[0] && data.content[0].type === 'text') {
-          // Standard Claude API response format
-          fullResponse = data.content[0].text;
+        if (data.content) {
+          fullResponse = data.content;
           onToken(fullResponse);
         } else if (data.error) {
           throw new Error(data.error);
-        } else if (data.rawResponse) {
-          // Use raw response as fallback
-          fullResponse = data.rawResponse;
-          onToken(fullResponse);
         } else {
           throw new Error("Unexpected response format from Claude API");
         }
