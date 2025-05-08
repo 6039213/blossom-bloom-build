@@ -6,11 +6,11 @@ const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY ||
                "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";
 const MODEL_NAME = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229";
 
-export const callClaude = async (prompt: string, system?: string) => {
+/**
+ * Call Claude API through our backend endpoint
+ */
+export const callClaude = async (prompt: string, system?: string, files: Record<string, string> = {}) => {
   try {
-    // Format the files to include in the request
-    const filesObj = {}; // Can be populated if needed
-    
     // Make a request to our local API endpoint
     const response = await fetch('/api/claude', {
       method: "POST",
@@ -20,7 +20,7 @@ export const callClaude = async (prompt: string, system?: string) => {
       body: JSON.stringify({
         prompt,
         system,
-        files: filesObj
+        files
       })
     });
     
@@ -61,12 +61,9 @@ export const anthropicProvider: LLMProvider = {
       const systemMessage = options.system || 
         "Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON.";
       
-      onToken("Verbinding maken met Claude 3 Sonnet...");
+      onToken("Verbinding maken met Claude 3.7 Sonnet...");
       
       try {
-        // Format existing files if any
-        const filesObj = {}; // Can be populated if needed
-        
         // Make a request to our local API endpoint
         const response = await fetch('/api/claude', {
           method: "POST",
@@ -77,14 +74,24 @@ export const anthropicProvider: LLMProvider = {
             prompt,
             system: systemMessage,
             temperature: options.temperature || 0.7,
-            max_tokens: options.maxOutputTokens || 4000,
-            files: filesObj
+            max_tokens: options.maxOutputTokens || 4000
           })
         });
         
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Claude API error: ${errorText}`);
+          // Check if the response is HTML (indicates a server error)
+          const responseText = await response.text();
+          if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
+            throw new Error("Server error: The API endpoint returned HTML instead of JSON");
+          }
+          
+          // Try to parse as JSON to get error details
+          try {
+            const errorData = JSON.parse(responseText);
+            throw new Error(`Claude API error: ${errorData.error || response.statusText}`);
+          } catch (parseError) {
+            throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+          }
         }
         
         const data = await response.json();

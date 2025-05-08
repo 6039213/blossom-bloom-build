@@ -50,9 +50,22 @@ export const generateCode = async (
     });
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Claude API error response:", errorText);
-      throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+      // Check for HTML response which indicates an error
+      const responseText = await response.text();
+      if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
+        console.error("Claude API returned HTML instead of JSON:", responseText);
+        throw new Error(`Claude API returned HTML instead of JSON. There may be a server error.`);
+      }
+      
+      // Try to parse as JSON to get error details
+      try {
+        const errorData = JSON.parse(responseText);
+        console.error("Claude API error response:", errorData);
+        throw new Error(`Claude API error: ${errorData.error || response.statusText}`);
+      } catch (parseError) {
+        console.error("Claude API error response (not JSON):", responseText);
+        throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+      }
     }
     
     const data = await response.json();
@@ -82,7 +95,7 @@ export const generateCode = async (
   } catch (error) {
     console.error("Error calling Claude API:", error);
     toast.error(`Failed to generate code: ${error.message}`);
-    throw new Error(`Failed to generate code: ${error.message}`);
+    throw error;
   }
 };
 
@@ -108,7 +121,7 @@ export const extractFilesFromResponse = (responseText: string): FileContent[] =>
     
     return files;
   } catch (error) {
-    console.error("API Error:", error);
+    console.error("Error extracting files:", error);
     toast.error(`Error extracting files: ${error.message}`);
     return [];
   }

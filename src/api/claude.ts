@@ -17,13 +17,16 @@ export async function POST(req: Request) {
     // Parse request body
     const body = await req.json();
     
-    // Add the existing files to the system prompt if provided
-    const systemPrompt = "Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON.";
-    
-    // Create messages array with files context if provided
+    // Format messages for Claude API
     let messages = [];
     
-    // Add the user's prompt as the first message
+    // Add system message
+    messages.push({
+      role: 'system',
+      content: body.system || "Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON."
+    });
+    
+    // Add the user's prompt as a message
     messages.push({
       role: 'user',
       content: `Prompt: ${body.prompt || ''}`
@@ -47,7 +50,6 @@ export async function POST(req: Request) {
       model: MODEL,
       temperature: body.temperature || 0.7,
       max_tokens: body.max_tokens || 4000,
-      system: systemPrompt,
       messages
     });
     
@@ -63,7 +65,6 @@ export async function POST(req: Request) {
         model: MODEL,
         temperature: body.temperature || 0.7,
         max_tokens: body.max_tokens || 4000,
-        system: systemPrompt,
         messages
       })
     });
@@ -72,8 +73,23 @@ export async function POST(req: Request) {
     if (!claudeResponse.ok) {
       const errorText = await claudeResponse.text();
       console.error("Claude API error response:", errorText);
+      
+      // Check if the error response contains HTML (common error case)
+      if (errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Claude API returned HTML instead of JSON", 
+            details: "The response appears to be an HTML page rather than the expected JSON" 
+          }), 
+          { 
+            status: claudeResponse.status,
+            headers: corsHeaders
+          }
+        );
+      }
+      
       return new Response(
-        JSON.stringify({ error: `Claude API error: ${claudeResponse.status} ${claudeResponse.statusText}` }), 
+        JSON.stringify({ error: `Claude API error: ${claudeResponse.status} ${claudeResponse.statusText}`, details: errorText }), 
         { 
           status: claudeResponse.status,
           headers: corsHeaders
@@ -104,7 +120,19 @@ export async function POST(req: Request) {
       // Look for a JSON object in the text
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error("No valid JSON found in Claude's response");
+        console.error("No valid JSON found in Claude's response");
+        console.log("Response text:", responseText);
+        
+        return new Response(
+          JSON.stringify({ 
+            error: "No valid JSON found in Claude's response",
+            rawResponse: responseText 
+          }), 
+          { 
+            status: 500,
+            headers: corsHeaders
+          }
+        );
       }
       
       // Parse the JSON to verify it's valid
@@ -122,20 +150,6 @@ export async function POST(req: Request) {
       console.error("Failed to parse Claude's response as JSON:", parseError);
       console.log("Response text:", responseText);
       
-      // Check if the response contains HTML (common error case)
-      if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-        return new Response(
-          JSON.stringify({ 
-            error: "Claude API returned HTML instead of JSON", 
-            details: "The response appears to be an HTML page rather than the expected JSON" 
-          }), 
-          { 
-            status: 500,
-            headers: corsHeaders
-          }
-        );
-      }
-      
       // Return the raw response text as a fallback
       return new Response(
         JSON.stringify({ 
@@ -152,7 +166,11 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('Error proxying request to Claude API:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to proxy request to Claude API', details: error.message }),
+      JSON.stringify({ 
+        error: 'Failed to proxy request to Claude API', 
+        details: error.message,
+        stack: error.stack
+      }),
       { 
         status: 500,
         headers: corsHeaders
