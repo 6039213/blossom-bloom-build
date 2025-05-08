@@ -249,40 +249,35 @@ export default function BlossomAIWebBuilder() {
         
         // Open the first generated file
         if (extractedFiles.length > 0) {
-          const mainFile = extractedFiles.find(f => 
-            f.path === 'App.jsx' || 
-            f.path === 'index.jsx' || 
-            f.path === 'main.jsx'
-          ) || extractedFiles[0];
-          
-          handleFileSelect(mainFile.path);
-          setActiveView('preview'); // Switch to preview tab
+          setActiveFile(extractedFiles[0].path);
+          if (!openFiles.includes(extractedFiles[0].path)) {
+            setOpenFiles(prev => [...prev, extractedFiles[0].path]);
+          }
         }
         
-        toast.success(`Generated ${extractedFiles.length} files successfully!`);
-        setPrompt('');
-      } catch (apiError) {
-        console.error("API Error:", apiError);
-        toast.error(`Claude API error: ${apiError.message}`);
-        setError(`Claude API error: ${apiError.message}`);
+        toast.success("Code generated successfully!");
+      } catch (error) {
+        console.error("Error generating code:", error);
+        toast.error(`Failed to generate code: ${error.message}`);
+        setError(error.message);
       }
     } catch (error) {
-      console.error("Error generating code:", error);
-      toast.error(`Error generating code: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setError(`Error generating code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Error in handleGenerateCode:", error);
+      toast.error(`An unexpected error occurred: ${error.message}`);
+      setError(error.message);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // Handle project download as ZIP
+  // Handle downloading the project as a ZIP file
   const handleDownloadZip = async () => {
     try {
-      toast.info("Creating ZIP file...");
-      const blob = await createProjectZip(files);
+      toast.info("Creating project ZIP file...");
+      const zipBlob = await createProjectZip(files);
       
-      // Create download link
-      const url = URL.createObjectURL(blob);
+      // Create a download link and trigger the download
+      const url = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'blossom-ai-project.zip';
@@ -293,18 +288,10 @@ export default function BlossomAIWebBuilder() {
       
       toast.success("Project downloaded successfully!");
     } catch (error) {
-      console.error("Error downloading project:", error);
-      toast.error("Failed to download project");
+      console.error("Error creating ZIP file:", error);
+      toast.error(`Failed to create ZIP file: ${error.message}`);
     }
   };
-
-  // Sample prompts for inspiration
-  const samplePrompts = [
-    "Create a modern landing page for a coffee shop with a hero section, features, and contact form",
-    "Build a personal portfolio website with about me, projects, and contact sections",
-    "Generate a blog homepage with featured posts, categories, and subscription form",
-    "Create an e-commerce product page with image gallery, details, and add to cart functionality"
-  ];
 
   // Handle sample prompt selection
   const handleSamplePrompt = (sample: string) => {
@@ -321,199 +308,129 @@ export default function BlossomAIWebBuilder() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-[#121212] text-white p-4 border-b border-gray-800">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Sparkles className="h-5 w-5 text-amber-400 mr-2" />
-            <h1 className="text-xl font-bold text-amber-300">Blossom AI Builder</h1>
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b">
+        <h1 className="text-2xl font-bold">Blossom AI Web Builder</h1>
+        <div className="flex items-center space-x-2">
           <Button
             variant="outline"
-            className="border-amber-600 text-amber-400 hover:bg-amber-900/30"
+            size="sm"
+            onClick={toggleFileTree}
+          >
+            {showFileTree ? 'Hide Files' : 'Show Files'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setActiveView(prev => prev === 'editor' ? 'preview' : 'editor')}
+          >
+            {activeView === 'editor' ? <Eye className="w-4 h-4 mr-2" /> : <Code className="w-4 h-4 mr-2" />}
+            {activeView === 'editor' ? 'Preview' : 'Code'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleDownloadZip}
           >
-            <Download className="h-4 w-4 mr-2" />
-            Download Project
+            <Download className="w-4 h-4 mr-2" />
+            Download
           </Button>
-        </div>
-        
-        {/* Prompt input section */}
-        <div className="mt-4">
-          <div className="relative">
-            <Textarea
-              ref={promptInputRef}
-              placeholder="Describe the website you want to build with AI..."
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && e.ctrlKey) {
-                  handleGenerateCode();
-                }
-              }}
-              className="min-h-[80px] bg-gray-900 border-gray-700 text-gray-100 resize-none focus:border-amber-500"
-              disabled={isGenerating}
-            />
-            <div className="absolute right-2 bottom-2 text-xs text-gray-500">
-              Ctrl+Enter to submit
-            </div>
-          </div>
-          
-          <div className="flex justify-between mt-2">
-            <Button 
-              onClick={handleGenerateCode}
-              disabled={isGenerating || !prompt.trim()}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 flex items-center gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  {isFirstGeneration ? 'Generate Website' : 'Update Website'}
-                </>
-              )}
-            </Button>
-            
-            <div className="flex space-x-2">
-              <Button
-                variant="ghost"
-                className="text-gray-300 hover:text-white hover:bg-gray-800"
-                onClick={toggleFileTree}
-              >
-                {showFileTree ? 'Hide Files' : 'Show Files'}
-              </Button>
-              
-              <Button
-                variant={activeView === 'editor' ? 'default' : 'outline'}
-                className={activeView === 'editor' ? 'bg-blue-600' : ''}
-                onClick={() => setActiveView('editor')}
-              >
-                <Code className="h-4 w-4 mr-1" />
-                Editor
-              </Button>
-              
-              <Button
-                variant={activeView === 'preview' ? 'default' : 'outline'}
-                className={activeView === 'preview' ? 'bg-blue-600' : ''}
-                onClick={() => setActiveView('preview')}
-              >
-                <Eye className="h-4 w-4 mr-1" />
-                Preview
-              </Button>
-            </div>
-          </div>
-          
-          {/* Sample prompts */}
-          <div className="mt-4">
-            <p className="text-xs text-gray-400 mb-2">Try these sample prompts:</p>
-            <div className="flex flex-wrap gap-2">
-              {samplePrompts.map((sample, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSamplePrompt(sample)}
-                  className="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded truncate max-w-[200px] text-left"
-                >
-                  {sample}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Main editor/preview area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* File tree sidebar */}
+      {/* Main content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* File tree */}
         {showFileTree && (
-          <div className="w-64 border-r border-gray-800">
-            <FileTree 
-              files={files} 
-              activeFile={activeFile} 
-              onFileSelect={handleFileSelect} 
+          <div className="w-64 border-r overflow-y-auto">
+            <FileTree
+              files={files}
+              onFileSelect={handleFileSelect}
+              activeFile={activeFile}
             />
           </div>
         )}
-        
-        {/* Editor/Preview main area */}
+
+        {/* Editor/Preview area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {activeView === "editor" ? (
+          {activeView === 'editor' ? (
             <>
-              <EditorTabs 
-                openFiles={openFiles} 
-                activeFile={activeFile} 
-                onSelectTab={handleSelectTab} 
-                onCloseTab={handleCloseTab} 
+              {/* Editor tabs */}
+              <EditorTabs
+                openFiles={openFiles}
+                activeFile={activeFile}
+                onSelectTab={handleSelectTab}
+                onCloseTab={handleCloseTab}
               />
-              
-              {activeFile ? (
-                <div className="flex-1">
-                  {files.find(f => f.path === activeFile) ? (
-                    <MonacoEditor
-                      value={files.find(f => f.path === activeFile)?.content || ''}
-                      language={getFileLanguage(activeFile)}
-                      onChange={handleFileContentChange}
-                    />
-                  ) : (
-                    <div className="h-full flex items-center justify-center bg-gray-800 text-gray-400">
-                      File not found: {activeFile}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="h-full flex items-center justify-center bg-gray-800 text-gray-400">
-                  Select a file from the file tree to edit
+
+              {/* Code editor */}
+              {activeFile && (
+                <div className="flex-1 overflow-hidden">
+                  <MonacoEditor
+                    value={files.find(f => f.path === activeFile)?.content || ''}
+                    language={getFileLanguage(activeFile)}
+                    onChange={handleFileContentChange}
+                  />
                 </div>
               )}
             </>
           ) : (
-            <LivePreview 
-              files={files} 
-              viewportSize={viewportSize}
-              onViewportChange={setViewportSize}
-            />
+            <div className="flex-1 overflow-hidden">
+              <LivePreview
+                files={files}
+                viewportSize={viewportSize}
+                onViewportChange={setViewportSize}
+              />
+            </div>
           )}
         </div>
       </div>
-      
-      {/* Streaming response from Claude (only shown when generating) */}
-      {isGenerating && streamingResponse && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          className="border-t border-gray-800 bg-gray-900 overflow-auto"
-          style={{ maxHeight: '30vh' }}
-        >
-          <div className="p-3 text-sm text-amber-300 font-semibold flex items-center">
-            <Sparkles className="h-4 w-4 mr-2" />
-            Claude 3.7 Sonnet Response
+
+      {/* Prompt input */}
+      <div className="border-t p-4">
+        <div className="flex items-end space-x-2">
+          <div className="flex-1">
+            <Textarea
+              ref={promptInputRef}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Describe the website you want to build..."
+              className="min-h-[100px]"
+              disabled={isGenerating}
+            />
           </div>
-          <div className="p-3 text-gray-300 text-sm font-mono whitespace-pre-wrap max-h-[200px] overflow-y-auto">
-            <div className="max-w-full overflow-auto">
-              {streamingResponse}
-            </div>
-          </div>
-        </motion.div>
-      )}
-      
-      {/* Error message display */}
-      {error && !isGenerating && (
-        <div className="border-t border-red-800 bg-red-900/20 p-4">
-          <h4 className="text-red-400 font-medium mb-2">Error</h4>
-          <p className="text-sm text-red-300">{error}</p>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="mt-2 border-red-600 text-red-400 hover:bg-red-900/30"
-            onClick={() => setError(null)}
+          <Button
+            onClick={handleGenerateCode}
+            disabled={isGenerating || !prompt.trim()}
+            className="h-[100px]"
           >
-            Dismiss
+            {isGenerating ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : (
+              <>
+                <Sparkles className="w-6 h-6 mr-2" />
+                Generate
+              </>
+            )}
           </Button>
         </div>
-      )}
+
+        {/* Error display */}
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-red-600">{error}</p>
+          </div>
+        )}
+
+        {/* Streaming response */}
+        {streamingResponse && (
+          <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
+            <pre className="text-sm text-gray-700 whitespace-pre-wrap">
+              {streamingResponse}
+            </pre>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

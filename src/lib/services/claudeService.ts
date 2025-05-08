@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 export interface FileContent {
@@ -7,7 +6,7 @@ export interface FileContent {
 }
 
 // Standard prompt system message that ensures Claude returns pure JSON
-const DEFAULT_SYSTEM_PROMPT = `Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON.`;
+const DEFAULT_SYSTEM_PROMPT = `You are an AI that generates React + Tailwind web applications and modifies existing code. Return only modified files as JSON. No explanations, no markdown, no text outside JSON.`;
 
 /**
  * Generate code based on a prompt and existing files

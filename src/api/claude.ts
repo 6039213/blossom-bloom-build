@@ -1,3 +1,4 @@
+import config from '../config';
 
 // Use proper CORS headers to avoid issues with cross-origin requests
 const corsHeaders = {
@@ -8,11 +9,6 @@ const corsHeaders = {
 };
 
 export async function POST(req: Request) {
-  // Extract the Claude API key from environment variables
-  const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY || 
-                  "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";
-  const MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229";
-  
   try {
     // Parse request body
     const body = await req.json();
@@ -23,7 +19,7 @@ export async function POST(req: Request) {
     // Add system message
     messages.push({
       role: 'system',
-      content: body.system || "Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON."
+      content: body.system || "You are an AI that generates React + Tailwind web applications and modifies existing code. Return only modified files as JSON. No explanations, no markdown, no text outside JSON."
     });
     
     // Add the user's prompt as a message
@@ -42,27 +38,27 @@ export async function POST(req: Request) {
       // Add files context as a separate user message
       messages.push({
         role: 'user',
-        content: `Bestaande bestanden:\n${filesContext}`
+        content: `Existing files:\n${filesContext}`
       });
     }
     
     console.log("Calling Claude API with request:", {
-      model: MODEL,
+      model: config.claudeModel,
       temperature: body.temperature || 0.7,
       max_tokens: body.max_tokens || 4000,
       messages
     });
     
     // Forward the request to Claude API
-    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    const claudeResponse = await fetch(config.apiUrl, {
       method: 'POST',
       headers: {
-        'x-api-key': API_KEY,
+        'x-api-key': config.claudeApiKey,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json'
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: config.claudeModel,
         temperature: body.temperature || 0.7,
         max_tokens: body.max_tokens || 4000,
         messages
