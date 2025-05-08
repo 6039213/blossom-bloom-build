@@ -3,6 +3,7 @@ import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ThemeProvider } from 'next-themes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import LoadingScreen from '@/components/LoadingScreen';
 import { motion } from 'framer-motion';
@@ -83,12 +84,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="light" attribute="class">
-          <Suspense fallback={<LoadingScreen isLoading={true} />}>
-            <PageTransition>
-              <AppRoutes />
-            </PageTransition>
-          </Suspense>
-          <Toaster position="top-right" />
+          <BrowserRouter>
+            <Suspense fallback={<LoadingScreen isLoading={true} />}>
+              <PageTransition>
+                <AppRoutes />
+              </PageTransition>
+            </Suspense>
+            <Toaster position="top-right" />
+          </BrowserRouter>
         </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>

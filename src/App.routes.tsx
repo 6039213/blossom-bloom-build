@@ -9,14 +9,14 @@ const AboutPage = lazy(() => import('./pages/AboutPage'));
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
 const HelpPage = lazy(() => import('./pages/HelpPage'));
 const TeamPage = lazy(() => import('./pages/TeamPage'));
-const PricingPage = lazy(() => import('./pages/PricingPage'));
+const PricingPage = lazy(() => import('./pages/Pricing')); // Fixed import path
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
-export const AppRoutes = () => {
+const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<EnhancedAIWebBuilder />} />
@@ -35,5 +35,5 @@ export const AppRoutes = () => {
   );
 };
 
-// Add default export to fix the import in main.tsx
+// Export the AppRoutes component correctly
 export default AppRoutes;
