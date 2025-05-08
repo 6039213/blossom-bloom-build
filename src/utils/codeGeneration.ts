@@ -105,39 +105,3 @@ export const extractCodeBlocks = (text: string): Record<string, string> => {
   
   return files;
 };
-
-/**
- * Parse AI response to extract diff blocks and file code blocks
- */
-export const parseAiResponse = (text: string): { files: Record<string, string>, diffs: Record<string, string> } => {
-  const files: Record<string, string> = {};
-  const diffs: Record<string, string> = {};
-  
-  // Match code blocks with format: ```jsx filename.jsx ... ```
-  const fileBlockRegex = /```(?:jsx|tsx|ts|js|css|html|json|output)?\s+([^\n]+)\s*\n([\s\S]*?)```/g;
-  let fileMatch;
-  
-  while ((fileMatch = fileBlockRegex.exec(text)) !== null) {
-    const [_, filePath, code] = fileMatch;
-    if (filePath && code) {
-      // Clean up the file path
-      const cleanPath = filePath.trim();
-      files[cleanPath] = code.trim();
-    }
-  }
-  
-  // Match diff blocks with format: ```diff filename ... ```
-  const diffBlockRegex = /```diff\s+([^\n]+)\s*\n([\s\S]*?)```/g;
-  let diffMatch;
-  
-  while ((diffMatch = diffBlockRegex.exec(text)) !== null) {
-    const [_, filePath, diff] = diffMatch;
-    if (filePath && diff) {
-      // Clean up the file path
-      const cleanPath = filePath.trim();
-      diffs[cleanPath] = diff.trim();
-    }
-  }
-  
-  return { files, diffs };
-};

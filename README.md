@@ -1,69 +1,8 @@
-
-# Welcome to Blossom AI Web Builder
+# Welcome to your Lovable project
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/d30e207e-37be-478b-964d-663d2d109225
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 20 LTS or higher
-- pnpm (Recommended)
-
-### Environment Setup
-
-Create a `.env` file in the root directory with the following variables:
-
-```
-VITE_CLAUDE_API_KEY=your_claude_api_key
-VITE_CLAUDE_MODEL=claude-3-7-sonnet-20240229
-```
-
-### Installation
-
-```sh
-# Install dependencies
-npm install
-
-# Start the development server
-npm run dev
-```
-
-## Features
-
-- **AI-Powered Web Development**: Leverage Claude 3.7 Sonnet to generate web applications from natural language descriptions
-- **Live Preview**: See your application in real-time as you make changes
-- **File Explorer**: Browse and edit your project files with ease
-- **Monaco Editor**: Professional code editing experience with syntax highlighting and IntelliSense
-- **WebContainer**: Full development environment in the browser, no server required
-- **Blossom Theme**: Beautiful gold and white design theme
-
-## How to use
-
-1. Enter your project description in the chat input
-2. AI will generate code for your web application
-3. Explore and edit files in the file explorer
-4. See the live preview of your application
-5. Export your project or deploy it to a hosting service
-
-## Advanced Features
-
-### Export and Import
-
-- **Export**: Download your project as a ZIP file
-- **Import**: Upload a project ZIP or connect to a Git repository
-
-### Deployment
-
-- Deploy your project to Netlify, Vercel, or GitHub Pages directly from the UI
-
-### Customization
-
-- Choose from pre-built templates
-- Import designs from Figma
-- Customize the theme and layout
 
 ## How can I edit this code?
 
@@ -97,6 +36,20 @@ npm i
 npm run dev
 ```
 
+**Edit a file directly in GitHub**
+
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
+
+**Use GitHub Codespaces**
+
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
+
 ## What technologies are used for this project?
 
 This project is built with:
@@ -106,21 +59,15 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
-- Monaco Editor
-- WebContainer API
-- Claude 3.7 Sonnet AI
 
-## Development Guidelines
+## How can I deploy this project?
 
-- Use Tailwind CSS for styling
-- Follow component-based architecture
-- Use TypeScript for type safety
-- Write clean, maintainable code
+Simply open [Lovable](https://lovable.dev/projects/d30e207e-37be-478b-964d-663d2d109225) and click on Share -> Publish.
 
-## Contributing
+## Can I connect a custom domain to my Lovable project?
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Yes, you can!
 
-## License
+To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)

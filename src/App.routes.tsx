@@ -1,39 +1,90 @@
 
-import React, { lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
-import EnhancedAIWebBuilder from './components/ai-builder/EnhancedAIWebBuilder';
+import React from 'react';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 
-// Lazily load components as needed
-const Index = lazy(() => import('./pages/Index'));
-const AboutPage = lazy(() => import('./pages/AboutPage'));
-const FeaturesPage = lazy(() => import('./pages/FeaturesPage'));
-const HelpPage = lazy(() => import('./pages/HelpPage'));
-const TeamPage = lazy(() => import('./pages/TeamPage'));
-const PricingPage = lazy(() => import('./pages/Pricing')); // Fixed import path
-const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage'));
-const TemplatesPage = lazy(() => import('./pages/TemplatesPage'));
-const AuthPage = lazy(() => import('./pages/AuthPage'));
-const NotFound = lazy(() => import('./pages/NotFound'));
+// Import pages
+import Index from './pages/Index';
+import Dashboard from './pages/Dashboard';
+import Features from './pages/Features';
+import Pricing from './pages/Pricing';
+import Templates from './pages/Templates';
+import About from './pages/About';
+import Auth from './pages/Auth';
+import Team from './pages/TeamPage';
+import Settings from './pages/Settings';
+import Help from './pages/HelpPage';
+import NotFound from './pages/NotFound';
+import AIBuilder from './pages/AIBuilder';
+import ProjectsPage from './pages/ProjectsPage';
+import ProjectDetail from './pages/ProjectDetail';
 
-const AppRoutes = () => {
+// Update favicon in index.html
+document.querySelector('link[rel="icon"]')?.setAttribute('href', '/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png');
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Index />
+  },
+  {
+    path: '/dashboard',
+    element: <Dashboard />
+  },
+  {
+    path: '/dashboard/ai-builder',
+    element: <AIBuilder />
+  },
+  {
+    path: '/dashboard/projects',
+    element: <ProjectsPage />
+  },
+  {
+    path: '/dashboard/projects/:id',
+    element: <ProjectDetail />
+  },
+  {
+    path: '/dashboard/help',
+    element: <Help />
+  },
+  {
+    path: '/dashboard/team',
+    element: <Team />
+  },
+  {
+    path: '/dashboard/settings',
+    element: <Settings />
+  },
+  {
+    path: '/features',
+    element: <Features />
+  },
+  {
+    path: '/pricing',
+    element: <Pricing />
+  },
+  {
+    path: '/templates',
+    element: <Templates />
+  },
+  {
+    path: '/about',
+    element: <About />
+  },
+  {
+    path: '/auth',
+    element: <Auth />
+  },
+  {
+    path: '*',
+    element: <NotFound />
+  }
+]);
+
+export default function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<EnhancedAIWebBuilder />} />
-      <Route path="/about" element={<AboutPage />} />
-      <Route path="/features" element={<FeaturesPage />} />
-      <Route path="/help" element={<HelpPage />} />
-      <Route path="/team" element={<TeamPage />} />
-      <Route path="/pricing" element={<PricingPage />} />
-      <Route path="/projects" element={<ProjectsPage />} />
-      <Route path="/settings" element={<SettingsPage />} />
-      <Route path="/templates" element={<TemplatesPage />} />
-      <Route path="/auth" element={<AuthPage />} />
-      <Route path="/home" element={<Index />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   );
-};
-
-// Export the AppRoutes component correctly
-export default AppRoutes;
+}
