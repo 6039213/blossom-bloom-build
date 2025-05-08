@@ -1,5 +1,5 @@
 
-// Standard CORS headers for cross-origin requests
+// Use proper CORS headers to avoid issues with cross-origin requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -10,20 +10,20 @@ const corsHeaders = {
 export async function POST(req: Request) {
   // Extract the Claude API key from environment variables
   const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY || 
-                 "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";
-  const MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20250219";
+                  "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";
+  const MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229";
   
   try {
     // Parse request body
     const body = await req.json();
     
     // Format messages for Claude API
-    const messages = [];
+    let messages = [];
     
     // Add system message
     messages.push({
       role: 'system',
-      content: body.system || "You are an AI that generates and modifies React + Tailwind web applications. Return only modified files as JSON. No explanation, no markdown, no text outside JSON."
+      content: body.system || "Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON."
     });
     
     // Add the user's prompt as a message
@@ -42,11 +42,16 @@ export async function POST(req: Request) {
       // Add files context as a separate user message
       messages.push({
         role: 'user',
-        content: `Existing files:\n${filesContext}`
+        content: `Bestaande bestanden:\n${filesContext}`
       });
     }
     
-    console.log("Calling Claude API with message count:", messages.length);
+    console.log("Calling Claude API with request:", {
+      model: MODEL,
+      temperature: body.temperature || 0.7,
+      max_tokens: body.max_tokens || 4000,
+      messages
+    });
     
     // Forward the request to Claude API
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -94,7 +99,7 @@ export async function POST(req: Request) {
     
     // Get response data
     const data = await claudeResponse.json();
-    console.log("Claude API response received successfully");
+    console.log("Claude API response status:", claudeResponse.status);
     
     // Check if the response contains text content
     if (!data.content || !data.content[0] || data.content[0].type !== 'text') {
@@ -116,6 +121,7 @@ export async function POST(req: Request) {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         console.error("No valid JSON found in Claude's response");
+        console.log("Response text:", responseText);
         
         return new Response(
           JSON.stringify({ 
@@ -142,6 +148,7 @@ export async function POST(req: Request) {
       );
     } catch (parseError) {
       console.error("Failed to parse Claude's response as JSON:", parseError);
+      console.log("Response text:", responseText);
       
       // Return the raw response text as a fallback
       return new Response(
@@ -161,7 +168,8 @@ export async function POST(req: Request) {
     return new Response(
       JSON.stringify({ 
         error: 'Failed to proxy request to Claude API', 
-        details: error.message
+        details: error.message,
+        stack: error.stack
       }),
       { 
         status: 500,

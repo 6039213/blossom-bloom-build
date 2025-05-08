@@ -1,7 +1,7 @@
 
 import anthropicProvider from '../providers/anthropic';
 
-// Get the selected model - we're using the Claude 3.7 Sonnet implementation
+// Get the selected model - we're always using the direct Claude API implementation
 export const getSelectedModel = () => {
   return anthropicProvider;
 };
