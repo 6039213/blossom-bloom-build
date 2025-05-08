@@ -50,11 +50,13 @@ export const generateCode = async (
     });
     
     if (!response.ok) {
-      // Check for HTML response which indicates an error
       const responseText = await response.text();
+      console.error("Error response from Claude API:", responseText);
+      
+      // Check for HTML response which indicates an error
       if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-        console.error("Claude API returned HTML instead of JSON:", responseText);
-        throw new Error(`Claude API returned HTML instead of JSON. There may be a server error.`);
+        console.error("Claude API returned HTML instead of JSON:", responseText.substring(0, 200));
+        throw new Error(`Claude API endpoint error: The server returned HTML instead of JSON. This might indicate a server-side error or incorrect endpoint configuration.`);
       }
       
       // Try to parse as JSON to get error details
@@ -69,7 +71,7 @@ export const generateCode = async (
     }
     
     const data = await response.json();
-    console.log("Claude API response:", data);
+    console.log("Claude API response received:", data ? "Valid data" : "Invalid data");
     
     // Handle different response formats
     let responseText = '';
@@ -77,11 +79,17 @@ export const generateCode = async (
     if (data.content && typeof data.content === 'object') {
       // The backend already extracted and parsed the JSON for us
       responseText = JSON.stringify(data.content, null, 2);
+      console.log("Processed JSON content successfully");
     } else if (data.content && data.content[0] && data.content[0].type === 'text') {
       // Standard Claude API response format
       responseText = data.content[0].text;
+      console.log("Extracted text content from Claude response");
     } else if (data.error) {
       throw new Error(data.error);
+    } else if (data.rawResponse) {
+      // Use raw response as fallback
+      responseText = data.rawResponse;
+      console.log("Using raw response as fallback");
     } else {
       throw new Error("Unexpected response format from Claude API");
     }

@@ -11,6 +11,8 @@ const MODEL_NAME = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-2024022
  */
 export const callClaude = async (prompt: string, system?: string, files: Record<string, string> = {}) => {
   try {
+    console.log("Calling Claude API with prompt:", prompt.substring(0, 50) + "...");
+    
     // Make a request to our local API endpoint
     const response = await fetch('/api/claude', {
       method: "POST",
@@ -26,10 +28,13 @@ export const callClaude = async (prompt: string, system?: string, files: Record<
     
     if (!response.ok) {
       const errorText = await response.text();
+      console.error("Error from Claude API endpoint:", errorText);
       throw new Error(`Claude API error: ${errorText}`);
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log("Claude API response received successfully");
+    return data;
   } catch (error) {
     console.error("Error calling Claude API:", error);
     throw error;
@@ -42,12 +47,12 @@ export const anthropicProvider: LLMProvider = {
   
   async stream(opts: any) {
     try {
-      console.log("Connecting to Blossom AI...");
-      opts.onToken("Blossom is initializing. Please wait while we prepare to build your application.");
+      console.log("Connecting to Claude AI...");
+      opts.onToken("Claude is initializing. Please wait while we prepare to build your application.");
       await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
-      console.error("Error connecting to AI:", error);
-      opts.onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error connecting to AI'}`);
+      console.error("Error connecting to Claude AI:", error);
+      opts.onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error connecting to Claude AI'}`);
     }
   },
   
@@ -82,7 +87,7 @@ export const anthropicProvider: LLMProvider = {
           // Check if the response is HTML (indicates a server error)
           const responseText = await response.text();
           if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-            throw new Error("Server error: The API endpoint returned HTML instead of JSON");
+            throw new Error("Server error: The API endpoint returned HTML instead of JSON. This likely means the endpoint does not exist or is misconfigured.");
           }
           
           // Try to parse as JSON to get error details
@@ -110,6 +115,10 @@ export const anthropicProvider: LLMProvider = {
           onToken(fullResponse);
         } else if (data.error) {
           throw new Error(data.error);
+        } else if (data.rawResponse) {
+          // Use raw response as fallback
+          fullResponse = data.rawResponse;
+          onToken(fullResponse);
         } else {
           throw new Error("Unexpected response format from Claude API");
         }
