@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -9,7 +8,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
 import { getSupabaseClient } from '@/lib/supabase-client';
-
 export default function Auth() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -17,19 +15,17 @@ export default function Auth() {
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const supabase = getSupabaseClient();
-
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const {
+        error
+      } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       });
-      
       if (error) throw error;
-      
       toast.success('Signed in successfully!');
       navigate('/dashboard');
     } catch (error: any) {
@@ -38,24 +34,22 @@ export default function Auth() {
       setIsLoading(false);
     }
   };
-
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
     try {
-      const { error } = await supabase.auth.signUp({
+      const {
+        error
+      } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            name,
-          },
-        },
+            name
+          }
+        }
       });
-      
       if (error) throw error;
-      
       toast.success('Account created! Please check your email for verification.');
     } catch (error: any) {
       toast.error(`Error signing up: ${error.message}`);
@@ -63,34 +57,25 @@ export default function Auth() {
       setIsLoading(false);
     }
   };
-
-  return (
-    <motion.div 
-      className="min-h-screen flex flex-col"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
+  return <motion.div className="min-h-screen flex flex-col" initial={{
+    opacity: 0
+  }} animate={{
+    opacity: 1
+  }} transition={{
+    duration: 0.5
+  }}>
       {/* Header */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 max-w-screen-xl items-center justify-between">
           <a href="/" className="flex items-center gap-2">
-            <img 
-              src="/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png" 
-              alt="Blossom Logo" 
-              className="w-8 h-8 object-contain"
-            />
-            <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-indigo-600 inline-block text-transparent bg-clip-text">
+            <img src="/lovable-uploads/bd80f93f-4a5e-4b8c-9f55-caa09f871d6b.png" alt="Blossom Logo" className="w-8 h-8 object-contain" />
+            <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-indigo-600 inline-block bg-clip-text text-amber-500">
               Blossom
             </span>
           </a>
           
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate('/')}
-            >
+            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
               Back to Home
             </Button>
           </div>
@@ -100,21 +85,28 @@ export default function Auth() {
       {/* Main content */}
       <main className="flex-1 flex items-center justify-center p-4 bg-gradient-to-b from-blue-50/50 to-white dark:from-gray-900/50 dark:to-black/90">
         <div className="w-full max-w-md">
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="mb-8 text-center"
-          >
+          <motion.div initial={{
+          y: 20,
+          opacity: 0
+        }} animate={{
+          y: 0,
+          opacity: 1
+        }} transition={{
+          delay: 0.2
+        }} className="mb-8 text-center">
             <h1 className="text-3xl font-bold mb-2">Welcome to Blossom</h1>
             <p className="text-muted-foreground">Sign in to continue building beautiful websites with AI</p>
           </motion.div>
           
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
+          <motion.div initial={{
+          y: 20,
+          opacity: 0
+        }} animate={{
+          y: 0,
+          opacity: 1
+        }} transition={{
+          delay: 0.3
+        }}>
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
@@ -131,14 +123,7 @@ export default function Auth() {
                     <form onSubmit={handleSignIn} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="signin-email">Email</Label>
-                        <Input 
-                          id="signin-email" 
-                          type="email" 
-                          placeholder="you@example.com" 
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                        />
+                        <Input id="signin-email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
                       </div>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -147,20 +132,9 @@ export default function Auth() {
                             Forgot password?
                           </a>
                         </div>
-                        <Input 
-                          id="signin-password" 
-                          type="password" 
-                          placeholder="••••••••" 
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                        />
+                        <Input id="signin-password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
                       </div>
-                      <Button 
-                        type="submit" 
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                        disabled={isLoading}
-                      >
+                      <Button type="submit" disabled={isLoading} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-blossom-50 bg-cyan-500 hover:bg-cyan-400">
                         {isLoading ? 'Signing in...' : 'Sign In'}
                       </Button>
                     </form>
@@ -205,44 +179,20 @@ export default function Auth() {
                     <form onSubmit={handleSignUp} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Full Name</Label>
-                        <Input 
-                          id="name" 
-                          placeholder="John Doe" 
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          required
-                        />
+                        <Input id="name" placeholder="John Doe" value={name} onChange={e => setName(e.target.value)} required />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="signup-email">Email</Label>
-                        <Input 
-                          id="signup-email" 
-                          type="email" 
-                          placeholder="you@example.com" 
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                        />
+                        <Input id="signup-email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="signup-password">Password</Label>
-                        <Input 
-                          id="signup-password" 
-                          type="password" 
-                          placeholder="••••••••" 
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                        />
+                        <Input id="signup-password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
                         <p className="text-xs text-muted-foreground">
                           Password must be at least 8 characters long
                         </p>
                       </div>
-                      <Button 
-                        type="submit" 
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                        disabled={isLoading}
-                      >
+                      <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" disabled={isLoading}>
                         {isLoading ? 'Creating Account...' : 'Create Account'}
                       </Button>
                     </form>
@@ -272,6 +222,5 @@ export default function Auth() {
           </div>
         </div>
       </footer>
-    </motion.div>
-  );
+    </motion.div>;
 }
