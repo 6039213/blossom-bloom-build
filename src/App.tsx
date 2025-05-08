@@ -65,7 +65,7 @@ export default function App() {
 }
 
 // API Handler component to process API requests
-function APIHandler({ handler }) {
+function APIHandler({ handler }: { handler: any }) {
   React.useEffect(() => {
     const handleRequest = async () => {
       try {
@@ -73,11 +73,15 @@ function APIHandler({ handler }) {
         const url = new URL(window.location.href);
         const method = window.location.pathname.endsWith('OPTIONS') ? 'OPTIONS' : 'POST';
         
-        // Create a Request object
+        // Create the request object correctly (fixing the variable declaration order)
+        const incomingRequest = new Request(window.location.href);
+        const requestBody = method === 'POST' ? await incomingRequest.text() : null;
+        
+        // Create a Request object with proper body
         const request = new Request(url, {
           method,
-          headers: Object.fromEntries([...new Headers(request?.headers || {})]),
-          body: method === 'POST' ? await new Request(window.location.href).text() : null
+          headers: Object.fromEntries([...new Headers()]),
+          body: requestBody
         });
         
         // Call the appropriate handler
@@ -86,17 +90,36 @@ function APIHandler({ handler }) {
         // Set response headers and status
         if (response.headers) {
           for (const [key, value] of Object.entries(response.headers)) {
-            document.querySelector('#api-response-headers').setAttribute(key, value);
+            document.querySelector('#api-response-headers')?.setAttribute(key, value.toString());
           }
         }
         
-        // Set response body
-        document.querySelector('#api-response-body').textContent = await response.text();
-        document.querySelector('#api-response-status').textContent = response.status;
+        // Set response body - ensure we have string data
+        const responseBody = await response.text();
+        const statusElement = document.querySelector('#api-response-status');
+        const bodyElement = document.querySelector('#api-response-body');
+        
+        if (statusElement) {
+          statusElement.textContent = response.status.toString();
+        }
+        
+        if (bodyElement) {
+          bodyElement.textContent = responseBody;
+        }
       } catch (error) {
         console.error('API handler error:', error);
-        document.querySelector('#api-response-status').textContent = '500';
-        document.querySelector('#api-response-body').textContent = JSON.stringify({ error: error.message });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        
+        const statusElement = document.querySelector('#api-response-status');
+        const bodyElement = document.querySelector('#api-response-body');
+        
+        if (statusElement) {
+          statusElement.textContent = '500';
+        }
+        
+        if (bodyElement) {
+          bodyElement.textContent = JSON.stringify({ error: errorMessage });
+        }
       }
     };
     
