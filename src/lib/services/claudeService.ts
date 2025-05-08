@@ -1,5 +1,5 @@
+
 import { toast } from "sonner";
-import config from "../../config";
 
 export interface FileContent {
   path: string;
@@ -7,7 +7,7 @@ export interface FileContent {
 }
 
 // Standard prompt system message that ensures Claude returns pure JSON
-const DEFAULT_SYSTEM_PROMPT = `You are an AI that generates React + Tailwind web applications and modifies existing code. Return only modified files as JSON. No explanations, no markdown, no text outside JSON.`;
+const DEFAULT_SYSTEM_PROMPT = `Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON.`;
 
 /**
  * Generate code based on a prompt and existing files
@@ -31,30 +31,20 @@ export const generateCode = async (
     
     // Format the request body
     const requestBody = {
-      model: config.claudeModel,
-      messages: [
-        {
-          role: 'system',
-          content: options.system || DEFAULT_SYSTEM_PROMPT
-        },
-        {
-          role: 'user',
-          content: `Prompt: ${prompt}${Object.keys(filesObj).length > 0 ? '\n\nExisting files:\n' + Object.entries(filesObj).map(([path, content]) => `${path}:\n${content}`).join('\n\n') : ''}`
-        }
-      ],
-      temperature: options.temperature || config.defaultTemperature,
-      max_tokens: options.maxOutputTokens || config.maxTokens
+      prompt: prompt,
+      system: options.system || DEFAULT_SYSTEM_PROMPT,
+      temperature: options.temperature || 0.7,
+      max_tokens: options.maxOutputTokens || 4000,
+      files: filesObj
     };
     
     console.log("Sending request to Claude API with files:", existingFiles.length);
     
-    // Make the API call directly to Anthropic
-    const response = await fetch(config.apiUrl, {
+    // Make the API call to our backend endpoint
+    const response = await fetch('/api/claude', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': config.claudeApiKey,
-        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify(requestBody)
     });
