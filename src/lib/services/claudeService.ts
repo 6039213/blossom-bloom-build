@@ -6,8 +6,8 @@ export interface FileContent {
   content: string;
 }
 
-// Standard prompt system message that ensures Claude returns pure JSON
-const DEFAULT_SYSTEM_PROMPT = `Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON.`;
+// Standard prompt system message for Claude to return pure JSON
+const DEFAULT_SYSTEM_PROMPT = `You are an AI that generates and modifies React + Tailwind web applications. Return only modified files as JSON. No explanation, no markdown, no text outside JSON.`;
 
 /**
  * Generate code based on a prompt and existing files
@@ -50,46 +50,30 @@ export const generateCode = async (
     });
     
     if (!response.ok) {
-      const responseText = await response.text();
-      console.error("Error response from Claude API:", responseText);
+      const errorText = await response.text();
+      console.error("Error response from Claude API:", errorText);
       
       // Check for HTML response which indicates an error
-      if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-        console.error("Claude API returned HTML instead of JSON:", responseText.substring(0, 200));
-        throw new Error(`Claude API endpoint error: The server returned HTML instead of JSON. This might indicate a server-side error or incorrect endpoint configuration.`);
+      if (errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
+        throw new Error(`Claude API error: The server returned HTML instead of JSON. This might indicate a server-side error.`);
       }
       
-      // Try to parse as JSON to get error details
-      try {
-        const errorData = JSON.parse(responseText);
-        console.error("Claude API error response:", errorData);
-        throw new Error(`Claude API error: ${errorData.error || response.statusText}`);
-      } catch (parseError) {
-        console.error("Claude API error response (not JSON):", responseText);
-        throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
-      }
+      throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
     }
     
     const data = await response.json();
-    console.log("Claude API response received:", data ? "Valid data" : "Invalid data");
     
-    // Handle different response formats
+    // Handle the response based on format
     let responseText = '';
     
     if (data.content && typeof data.content === 'object') {
-      // The backend already extracted and parsed the JSON for us
       responseText = JSON.stringify(data.content, null, 2);
-      console.log("Processed JSON content successfully");
     } else if (data.content && data.content[0] && data.content[0].type === 'text') {
-      // Standard Claude API response format
       responseText = data.content[0].text;
-      console.log("Extracted text content from Claude response");
     } else if (data.error) {
       throw new Error(data.error);
     } else if (data.rawResponse) {
-      // Use raw response as fallback
       responseText = data.rawResponse;
-      console.log("Using raw response as fallback");
     } else {
       throw new Error("Unexpected response format from Claude API");
     }

@@ -4,7 +4,7 @@ import type { LLMProvider, StreamResult } from "../types";
 // Get the API key and model name from environment variables
 const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY || 
                "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";
-const MODEL_NAME = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229";
+const MODEL_NAME = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20250219";
 
 /**
  * Call Claude API through our backend endpoint
@@ -45,17 +45,6 @@ export const anthropicProvider: LLMProvider = {
   name: "claude",
   models: [MODEL_NAME],
   
-  async stream(opts: any) {
-    try {
-      console.log("Connecting to Claude AI...");
-      opts.onToken("Claude is initializing. Please wait while we prepare to build your application.");
-      await new Promise(resolve => setTimeout(resolve, 500));
-    } catch (error) {
-      console.error("Error connecting to Claude AI:", error);
-      opts.onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error connecting to Claude AI'}`);
-    }
-  },
-  
   async generateStream(
     prompt: string, 
     onToken: (token: string) => void, 
@@ -64,9 +53,9 @@ export const anthropicProvider: LLMProvider = {
     try {
       // Prepare system message if provided
       const systemMessage = options.system || 
-        "Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON.";
+        "You are an AI that generates and modifies React + Tailwind web applications. Return only modified files as JSON. No explanation, no markdown, no text outside JSON.";
       
-      onToken("Verbinding maken met Claude 3.7 Sonnet...");
+      onToken("Connecting to Claude 3.7 Sonnet...");
       
       try {
         // Make a request to our local API endpoint
