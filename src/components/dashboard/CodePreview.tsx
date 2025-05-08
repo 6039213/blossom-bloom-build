@@ -42,6 +42,7 @@ export default function CodePreview({
 
   return (
     <div className="w-full h-full mx-auto flex flex-col">
+      {/* Make sure Tabs component wraps TabsContent components */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
         <div className="flex items-center justify-between w-full mb-2">
           <CodePreviewTabs 
