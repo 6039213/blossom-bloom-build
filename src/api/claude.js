@@ -10,10 +10,19 @@ const corsHeaders = {
 export async function POST(req) {
   console.log("Claude API endpoint called");
   
-  // Use the API key from .env or use the provided one
-  const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY || 
-                 "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";
-  const MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229";
+  // Use the API key from .env
+  const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
+  const MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+  
+  if (!API_KEY) {
+    return new Response(
+      JSON.stringify({ error: "API key not configured" }), 
+      { 
+        status: 401,
+        headers: corsHeaders
+      }
+    );
+  }
   
   try {
     // Parse request body
@@ -26,13 +35,13 @@ export async function POST(req) {
     // Add system message
     messages.push({
       role: 'system',
-      content: body.system || "Je bent een AI die React + Tailwind webapps genereert en bestaande code aanpast. Geef alleen gewijzigde bestanden terug als JSON. Geen uitleg, geen markdown, geen tekst buiten JSON."
+      content: body.system || "You are an AI that generates React + Tailwind webapps. Return code as markdown code blocks."
     });
     
     // Add the user's prompt as a message
     messages.push({
       role: 'user',
-      content: `Prompt: ${body.prompt || ''}`
+      content: body.prompt || ''
     });
     
     // Include existing files context if provided
@@ -45,7 +54,7 @@ export async function POST(req) {
       // Add files context as a separate user message
       messages.push({
         role: 'user',
-        content: `Bestaande bestanden:\n${filesContext}`
+        content: `Existing files:\n${filesContext}`
       });
     }
     
@@ -71,20 +80,6 @@ export async function POST(req) {
     if (!claudeResponse.ok) {
       const errorText = await claudeResponse.text();
       console.error("Claude API error response:", errorText);
-      
-      // Check if the error response contains HTML (common error case)
-      if (errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
-        return new Response(
-          JSON.stringify({ 
-            error: "Claude API returned HTML instead of JSON", 
-            details: "The response appears to be an HTML page rather than the expected JSON" 
-          }), 
-          { 
-            status: claudeResponse.status,
-            headers: corsHeaders
-          }
-        );
-      }
       
       return new Response(
         JSON.stringify({ error: `Claude API error: ${claudeResponse.status} ${claudeResponse.statusText}`, details: errorText }), 
@@ -113,59 +108,20 @@ export async function POST(req) {
     // Extract the text content
     const responseText = data.content[0].text;
     
-    // Try to extract JSON from the response text
-    try {
-      // Look for a JSON object in the text
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error("No valid JSON found in Claude's response");
-        console.log("Response text:", responseText);
-        
-        return new Response(
-          JSON.stringify({ 
-            error: "No valid JSON found in Claude's response",
-            rawResponse: responseText 
-          }), 
-          { 
-            status: 500,
-            headers: corsHeaders
-          }
-        );
+    // Return the response with proper formatting
+    return new Response(
+      JSON.stringify({ content: responseText }), 
+      { 
+        status: 200,
+        headers: corsHeaders
       }
-      
-      // Parse the JSON to verify it's valid
-      const parsedJson = JSON.parse(jsonMatch[0]);
-      
-      // Return the parsed JSON
-      return new Response(
-        JSON.stringify({ content: parsedJson }), 
-        { 
-          status: 200,
-          headers: corsHeaders
-        }
-      );
-    } catch (parseError) {
-      console.error("Failed to parse Claude's response as JSON:", parseError);
-      console.log("Response text:", responseText);
-      
-      // Return the raw response text as a fallback
-      return new Response(
-        JSON.stringify({ 
-          error: "Failed to parse Claude's response as JSON",
-          rawResponse: responseText
-        }), 
-        { 
-          status: 500,
-          headers: corsHeaders
-        }
-      );
-    }
+    );
     
   } catch (error) {
-    console.error('Error proxying request to Claude API:', error);
+    console.error('Error in Claude API handler:', error);
     return new Response(
       JSON.stringify({ 
-        error: 'Failed to proxy request to Claude API', 
+        error: 'Failed to process request to Claude API', 
         details: error.message,
         stack: error.stack
       }),

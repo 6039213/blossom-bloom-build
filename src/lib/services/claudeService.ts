@@ -26,27 +26,61 @@ export const generateCode = async (
       filesObj[file.path] = file.content;
     });
     
-    // Format the request body
+    // Get API key from environment variables
+    const apiKey = import.meta.env.VITE_CLAUDE_API_KEY;
+    const model = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+    
+    if (!apiKey) {
+      throw new Error("Claude API key is not configured");
+    }
+    
+    console.log("Generating code with Claude API using model:", model);
+    
+    // Format the request body for Claude API directly
     const requestBody = {
-      prompt: prompt,
-      system: options.system || "You are an AI that generates React + Tailwind webapps. Return modified files as JSON. No explanation, no markdown, only JSON.",
-      temperature: options.temperature || 0.7,
+      model: model,
       max_tokens: options.maxOutputTokens || 4000,
-      files: filesObj
+      temperature: options.temperature || 0.7,
+      messages: [
+        {
+          role: "system",
+          content: options.system || "You are an AI that generates React + Tailwind webapps. Return code as markdown code blocks."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ]
     };
     
-    console.log("Sending request to Claude API with files:", existingFiles.length);
+    if (Object.keys(filesObj).length > 0) {
+      // Add existing files as context in a separate message
+      const filesContext = Object.entries(filesObj)
+        .map(([path, content]) => `${path}:\n${content}`)
+        .join('\n\n');
+      
+      requestBody.messages.push({
+        role: "user",
+        content: `Existing files:\n${filesContext}`
+      });
+    }
     
-    // Make the API call to our backend endpoint
-    const response = await fetch('/api/claude', {
+    console.log("Sending request to Claude API with prompt:", prompt.substring(0, 50) + "...");
+    
+    // Make the direct API call to Anthropic
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify(requestBody)
     });
     
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Claude API error response:", errorText);
       throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
     }
     
@@ -56,8 +90,8 @@ export const generateCode = async (
     // Handle different response formats
     let responseText = '';
     
-    if (data.content) {
-      responseText = data.content;
+    if (data.content && data.content[0] && data.content[0].type === 'text') {
+      responseText = data.content[0].text;
     } else if (data.error) {
       throw new Error(data.error);
     } else {
@@ -99,7 +133,7 @@ export const extractFilesFromResponse = (responseText: string): FileContent[] =>
   }
 };
 
-// Import the utility function
+// Extract code blocks from text response
 const extractCodeBlocks = (text: string): Record<string, string> => {
   const files: Record<string, string> = {};
   

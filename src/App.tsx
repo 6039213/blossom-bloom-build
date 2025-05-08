@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout';
 import HeroSection from './components/HeroSection';
 import FeaturesSection from './components/FeaturesSection';
 import HowItWorks from './components/HowItWorks';
@@ -8,7 +9,7 @@ import TestimonialSection from './components/TestimonialSection';
 import CTASection from './components/CTASection';
 import Footer from './components/layout/Footer';
 import MainNavbar from './components/layout/MainNavbar';
-import PricingPage from './components/pricing/PricingPage';
+import BlossomsAIWebBuilder from './components/ai-builder/BlossomsAIWebBuilder';
 import { AuthProvider } from './contexts/AuthContext';
 
 // Import the page components
@@ -36,7 +37,6 @@ export default function App() {
           <Route path="/features" element={<FeaturesPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/templates" element={<TemplatesPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
           
           {/* Auth routes */}
           <Route path="/auth" element={<AuthPage />} />
