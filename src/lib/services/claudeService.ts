@@ -39,7 +39,7 @@ export const generateCode = async (
     
     console.log("Sending request to Claude API with prompt:", prompt.substring(0, 50) + "...");
     
-    // Make the API call to our local endpoint instead of directly to Anthropic
+    // Use the local API endpoint (important! Not directly to anthropic.com)
     const response = await fetch('/api/claude', {
       method: 'POST',
       headers: {

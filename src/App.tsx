@@ -27,6 +27,9 @@ import ProjectDetail from './pages/ProjectDetail';
 import SettingsPage from './pages/SettingsPage';
 import HelpPage from './pages/HelpPage';
 
+// Import API handlers - ensuring the routes are correctly set up
+import * as claudeAPI from './api/claude.js';
+
 export default function App() {
   return (
     <AuthProvider>
@@ -50,10 +53,63 @@ export default function App() {
           <Route path="/dashboard/settings" element={<SettingsPage />} />
           <Route path="/dashboard/help" element={<HelpPage />} />
           
+          {/* API routes */}
+          <Route path="/api/claude" element={<APIHandler handler={claudeAPI} />} />
+          
           {/* Catch-all route for 404 errors */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     </AuthProvider>
+  );
+}
+
+// API Handler component to process API requests
+function APIHandler({ handler }) {
+  React.useEffect(() => {
+    const handleRequest = async () => {
+      try {
+        // Extract query parameters and request body
+        const url = new URL(window.location.href);
+        const method = window.location.pathname.endsWith('OPTIONS') ? 'OPTIONS' : 'POST';
+        
+        // Create a Request object
+        const request = new Request(url, {
+          method,
+          headers: Object.fromEntries([...new Headers(request?.headers || {})]),
+          body: method === 'POST' ? await new Request(window.location.href).text() : null
+        });
+        
+        // Call the appropriate handler
+        const response = await (method === 'POST' ? handler.POST(request) : handler.OPTIONS());
+        
+        // Set response headers and status
+        if (response.headers) {
+          for (const [key, value] of Object.entries(response.headers)) {
+            document.querySelector('#api-response-headers').setAttribute(key, value);
+          }
+        }
+        
+        // Set response body
+        document.querySelector('#api-response-body').textContent = await response.text();
+        document.querySelector('#api-response-status').textContent = response.status;
+      } catch (error) {
+        console.error('API handler error:', error);
+        document.querySelector('#api-response-status').textContent = '500';
+        document.querySelector('#api-response-body').textContent = JSON.stringify({ error: error.message });
+      }
+    };
+    
+    if (window.location.pathname.startsWith('/api/')) {
+      handleRequest();
+    }
+  }, [handler]);
+  
+  return (
+    <div style={{ display: 'none' }}>
+      <div id="api-response-headers" />
+      <div id="api-response-status" />
+      <div id="api-response-body" />
+    </div>
   );
 }

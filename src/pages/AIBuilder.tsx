@@ -5,6 +5,9 @@ import Layout from '@/components/Layout';
 import BlossomsAIWebBuilder from '@/components/ai-builder/BlossomsAIWebBuilder';
 
 export default function AIBuilder() {
+  // Check if API key is configured
+  const apiKeyConfigured = Boolean(import.meta.env.VITE_CLAUDE_API_KEY);
+
   return (
     <Layout>
       <motion.div 
@@ -14,7 +17,18 @@ export default function AIBuilder() {
         transition={{ duration: 0.5 }}
       >
         <div className="h-full">
-          <BlossomsAIWebBuilder />
+          {!apiKeyConfigured ? (
+            <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+              <div className="bg-amber-100 text-amber-800 p-4 rounded-lg max-w-xl">
+                <h3 className="text-lg font-bold mb-2">⚠️ Claude API Key Not Configured</h3>
+                <p className="mb-4">
+                  To use the AI Web Builder, please set your Claude API key in the VITE_CLAUDE_API_KEY environment variable.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <BlossomsAIWebBuilder />
+          )}
         </div>
       </motion.div>
     </Layout>
