@@ -1,12 +1,15 @@
-import React from 'react';
+
+import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ThemeProvider } from 'next-themes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import LoadingScreen from '@/components/LoadingScreen';
 import { motion } from 'framer-motion';
-import AppRoutes from './App.routes';
 import '@/index.css';
+
+// Use lazy loading for the routes
+const AppRoutes = lazy(() => import('./App.routes'));
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -80,9 +83,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="light" attribute="class">
-          <PageTransition>
-            <AppRoutes />
-          </PageTransition>
+          <Suspense fallback={<LoadingScreen isLoading={true} />}>
+            <PageTransition>
+              <AppRoutes />
+            </PageTransition>
+          </Suspense>
           <Toaster position="top-right" />
         </ThemeProvider>
       </QueryClientProvider>
