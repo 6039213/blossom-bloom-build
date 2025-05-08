@@ -26,54 +26,24 @@ export const generateCode = async (
       filesObj[file.path] = file.content;
     });
     
-    // Get API key from environment variables
-    const apiKey = import.meta.env.VITE_CLAUDE_API_KEY;
-    const model = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+    console.log("Generating code with Claude API using model:", import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229");
     
-    if (!apiKey) {
-      throw new Error("Claude API key is not configured");
-    }
-    
-    console.log("Generating code with Claude API using model:", model);
-    
-    // Format the request body for Claude API directly
+    // Format the request body for our API endpoint
     const requestBody = {
-      model: model,
-      max_tokens: options.maxOutputTokens || 4000,
+      system: options.system || "You are an AI that generates React + Tailwind webapps. Return code as markdown code blocks.",
+      prompt: prompt,
       temperature: options.temperature || 0.7,
-      messages: [
-        {
-          role: "system",
-          content: options.system || "You are an AI that generates React + Tailwind webapps. Return code as markdown code blocks."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ]
+      max_tokens: options.maxOutputTokens || 4000,
+      files: filesObj
     };
-    
-    if (Object.keys(filesObj).length > 0) {
-      // Add existing files as context in a separate message
-      const filesContext = Object.entries(filesObj)
-        .map(([path, content]) => `${path}:\n${content}`)
-        .join('\n\n');
-      
-      requestBody.messages.push({
-        role: "user",
-        content: `Existing files:\n${filesContext}`
-      });
-    }
     
     console.log("Sending request to Claude API with prompt:", prompt.substring(0, 50) + "...");
     
-    // Make the direct API call to Anthropic
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Make the API call to our local endpoint instead of directly to Anthropic
+    const response = await fetch('/api/claude', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify(requestBody)
     });
@@ -87,11 +57,11 @@ export const generateCode = async (
     const data = await response.json();
     console.log("Claude API response received:", data ? "Valid data" : "Invalid data");
     
-    // Handle different response formats
+    // Extract content from response
     let responseText = '';
     
-    if (data.content && data.content[0] && data.content[0].type === 'text') {
-      responseText = data.content[0].text;
+    if (data.content) {
+      responseText = data.content;
     } else if (data.error) {
       throw new Error(data.error);
     } else {
