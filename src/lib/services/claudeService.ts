@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import config from "../../config";
 
 export interface FileContent {
   path: string;
@@ -30,20 +31,30 @@ export const generateCode = async (
     
     // Format the request body
     const requestBody = {
-      prompt: prompt,
-      system: options.system || DEFAULT_SYSTEM_PROMPT,
-      temperature: options.temperature || 0.7,
-      max_tokens: options.maxOutputTokens || 4000,
-      files: filesObj
+      model: config.claudeModel,
+      messages: [
+        {
+          role: 'system',
+          content: options.system || DEFAULT_SYSTEM_PROMPT
+        },
+        {
+          role: 'user',
+          content: `Prompt: ${prompt}${Object.keys(filesObj).length > 0 ? '\n\nExisting files:\n' + Object.entries(filesObj).map(([path, content]) => `${path}:\n${content}`).join('\n\n') : ''}`
+        }
+      ],
+      temperature: options.temperature || config.defaultTemperature,
+      max_tokens: options.maxOutputTokens || config.maxTokens
     };
     
     console.log("Sending request to Claude API with files:", existingFiles.length);
     
-    // Make the API call to our backend endpoint
-    const response = await fetch('/api/claude', {
+    // Make the API call directly to Anthropic
+    const response = await fetch(config.apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-api-key': config.claudeApiKey,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify(requestBody)
     });
