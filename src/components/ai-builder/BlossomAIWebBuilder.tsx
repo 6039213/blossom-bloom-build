@@ -9,7 +9,8 @@ import { toast } from 'sonner';
 import FileTree from './FileTree';
 import EditorTabs from './EditorTabs';
 import LivePreview from './LivePreview';
-import MonacoEditor, { getFileLanguage } from './MonacoEditor';
+import MonacoEditor from './MonacoEditor';
+import { getFileLanguage } from './utils/editorUtils';
 
 // Import services
 import { generateCode, extractFilesFromResponse, FileContent } from '@/lib/services/claudeService';

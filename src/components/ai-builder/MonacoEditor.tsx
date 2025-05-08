@@ -5,13 +5,42 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X } from 'lucide-react';
 
 export interface MonacoEditorProps {
-  files: { [key: string]: string };
-  activeFile: string | null;
-  onContentChange: (path: string, content: string) => void;
-  openFiles: string[];
-  onTabChange: (path: string) => void;
-  onTabClose: (path: string) => void;
+  files?: { [key: string]: string };
+  activeFile?: string | null;
+  onContentChange?: (path: string, content: string) => void;
+  openFiles?: string[];
+  onTabChange?: (path: string) => void;
+  onTabClose?: (path: string) => void;
+  // Add these props to support the BlossomAIWebBuilder use case
+  value?: string;
+  language?: string;
+  onChange?: (content: string) => void;
 }
+
+// Export this function so it can be imported by other components
+export const getFileLanguage = (filePath: string) => {
+  const extension = filePath.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'js':
+      return 'javascript';
+    case 'jsx':
+      return 'javascript';
+    case 'ts':
+      return 'typescript';
+    case 'tsx':
+      return 'typescript';
+    case 'html':
+      return 'html';
+    case 'css':
+      return 'css';
+    case 'json':
+      return 'json';
+    case 'md':
+      return 'markdown';
+    default:
+      return 'plaintext';
+  }
+};
 
 const MonacoEditor: React.FC<MonacoEditorProps> = ({ 
   files, 
@@ -19,7 +48,11 @@ const MonacoEditor: React.FC<MonacoEditorProps> = ({
   onContentChange,
   openFiles,
   onTabChange,
-  onTabClose
+  onTabClose,
+  // Support for simpler usage
+  value,
+  language,
+  onChange
 }) => {
   const editorRef = useRef(null);
 
@@ -27,33 +60,20 @@ const MonacoEditor: React.FC<MonacoEditorProps> = ({
     editorRef.current = editor;
   };
 
-  const getFileType = (filePath: string) => {
-    const extension = filePath.split('.').pop()?.toLowerCase();
-    switch (extension) {
-      case 'js':
-        return 'javascript';
-      case 'jsx':
-        return 'javascript';
-      case 'ts':
-        return 'typescript';
-      case 'tsx':
-        return 'typescript';
-      case 'html':
-        return 'html';
-      case 'css':
-        return 'css';
-      case 'json':
-        return 'json';
-      case 'md':
-        return 'markdown';
-      default:
-        return 'plaintext';
+  // Handle different usage patterns
+  const handleEditorChange = (content) => {
+    if (onChange) {
+      // Simple mode: just use onChange
+      onChange(content || '');
+    } else if (onContentChange && activeFile) {
+      // Complex mode: use path + content
+      onContentChange(activeFile, content || '');
     }
   };
 
   return (
     <div className="flex flex-col h-full">
-      {openFiles.length > 0 && (
+      {openFiles && openFiles.length > 0 && onTabChange && onTabClose && (
         <div className="bg-white dark:bg-gray-800 border-b">
           <Tabs value={activeFile || ''} onValueChange={onTabChange}>
             <TabsList className="flex overflow-x-auto">
@@ -83,12 +103,31 @@ const MonacoEditor: React.FC<MonacoEditorProps> = ({
       )}
 
       <div className="flex-grow">
-        {activeFile && files[activeFile] ? (
+        {/* Support two different usage patterns */}
+        {value !== undefined ? (
+          // Simple mode with direct value/language/onChange
           <Editor
             height="100%"
-            language={getFileType(activeFile)}
+            language={language || 'javascript'}
+            value={value}
+            onChange={handleEditorChange}
+            theme="vs-light"
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              wordWrap: 'on',
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+            }}
+            onMount={handleEditorMount}
+          />
+        ) : activeFile && files && files[activeFile] ? (
+          // Complex mode with files/activeFile
+          <Editor
+            height="100%"
+            language={getFileLanguage(activeFile)}
             value={files[activeFile]}
-            onChange={(value) => onContentChange(activeFile, value || '')}
+            onChange={handleEditorChange}
             theme="vs-light"
             options={{
               minimap: { enabled: false },
