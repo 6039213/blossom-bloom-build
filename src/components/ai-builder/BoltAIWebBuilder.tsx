@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Send, Smartphone, Tablet, Monitor, Copy, Download, Code, Eye, RefreshCw, FileText } from 'lucide-react';
@@ -154,9 +153,9 @@ export default function BoltAIWebBuilder() {
         toast.error("No code was generated. Please try a more specific prompt.");
       } else {
         // Format files for our system
-        const generatedFiles = Object.entries(codeBlocks).map(([path, code]) => ({
+        const generatedFiles: WebsiteFile[] = Object.entries(codeBlocks).map(([path, code]) => ({
           path: path.startsWith('/') ? path.substring(1) : path,
-          content: code,
+          content: code as string,
           type: getFileType(path)
         }));
         

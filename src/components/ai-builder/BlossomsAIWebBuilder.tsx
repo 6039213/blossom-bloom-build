@@ -1,511 +1,519 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Code, Sparkles, FileCode, Download, RefreshCw, Smartphone, Tablet, Monitor } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { generateCode, extractFilesFromResponse } from '@/lib/services/claudeService';
-import { getFileType } from '@/utils/codeGeneration';
-import { v4 as uuidv4 } from 'uuid';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Sparkles, Send, Download, Code, Eye, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
-const DEFAULT_PROMPT = "Create a modern landing page for a SaaS application with hero section, features, pricing, and contact form. Use a professional gold and white color scheme.";
+// Import our custom components
+import FileTree from './FileTree';
+import EditorTabs from './EditorTabs';
+import LivePreview from './LivePreview';
+import MonacoEditor, { getFileLanguage } from './MonacoEditor';
 
-const BlossomsAIWebBuilder = () => {
-  // State for handling files and code generation
+// Import services
+import { generateCode, extractFilesFromResponse, FileContent } from '@/lib/services/claudeService';
+import { createProjectZip } from '@/lib/services/zipService';
+
+// Helper function to add an initial set of files if none exist
+const createInitialFiles = (): FileContent[] => {
+  return [
+    {
+      path: 'App.jsx',
+      content: `import React from 'react';
+
+function App() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-8">
+      <h1 className="text-3xl font-bold text-blue-800 mb-6">
+        Blossom AI Generated Website
+      </h1>
+      <p className="text-gray-700 mb-4">
+        Enter a prompt to generate your website with AI.
+      </p>
+    </div>
+  );
+}
+
+export default App;`
+    },
+    {
+      path: 'index.css',
+      content: `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+`
+    },
+    {
+      path: 'package.json',
+      content: `{
+  "name": "blossom-ai-project",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.3.0"
+  }
+}`
+    },
+    {
+      path: 'tailwind.config.js',
+      content: `/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+    "./*.{js,jsx,ts,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}`
+    },
+    {
+      path: 'README.md',
+      content: `# Blossom AI Generated Project
+
+This project was created with Blossom AI Builder.
+
+## Getting Started
+
+1. Download the project
+2. Run \`npm install\` to install dependencies
+3. Run \`npm start\` to start the development server
+`
+    }
+  ];
+};
+
+export default function BlossomAIWebBuilder() {
+  // State for files and UI
+  const [files, setFiles] = useState<FileContent[]>(createInitialFiles());
+  const [activeFile, setActiveFile] = useState<string | null>(files[0]?.path || null);
+  const [openFiles, setOpenFiles] = useState<string[]>([files[0]?.path || '']);
+  const [viewportSize, setViewportSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [activeView, setActiveView] = useState<'editor' | 'preview'>('editor');
+  
+  // State for prompt and generation
   const [prompt, setPrompt] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [files, setFiles] = useState<Array<{ path: string; content: string; type: string }>>([]);
-  const [activeFile, setActiveFile] = useState<string | null>(null);
-  const [responseText, setResponseText] = useState<string>('');
+  const [streamingResponse, setStreamingResponse] = useState<string>('');
+  const [isFirstGeneration, setIsFirstGeneration] = useState<boolean>(true);
+  const [showFileTree, setShowFileTree] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // UI state
-  const [activeTab, setActiveTab] = useState<string>('preview');
-  const [viewportSize, setViewportSize] = useState<string>('desktop');
-  const [generationProgress, setGenerationProgress] = useState<number>(0);
-  
-  // Project metadata
-  const [projectId] = useState<string>(uuidv4().substring(0, 8));
-  const [projectName, setProjectName] = useState<string>("Blossom AI Project");
+  // Refs
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Example prompts for inspiration
-  const examplePrompts = [
-    "Create a modern landing page for a tech startup with a hero section, features, and testimonials",
-    "Build a project management dashboard with task lists, calendar, and analytics charts",
-    "Design an e-commerce product page with image gallery, reviews, and add to cart functionality",
-    "Create a personal portfolio website with projects showcase, skills section, and contact form"
-  ];
-  
-  // Handle prompt submission
-  const handleGenerateCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  // Handle file selection in the file tree
+  const handleFileSelect = useCallback((path: string) => {
+    setActiveFile(path);
+    if (!openFiles.includes(path)) {
+      setOpenFiles(prev => [...prev, path]);
+    }
+  }, [openFiles]);
+
+  // Handle file content change in the editor
+  const handleFileContentChange = useCallback((content: string) => {
+    if (!activeFile) return;
+
+    setFiles(prev => 
+      prev.map(file => 
+        file.path === activeFile 
+          ? { ...file, content } 
+          : file
+      )
+    );
+  }, [activeFile]);
+
+  // Handle tab selection in the editor
+  const handleSelectTab = useCallback((path: string) => {
+    setActiveFile(path);
+  }, []);
+
+  // Handle tab close in the editor
+  const handleCloseTab = useCallback((path: string) => {
+    setOpenFiles(prev => prev.filter(f => f !== path));
+    if (activeFile === path) {
+      setActiveFile(openFiles.filter(f => f !== path)[0] || null);
+    }
+  }, [openFiles, activeFile]);
+
+  // Handle AI code generation
+  const handleGenerateCode = async () => {
     if (!prompt.trim()) {
       toast.error("Please enter a prompt to generate code");
       return;
     }
-    
+
     setIsGenerating(true);
-    setResponseText('');
-    setGenerationProgress(0);
-    
-    // Progress simulation
-    const progressInterval = setInterval(() => {
-      setGenerationProgress(prev => {
-        const newProgress = prev + Math.random() * 5;
-        return newProgress > 95 ? 95 : newProgress;
-      });
-    }, 800);
-    
+    setStreamingResponse('');
+    setError(null);
+
     try {
-      // Generate code using Claude API
-      const response = await generateCode(
-        prompt,
-        files.map(file => ({ path: file.path, content: file.content })),
-        (streamedText) => {
-          setResponseText(streamedText);
-          // Complete the progress
-          if (streamedText.length > 100) {
-            setGenerationProgress(100);
-            clearInterval(progressInterval);
+      toast.info("Generating code with Claude 3.7 Sonnet...");
+      
+      // Generate code based on prompt and existing files (if not first generation)
+      const existingFiles = isFirstGeneration ? [] : files;
+      
+      try {
+        // Call Claude API and handle streaming response
+        const response = await generateCode(
+          prompt, 
+          existingFiles,
+          (accumulatedText) => {
+            setStreamingResponse(accumulatedText);
           }
-        },
-        {
-          system: "You are an expert web developer who creates beautiful, modern React + Tailwind webapps. Return code as markdown code blocks with filename headers.",
-          temperature: 0.7,
-          maxOutputTokens: 4000
+        );
+        
+        // Process the response to extract files
+        let extractedFiles: FileContent[];
+        try {
+          extractedFiles = extractFilesFromResponse(response);
+          
+          if (extractedFiles.length === 0) {
+            throw new Error("No valid code files could be extracted from Claude's response");
+          }
+        } catch (parseError) {
+          console.error("Failed to extract files from response:", parseError);
+          toast.error("Failed to parse Claude's response into files");
+          setError(`Failed to parse response: ${parseError.message}`);
+          return;
         }
-      );
-      
-      // Extract files from Claude's response
-      const extractedFiles = extractFilesFromResponse(response);
-      
-      if (extractedFiles.length === 0) {
-        toast.warning("No code files were generated. Try a more specific prompt.");
-      } else {
-        // Convert the extracted files to our file format
-        const newFiles = extractedFiles.map(file => ({
-          path: file.path,
-          content: file.content,
-          type: getFileType(file.path)
-        }));
-        
-        // Update the files state
-        setFiles(prevFiles => {
-          // Create a map of existing files to check for duplicates
-          const existingFilesMap = new Map(prevFiles.map(file => [file.path, file]));
-          
-          // Add or update files
-          newFiles.forEach(newFile => {
-            existingFilesMap.set(newFile.path, newFile);
+
+        // If this is the first generation, replace all files
+        // Otherwise, merge with existing files (update existing, add new)
+        if (isFirstGeneration) {
+          setFiles(extractedFiles);
+          setIsFirstGeneration(false);
+        } else {
+          // Merge files: update existing ones and add new ones
+          setFiles(prevFiles => {
+            const updatedFiles = [...prevFiles];
+            
+            // Update existing files or add new ones
+            extractedFiles.forEach(newFile => {
+              const existingIndex = updatedFiles.findIndex(f => f.path === newFile.path);
+              if (existingIndex >= 0) {
+                updatedFiles[existingIndex] = newFile;
+              } else {
+                updatedFiles.push(newFile);
+              }
+            });
+            
+            return updatedFiles;
           });
-          
-          // Convert map back to array
-          const updatedFiles = Array.from(existingFilesMap.values());
-          
-          // Set the active file to the first file if no active file
-          if (!activeFile && updatedFiles.length > 0) {
-            setActiveFile(updatedFiles[0].path);
-          }
-          
-          return updatedFiles;
-        });
+        }
         
-        toast.success(`Generated ${newFiles.length} files successfully!`);
+        // Open the first generated file
+        if (extractedFiles.length > 0) {
+          const mainFile = extractedFiles.find(f => 
+            f.path === 'App.jsx' || 
+            f.path === 'index.jsx' || 
+            f.path === 'main.jsx'
+          ) || extractedFiles[0];
+          
+          handleFileSelect(mainFile.path);
+          setActiveView('preview'); // Switch to preview tab
+        }
         
-        // Switch to preview tab after generation
-        setActiveTab('preview');
+        toast.success(`Generated ${extractedFiles.length} files successfully!`);
+        setPrompt('');
+      } catch (apiError) {
+        console.error("API Error:", apiError);
+        toast.error(`Claude API error: ${apiError.message}`);
+        setError(`Claude API error: ${apiError.message}`);
       }
     } catch (error) {
       console.error("Error generating code:", error);
-      toast.error(`Error: ${error instanceof Error ? error.message : "Failed to generate code"}`);
+      toast.error(`Error generating code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setError(`Error generating code: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGenerating(false);
-      clearInterval(progressInterval);
     }
   };
 
-  // Select an example prompt
-  const selectExamplePrompt = (examplePrompt: string) => {
-    setPrompt(examplePrompt);
-  };
-  
-  // Handle file selection in explorer
-  const handleFileSelect = (filePath: string) => {
-    setActiveFile(filePath);
-    setActiveTab('code');
-  };
-  
-  // Get file extension
-  const getFileExtension = (filePath: string) => {
-    return filePath.split('.').pop() || '';
-  };
-  
-  // Get responsive classes for preview
-  const getPreviewClasses = () => {
-    switch(viewportSize) {
-      case 'mobile':
-        return 'max-w-[375px] mx-auto border border-blossom-200 rounded-lg shadow-lg';
-      case 'tablet':
-        return 'max-w-[768px] mx-auto border border-blossom-200 rounded-lg shadow-lg';
-      case 'desktop':
-      default:
-        return 'w-full';
+  // Handle project download as ZIP
+  const handleDownloadZip = async () => {
+    try {
+      toast.info("Creating ZIP file...");
+      const blob = await createProjectZip(files);
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'blossom-ai-project.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Project downloaded successfully!");
+    } catch (error) {
+      console.error("Error downloading project:", error);
+      toast.error("Failed to download project");
     }
   };
 
-  // Download all generated files as a zip
-  const handleDownloadFiles = () => {
-    if (files.length === 0) {
-      toast.error("No files to download");
-      return;
+  // Sample prompts for inspiration
+  const samplePrompts = [
+    "Create a modern landing page for a coffee shop with a hero section, features, and contact form",
+    "Build a personal portfolio website with about me, projects, and contact sections",
+    "Generate a blog homepage with featured posts, categories, and subscription form",
+    "Create an e-commerce product page with image gallery, details, and add to cart functionality"
+  ];
+
+  // Handle sample prompt selection
+  const handleSamplePrompt = (sample: string) => {
+    setPrompt(sample);
+    if (promptInputRef.current) {
+      promptInputRef.current.focus();
     }
-    
-    // This is a placeholder - in a real implementation, you would use JSZip or a similar library
-    toast.success("Downloading files...");
-    
-    // Create a text file with all code
-    const allCode = files.map(file => `// ${file.path}\n\n${file.content}`).join('\n\n// --------------------------------\n\n');
-    const blob = new Blob([allCode], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'generated-code.txt';
-    a.click();
-    URL.revokeObjectURL(url);
+  };
+
+  // Toggle file tree visibility
+  const toggleFileTree = () => {
+    setShowFileTree(prev => !prev);
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-950">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-blossom-100 bg-gradient-to-r from-blossom-50 to-white dark:from-gray-900 dark:to-gray-950 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-blossom-800 dark:text-blossom-300">
-            <span className="flex items-center">
-              <Sparkles className="w-5 h-5 mr-2 text-blossom-500" />
-              Blossom AI Web Builder
-            </span>
-          </h1>
-          <p className="text-sm text-muted-foreground">Powered by Claude 3.7 Sonnet</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-xs bg-blossom-100 text-blossom-800 px-2 py-1 rounded">
-            Project ID: {projectId}
-          </span>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="border-blossom-200 text-blossom-700 hover:bg-blossom-50"
-            onClick={() => setProjectName(prompt.split('.')[0].substring(0, 20) || "Blossom AI Project")}
+    <div className="flex flex-col h-full">
+      <div className="bg-[#121212] text-white p-4 border-b border-gray-800">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Sparkles className="h-5 w-5 text-amber-400 mr-2" />
+            <h1 className="text-xl font-bold text-amber-300">Blossom AI Builder</h1>
+          </div>
+          <Button
+            variant="outline"
+            className="border-amber-600 text-amber-400 hover:bg-amber-900/30"
+            onClick={handleDownloadZip}
           >
-            {projectName}
+            <Download className="h-4 w-4 mr-2" />
+            Download Project
           </Button>
+        </div>
+        
+        {/* Prompt input section */}
+        <div className="mt-4">
+          <div className="relative">
+            <Textarea
+              ref={promptInputRef}
+              placeholder="Describe the website you want to build with AI..."
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                  handleGenerateCode();
+                }
+              }}
+              className="min-h-[80px] bg-gray-900 border-gray-700 text-gray-100 resize-none focus:border-amber-500"
+              disabled={isGenerating}
+            />
+            <div className="absolute right-2 bottom-2 text-xs text-gray-500">
+              Ctrl+Enter to submit
+            </div>
+          </div>
+          
+          <div className="flex justify-between mt-2">
+            <Button 
+              onClick={handleGenerateCode}
+              disabled={isGenerating || !prompt.trim()}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 flex items-center gap-2"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  {isFirstGeneration ? 'Generate Website' : 'Update Website'}
+                </>
+              )}
+            </Button>
+            
+            <div className="flex space-x-2">
+              <Button
+                variant="ghost"
+                className="text-gray-300 hover:text-white hover:bg-gray-800"
+                onClick={toggleFileTree}
+              >
+                {showFileTree ? 'Hide Files' : 'Show Files'}
+              </Button>
+              
+              <Button
+                variant={activeView === 'editor' ? 'default' : 'outline'}
+                className={activeView === 'editor' ? 'bg-blue-600' : ''}
+                onClick={() => setActiveView('editor')}
+              >
+                <Code className="h-4 w-4 mr-1" />
+                Editor
+              </Button>
+              
+              <Button
+                variant={activeView === 'preview' ? 'default' : 'outline'}
+                className={activeView === 'preview' ? 'bg-blue-600' : ''}
+                onClick={() => setActiveView('preview')}
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                Preview
+              </Button>
+            </div>
+          </div>
+          
+          {/* Sample prompts */}
+          <div className="mt-4">
+            <p className="text-xs text-gray-400 mb-2">Try these sample prompts:</p>
+            <div className="flex flex-wrap gap-2">
+              {samplePrompts.map((sample, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSamplePrompt(sample)}
+                  className="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded truncate max-w-[200px] text-left"
+                >
+                  {sample}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main editor/preview area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* File tree sidebar */}
+        {showFileTree && (
+          <div className="w-64 border-r border-gray-800">
+            <FileTree 
+              files={files} 
+              activeFile={activeFile} 
+              onFileSelect={handleFileSelect} 
+            />
+          </div>
+        )}
+        
+        {/* Editor/Preview main area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {activeView === "editor" ? (
+            <>
+              <EditorTabs 
+                openFiles={openFiles} 
+                activeFile={activeFile} 
+                onSelectTab={handleSelectTab} 
+                onCloseTab={handleCloseTab} 
+              />
+              
+              {activeFile ? (
+                <div className="flex-1">
+                  {files.find(f => f.path === activeFile) ? (
+                    <MonacoEditor
+                      value={files.find(f => f.path === activeFile)?.content || ''}
+                      language={getFileLanguage(activeFile)}
+                      onChange={handleFileContentChange}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center bg-gray-800 text-gray-400">
+                      File not found: {activeFile}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center bg-gray-800 text-gray-400">
+                  Select a file from the file tree to edit
+                </div>
+              )}
+            </>
+          ) : (
+            <LivePreview 
+              files={files} 
+              viewportSize={viewportSize}
+              onViewportChange={setViewportSize}
+            />
+          )}
         </div>
       </div>
       
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Left panel: Prompt and Generation */}
-        <div className="w-full lg:w-1/3 border-r border-blossom-100 flex flex-col overflow-hidden">
-          {/* Prompt input area */}
-          <div className="p-4">
-            <form onSubmit={handleGenerateCode} className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-medium text-blossom-700 dark:text-blossom-300">Describe Your Website</h3>
-                <span className="text-xs font-medium text-blossom-500">Claude 3.7 Sonnet</span>
-              </div>
-              
-              <Textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder={DEFAULT_PROMPT}
-                className="min-h-[120px] resize-none border-blossom-200 focus:border-blossom-400"
-              />
-              
-              <div className="flex space-x-2">
-                <Button 
-                  type="submit" 
-                  className="flex-1 bg-gradient-to-r from-blossom-500 to-blossom-600 hover:from-blossom-600 hover:to-blossom-700 text-white" 
-                  disabled={isGenerating || !prompt.trim()}
-                >
-                  {isGenerating ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="mr-2 h-4 w-4" />
-                      Generate Website
-                    </>
-                  )}
-                </Button>
-              </div>
-              
-              {isGenerating && (
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2">
-                  <div 
-                    className="bg-blossom-500 h-1.5 rounded-full transition-all duration-300" 
-                    style={{ width: `${generationProgress}%` }}
-                  />
-                </div>
-              )}
-              
-              {/* Example prompts */}
-              <div className="pt-4 border-t border-blossom-100 dark:border-gray-800">
-                <h4 className="text-sm font-medium text-blossom-700 dark:text-blossom-300 mb-2">Example Prompts</h4>
-                <div className="space-y-2">
-                  {examplePrompts.map((examplePrompt, index) => (
-                    <div 
-                      key={index}
-                      className="text-xs cursor-pointer p-2 bg-blossom-50 dark:bg-gray-800/50 hover:bg-blossom-100 dark:hover:bg-gray-800 rounded-md transition-colors"
-                      onClick={() => selectExamplePrompt(examplePrompt)}
-                    >
-                      {examplePrompt}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </form>
+      {/* Streaming response from Claude (only shown when generating) */}
+      {isGenerating && streamingResponse && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          className="border-t border-gray-800 bg-gray-900 overflow-auto"
+          style={{ maxHeight: '30vh' }}
+        >
+          <div className="p-3 text-sm text-amber-300 font-semibold flex items-center">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Claude 3.7 Sonnet Response
           </div>
-          
-          {/* File explorer */}
-          <div className="flex-1 overflow-hidden border-t border-blossom-100">
-            <div className="p-3 bg-blossom-50/50 dark:bg-gray-900 border-b border-blossom-100 flex justify-between items-center">
-              <h3 className="text-sm font-medium text-blossom-700 dark:text-blossom-300 flex items-center">
-                <FileCode className="w-4 h-4 mr-1" />
-                Files
-              </h3>
-              <span className="text-xs text-muted-foreground">{files.length} files</span>
-            </div>
-            
-            <div className="p-2 overflow-y-auto max-h-[calc(100%-3rem)]">
-              {files.length > 0 ? (
-                <div className="space-y-1">
-                  {files.map((file, index) => (
-                    <div
-                      key={index}
-                      className={`text-xs p-2 rounded-md cursor-pointer flex items-center ${
-                        activeFile === file.path 
-                          ? 'bg-blossom-100 dark:bg-blossom-900/30 text-blossom-800 dark:text-blossom-300' 
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-800/50'
-                      }`}
-                      onClick={() => handleFileSelect(file.path)}
-                    >
-                      <span className="mr-2">
-                        {getFileExtension(file.path) === 'tsx' || getFileExtension(file.path) === 'jsx' ? (
-                          <Code className="w-3.5 h-3.5 text-blue-500" />
-                        ) : getFileExtension(file.path) === 'css' ? (
-                          <div className="w-3.5 h-3.5 text-pink-500">#</div>
-                        ) : (
-                          <FileCode className="w-3.5 h-3.5 text-gray-500" />
-                        )}
-                      </span>
-                      <span className="truncate">{file.path}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-32 text-center p-4">
-                  <FileCode className="w-8 h-8 text-muted-foreground mb-2 opacity-50" />
-                  <p className="text-xs text-muted-foreground">
-                    No files generated yet.<br />Enter a prompt and click Generate.
-                  </p>
-                </div>
-              )}
+          <div className="p-3 text-gray-300 text-sm font-mono whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+            <div className="max-w-full overflow-auto">
+              {streamingResponse}
             </div>
           </div>
-          
-          {/* Response display (collapsible) */}
-          {responseText && (
-            <div className="border-t border-blossom-100 p-2">
-              <details className="text-xs">
-                <summary className="cursor-pointer font-medium text-blossom-700 dark:text-blossom-300 pb-2">Claude Response</summary>
-                <div className="max-h-[200px] overflow-auto bg-gray-50 dark:bg-gray-900 p-2 rounded-md">
-                  <pre className="whitespace-pre-wrap text-xs">{responseText}</pre>
-                </div>
-              </details>
-            </div>
-          )}
+        </motion.div>
+      )}
+      
+      {/* Error message display */}
+      {error && !isGenerating && (
+        <div className="border-t border-red-800 bg-red-900/20 p-4">
+          <h4 className="text-red-400 font-medium mb-2">Error</h4>
+          <p className="text-sm text-red-300">{error}</p>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="mt-2 border-red-600 text-red-400 hover:bg-red-900/30"
+            onClick={() => setError(null)}
+          >
+            Dismiss
+          </Button>
         </div>
-        
-        {/* Right side: Preview and Code */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-            {/* Tab navigation */}
-            <div className="px-4 py-2 border-b border-blossom-100 flex justify-between items-center">
-              <TabsList className="bg-blossom-50/50 dark:bg-gray-900">
-                <TabsTrigger value="preview" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">
-                  <Eye className="w-4 h-4 mr-2" />
-                  Preview
-                </TabsTrigger>
-                <TabsTrigger value="code" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800">
-                  <Code className="w-4 h-4 mr-2" />
-                  Code
-                </TabsTrigger>
-              </TabsList>
-              
-              {/* Actions for current tab */}
-              {activeTab === 'preview' && (
-                <div className="flex space-x-1">
-                  <Button
-                    variant={viewportSize === 'desktop' ? 'default' : 'outline'}
-                    size="icon"
-                    onClick={() => setViewportSize('desktop')}
-                    className="h-8 w-8 bg-blossom-500 text-white hover:bg-blossom-600"
-                  >
-                    <Monitor className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewportSize === 'tablet' ? 'default' : 'outline'}
-                    size="icon"
-                    onClick={() => setViewportSize('tablet')}
-                    className="h-8 w-8"
-                  >
-                    <Tablet className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewportSize === 'mobile' ? 'default' : 'outline'}
-                    size="icon"
-                    onClick={() => setViewportSize('mobile')}
-                    className="h-8 w-8"
-                  >
-                    <Smartphone className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              
-              {activeTab === 'code' && (
-                <div className="flex space-x-1">
-                  <Button variant="outline" size="sm" onClick={handleDownloadFiles}>
-                    <Download className="h-3.5 w-3.5 mr-1" />
-                    Download
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    setFiles([]);
-                    setActiveFile(null);
-                    setResponseText('');
-                    toast.success("Project reset");
-                  }}>
-                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                    Reset
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            {/* Tab content */}
-            <div className="flex-1 overflow-hidden">
-              <TabsContent value="preview" className="h-full m-0">
-                <div className={`h-full overflow-auto p-4 ${getPreviewClasses()} transition-all duration-300`}>
-                  {files.length > 0 ? (
-                    <iframe
-                      srcDoc={`
-                        <!DOCTYPE html>
-                        <html>
-                          <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                            <script src="https://cdn.tailwindcss.com"></script>
-                            <style>
-                              body { 
-                                font-family: system-ui, sans-serif; 
-                                margin: 0; 
-                              }
-                            </style>
-                          </head>
-                          <body>
-                            <div id="root"></div>
-                            <script type="module">
-                              import React from 'https://esm.sh/react@18.2.0';
-                              import ReactDOM from 'https://esm.sh/react-dom@18.2.0';
-                              
-                              // This is a very simplified preview
-                              const App = () => {
-                                return (
-                                  <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white p-8">
-                                    <h1 className="text-3xl font-bold text-amber-800 mb-6">AI Generated Website Preview</h1>
-                                    <p className="text-gray-700 mb-4">This is a preview of the generated website based on your prompt:</p>
-                                    <div className="bg-amber-100 p-4 rounded-lg mb-6">
-                                      <p className="italic">"${prompt}"</p>
-                                    </div>
-                                    <p className="text-sm text-gray-500">Generated ${files.length} files - view the Code tab to see the implementation</p>
-                                  </div>
-                                );
-                              };
-                              
-                              ReactDOM.render(React.createElement(App), document.getElementById('root'));
-                            </script>
-                          </body>
-                        </html>
-                      `}
-                      className="w-full h-full border-0"
-                      title="Preview"
-                      sandbox="allow-scripts"
-                    />
-                  ) : (
-                    <motion.div 
-                      className="flex flex-col items-center justify-center h-full p-8 text-center"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      <motion.div 
-                        className="w-16 h-16 bg-blossom-100 rounded-full flex items-center justify-center mb-4"
-                        whileHover={{ scale: 1.1, rotate: 5 }}
-                        transition={{ type: "spring", stiffness: 300 }}
-                      >
-                        <Sparkles className="w-8 h-8 text-blossom-500" />
-                      </motion.div>
-                      <motion.h2 
-                        className="text-xl font-semibold mb-2 text-blossom-800 dark:text-blossom-300"
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                      >
-                        Welcome to Blossom AI Website Builder
-                      </motion.h2>
-                      <motion.p 
-                        className="text-muted-foreground max-w-md mx-auto"
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.4 }}
-                      >
-                        Describe what you want to build in the text input on the left side, and Claude 3.7 Sonnet will generate a complete website for you.
-                      </motion.p>
-                    </motion.div>
-                  )}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="code" className="h-full m-0">
-                <div className="h-full overflow-auto">
-                  {activeFile && files.find(f => f.path === activeFile) ? (
-                    <pre className="p-4 text-sm overflow-auto bg-gray-50 dark:bg-gray-900 h-full">
-                      <code>{files.find(f => f.path === activeFile)?.content}</code>
-                    </pre>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                      <FileCode className="w-12 h-12 text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No File Selected</h3>
-                      <p className="text-muted-foreground text-sm max-w-md">
-                        {files.length > 0 
-                          ? "Select a file from the list on the left to view its code."
-                          : "Generate a website to view the code."}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-            </div>
-          </Tabs>
-        </div>
-      </div>
+      )}
     </div>
   );
-};
-
-export default BlossomsAIWebBuilder;
+}

@@ -83,3 +83,25 @@ export const groupFilesByType = (files: Array<{ path: string; type: string }>) =
   
   return groups;
 };
+
+/**
+ * Extract code blocks from text response
+ */
+export const extractCodeBlocks = (text: string): Record<string, string> => {
+  const files: Record<string, string> = {};
+  
+  // Match code blocks with format: ```jsx filename.jsx ... ```
+  const codeBlockRegex = /```(?:jsx|tsx|ts|js|css|html|json)?\s+([^\n]+)\s*\n([\s\S]*?)```/g;
+  let match;
+  
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    const [_, filePath, code] = match;
+    if (filePath && code) {
+      // Clean up the file path
+      const cleanPath = filePath.trim();
+      files[cleanPath] = code.trim();
+    }
+  }
+  
+  return files;
+};
