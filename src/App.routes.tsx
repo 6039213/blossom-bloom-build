@@ -34,3 +34,6 @@ export const AppRoutes = () => {
     </Routes>
   );
 };
+
+// Add default export to fix the import in main.tsx
+export default AppRoutes;

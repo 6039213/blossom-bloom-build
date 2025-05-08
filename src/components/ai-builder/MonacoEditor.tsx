@@ -1,145 +1,110 @@
 
-import React, { useRef, useEffect, useState } from 'react';
-import * as monaco from 'monaco-editor';
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
-import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
-import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
-import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
-import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
+import React, { useEffect, useRef } from 'react';
+import Editor from '@monaco-editor/react';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { X } from 'lucide-react';
 
-// Set up workers using URL.createObjectURL
-self.MonacoEnvironment = {
-  getWorker(_, label) {
-    if (label === 'json') {
-      return new jsonWorker();
-    }
-    if (label === 'css' || label === 'scss' || label === 'less') {
-      return new cssWorker();
-    }
-    if (label === 'html' || label === 'handlebars' || label === 'razor') {
-      return new htmlWorker();
-    }
-    if (label === 'typescript' || label === 'javascript') {
-      return new tsWorker();
-    }
-    return new editorWorker();
-  }
-};
-
-interface MonacoEditorProps {
-  value: string;
-  language: string;
-  onChange: (value: string) => void;
-  height?: string;
-  width?: string;
-  readOnly?: boolean;
-  className?: string;
+export interface MonacoEditorProps {
+  files: { [key: string]: string };
+  activeFile: string | null;
+  onContentChange: (path: string, content: string) => void;
+  openFiles: string[];
+  onTabChange: (path: string) => void;
+  onTabClose: (path: string) => void;
 }
 
-export const getFileLanguage = (filePath: string): string => {
-  const extension = filePath.split('.').pop()?.toLowerCase() || '';
-  switch (extension) {
-    case 'js':
-      return 'javascript';
-    case 'jsx':
-      return 'javascript';
-    case 'ts':
-      return 'typescript';
-    case 'tsx':
-      return 'typescript';
-    case 'css':
-      return 'css';
-    case 'html':
-      return 'html';
-    case 'json':
-      return 'json';
-    case 'md':
-      return 'markdown';
-    default:
-      return 'plaintext';
-  }
-};
-
-const MonacoEditor: React.FC<MonacoEditorProps> = ({
-  value,
-  language,
-  onChange,
-  height = '100%',
-  width = '100%',
-  readOnly = false,
-  className = '',
+const MonacoEditor: React.FC<MonacoEditorProps> = ({ 
+  files, 
+  activeFile, 
+  onContentChange,
+  openFiles,
+  onTabChange,
+  onTabClose
 }) => {
-  const divEl = useRef<HTMLDivElement>(null);
-  const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const editorRef = useRef(null);
 
-  useEffect(() => {
-    if (!divEl.current) return;
+  const handleEditorMount = (editor) => {
+    editorRef.current = editor;
+  };
 
-    const model = monaco.editor.createModel(
-      value,
-      language,
-      monaco.Uri.parse(`file:///workspace/${Math.random().toString(36).substring(2)}.${language}`)
-    );
-
-    // Define editor options
-    const options: monaco.editor.IStandaloneEditorConstructionOptions = {
-      model,
-      theme: 'vs-dark',
-      fontSize: 14,
-      wordWrap: 'on',
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      automaticLayout: true,
-      tabSize: 2,
-      readOnly,
-      scrollbar: {
-        useShadows: false,
-        vertical: 'visible',
-        horizontal: 'visible',
-        verticalScrollbarSize: 10,
-        horizontalScrollbarSize: 10,
-      },
-    };
-
-    try {
-      // Create editor instance
-      editor.current = monaco.editor.create(divEl.current, options);
-
-      // Set up change event handler
-      if (!readOnly) {
-        editor.current.onDidChangeModelContent(() => {
-          onChange(editor.current?.getValue() || '');
-        });
-      }
-
-      // Update loaded state
-      setIsLoaded(true);
-    } catch (error) {
-      console.error("Error initializing Monaco editor:", error);
+  const getFileType = (filePath: string) => {
+    const extension = filePath.split('.').pop()?.toLowerCase();
+    switch (extension) {
+      case 'js':
+        return 'javascript';
+      case 'jsx':
+        return 'javascript';
+      case 'ts':
+        return 'typescript';
+      case 'tsx':
+        return 'typescript';
+      case 'html':
+        return 'html';
+      case 'css':
+        return 'css';
+      case 'json':
+        return 'json';
+      case 'md':
+        return 'markdown';
+      default:
+        return 'plaintext';
     }
-
-    return () => {
-      model.dispose();
-      editor.current?.dispose();
-    };
-  }, [language, readOnly]);
-
-  // Update editor value when props change
-  useEffect(() => {
-    if (editor.current && value !== editor.current.getValue()) {
-      editor.current.setValue(value);
-    }
-  }, [value]);
+  };
 
   return (
-    <div className={`relative ${className}`} style={{ width, height }}>
-      {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
+    <div className="flex flex-col h-full">
+      {openFiles.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 border-b">
+          <Tabs value={activeFile || ''} onValueChange={onTabChange}>
+            <TabsList className="flex overflow-x-auto">
+              {openFiles.map(file => (
+                <TabsTrigger
+                  key={file}
+                  value={file}
+                  className="flex items-center gap-2 px-4 py-2 text-sm"
+                >
+                  <span className="truncate max-w-[100px]">
+                    {file.split('/').pop()}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTabClose(file);
+                    }}
+                    className="ml-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 p-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
       )}
-      <div ref={divEl} style={{ width, height }} className="monaco-editor-container" />
+
+      <div className="flex-grow">
+        {activeFile && files[activeFile] ? (
+          <Editor
+            height="100%"
+            language={getFileType(activeFile)}
+            value={files[activeFile]}
+            onChange={(value) => onContentChange(activeFile, value || '')}
+            theme="vs-light"
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              wordWrap: 'on',
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+            }}
+            onMount={handleEditorMount}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            No file selected or file not found
+          </div>
+        )}
+      </div>
     </div>
   );
 };
