@@ -1,3 +1,5 @@
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
 
 /**
  * Utility functions for code generation and extraction
@@ -127,4 +129,44 @@ export const generatePreviewHTML = (files: Record<string, string>): string => {
     </body>
     </html>
   `;
+};
+
+/**
+ * Get file type based on file extension
+ * 
+ * @param filePath The path of the file
+ * @returns String representing the file type
+ */
+export const getFileType = (filePath: string): string => {
+  const extension = filePath.split('.').pop()?.toLowerCase() || '';
+  
+  // Map extensions to file types
+  switch (extension) {
+    case 'js':
+    case 'jsx':
+      return 'javascript';
+    case 'ts':
+    case 'tsx':
+      return 'typescript';
+    case 'css':
+      return 'css';
+    case 'scss':
+      return 'scss';
+    case 'html':
+      return 'html';
+    case 'json':
+      return 'json';
+    case 'md':
+      return 'markdown';
+    case 'svg':
+      return 'svg';
+    case 'png':
+    case 'jpg':
+    case 'jpeg':
+    case 'gif':
+    case 'webp':
+      return 'image';
+    default:
+      return 'plaintext';
+  }
 };
