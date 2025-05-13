@@ -6,7 +6,7 @@ export interface FileContent {
   content: string;
 }
 
-// Hardcoded API key as requested by the user
+// Use the provided API key
 const CLAUDE_API_KEY = "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";
 const CLAUDE_MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
 
@@ -21,6 +21,7 @@ export const generateCode = async (
     temperature?: number;
     maxOutputTokens?: number;
     system?: string;
+    thinkingBudget?: number;
   } = {}
 ): Promise<string> => {
   try {
@@ -30,7 +31,15 @@ export const generateCode = async (
       filesObj[file.path] = file.content;
     });
     
-    console.log("Generating code with Claude API using model:", CLAUDE_MODEL);
+    console.log("Generating code with Claude 3.7 Sonnet API...");
+    
+    // Configure thinking budget for Claude 3.7
+    const thinkingConfig = options.thinkingBudget ? {
+      thinking: {
+        enabled: true,
+        budget_tokens: options.thinkingBudget
+      }
+    } : {};
     
     // Make a direct request to Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -53,7 +62,8 @@ export const generateCode = async (
             role: 'user',
             content: enhancePrompt(prompt)
           }
-        ]
+        ],
+        ...thinkingConfig
       })
     });
     
@@ -128,6 +138,7 @@ Guidelines:
 - Implement professional animations and transitions where appropriate
 - Include realistic placeholder content
 - Use a cohesive color scheme with attention to design details
+- Leverage Claude 3.7's advanced reasoning for structured, maintainable code
 
 Please generate each file as a markdown code block with the filename as the header:
 
@@ -144,7 +155,9 @@ Include all necessary files to make the application work, including:
 The code should be complete, well-structured, and ready to run without additional modifications.`;
 };
 
-// Extract code blocks from text response
+/**
+ * Extract code blocks from text response
+ */
 const extractCodeBlocks = (text: string): Record<string, string> => {
   const files: Record<string, string> = {};
   

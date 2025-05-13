@@ -1,16 +1,16 @@
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sparkles, Terminal, Bot } from "lucide-react";
 import { toast } from 'sonner';
-import { Sparkles, Loader2 } from 'lucide-react';
-import { streamWithClaude } from '@/lib/anthropic/claude-client';
+import { callClaude } from '@/lib/providers/anthropic';
 
-export default function ClaudeTest() {
+const ClaudeTest: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,81 +20,75 @@ export default function ClaudeTest() {
       return;
     }
     
-    setIsLoading(true);
+    setLoading(true);
     setResponse('');
     
     try {
-      // Add token updater to stream response
-      const tokenCallback = (token: string) => {
-        setResponse(prev => prev + token);
-      };
-      
-      await streamWithClaude(prompt, tokenCallback, {
-        system: "You are a helpful AI assistant. Respond in a clear and concise manner.",
-        temperature: 0.7,
-        maxTokens: 500
-      });
-      
-      toast.success('Response generated successfully');
+      const result = await callClaude(prompt, "You are Claude 3.7 Sonnet, an advanced AI assistant that helps with coding and web development questions.");
+      if (result.content && result.content[0] && result.content[0].text) {
+        setResponse(result.content[0].text);
+      } else {
+        throw new Error("Unexpected response format");
+      }
     } catch (error) {
-      console.error('Error generating response:', error);
-      toast.error(`Failed to generate response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Error calling Claude:", error);
+      toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setResponse(`An error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
   
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <Sparkles className="h-5 w-5 text-blue-500 mr-2" />
-          Claude Test
+        <CardTitle className="flex items-center gap-2">
+          <Bot size={18} /> Claude 3.7 Sonnet
         </CardTitle>
         <CardDescription>
-          Test your Claude API integration with a simple prompt
+          Ask coding questions or get help with development tasks
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Textarea
-              placeholder="Enter your prompt here..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              disabled={isLoading}
-              className="min-h-[100px]"
-            />
-          </div>
-          
+        <form onSubmit={handleSubmit}>
+          <Textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="How do I create a modal component with React?"
+            className="min-h-[120px] mb-4"
+          />
           <Button 
             type="submit" 
-            disabled={isLoading || !prompt.trim()} 
-            className="w-full bg-blue-600 hover:bg-blue-700"
+            disabled={loading || !prompt.trim()} 
+            className="w-full"
           >
-            {isLoading ? (
+            {loading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
               </>
             ) : (
               <>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Generate Response
+                <Sparkles className="mr-2 h-4 w-4" /> Ask Claude 3.7
               </>
             )}
           </Button>
         </form>
         
         {response && (
-          <div className="mt-4">
-            <h3 className="text-sm font-medium mb-2">Response:</h3>
-            <div className="p-4 rounded-md bg-gray-50 dark:bg-gray-900 overflow-y-auto max-h-[300px]">
-              <p className="whitespace-pre-wrap">{response}</p>
-            </div>
+          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-md">
+            <h4 className="text-sm font-medium mb-2 flex items-center">
+              <Terminal className="mr-2 h-4 w-4" /> Claude 3.7 Response:
+            </h4>
+            <div className="text-sm whitespace-pre-wrap">{response}</div>
           </div>
         )}
       </CardContent>
     </Card>
   );
-}
+};
+
+export default ClaudeTest;

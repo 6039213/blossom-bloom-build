@@ -23,6 +23,7 @@ export const callClaude = async (prompt: string, system?: string, files: Record<
       body: JSON.stringify({
         model: MODEL_NAME,
         max_tokens: 4000,
+        temperature: 0.7, // Added temperature for control
         messages: [
           system ? { role: 'system', content: system } : null,
           { role: 'user', content: prompt }
@@ -50,7 +51,7 @@ export const anthropicProvider: LLMProvider = {
   async generateStream(
     prompt: string, 
     onToken: (token: string) => void, 
-    options: { system?: string; temperature?: number; maxOutputTokens?: number } = {}
+    options: { system?: string; temperature?: number; maxOutputTokens?: number; thinkingBudget?: number } = {}
   ): Promise<StreamResult> {
     try {
       // Prepare system message if provided
@@ -60,6 +61,14 @@ export const anthropicProvider: LLMProvider = {
       onToken("Connecting to Claude 3.7 Sonnet...");
       
       try {
+        // Added thinking budget feature for Claude 3.7
+        const thinkingConfig = options.thinkingBudget ? {
+          thinking: {
+            enabled: true,
+            budget_tokens: options.thinkingBudget
+          }
+        } : {};
+        
         // Make a direct request to Claude API
         const response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -75,7 +84,8 @@ export const anthropicProvider: LLMProvider = {
             messages: [
               { role: 'system', content: systemMessage },
               { role: 'user', content: prompt }
-            ]
+            ],
+            ...thinkingConfig
           })
         });
         
