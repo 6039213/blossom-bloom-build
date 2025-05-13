@@ -7,7 +7,7 @@ export interface FileContent {
 }
 
 // Use the provided API key
-const CLAUDE_API_KEY = "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";
+const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
 const CLAUDE_MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
 
 /**
@@ -47,7 +47,8 @@ export const generateCode = async (
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true' // Add CORS header
       },
       body: JSON.stringify({
         model: CLAUDE_MODEL,

@@ -2,7 +2,7 @@
 import type { LLMProvider, StreamResult } from "../types";
 
 // Get the API key and model name from environment variables
-const API_KEY = "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";
+const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
 const MODEL_NAME = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
 
 /**
@@ -18,12 +18,13 @@ export const callClaude = async (prompt: string, system?: string, files: Record<
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true' // Add CORS header
       },
       body: JSON.stringify({
         model: MODEL_NAME,
         max_tokens: 4000,
-        temperature: 0.7, // Added temperature for control
+        temperature: 0.7,
         messages: [
           system ? { role: 'system', content: system } : null,
           { role: 'user', content: prompt }
@@ -75,7 +76,8 @@ export const anthropicProvider: LLMProvider = {
           headers: {
             'Content-Type': 'application/json',
             'x-api-key': API_KEY,
-            'anthropic-version': '2023-06-01'
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true' // Add CORS header
           },
           body: JSON.stringify({
             model: MODEL_NAME,

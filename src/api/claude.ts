@@ -58,7 +58,8 @@ export async function POST(req: Request) {
       headers: {
         'x-api-key': API_KEY,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true' // Add CORS header
       },
       body: JSON.stringify({
         model: MODEL,
