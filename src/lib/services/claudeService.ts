@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 
 export interface FileContent {
@@ -32,10 +33,10 @@ export const generateCode = async (
     
     console.log("Generating code with Claude 3.7 Sonnet API...");
     
-    // Configure thinking budget for Claude 3.7 - fixed the format
+    // Fix the thinking parameter format - it should use "enabled" instead of "type: reasoning"
     const thinkingConfig = options.thinkingBudget ? {
       thinking: {
-        enabled: true, // Use enabled instead of type: reasoning
+        enabled: true,
         budget_tokens: options.thinkingBudget
       }
     } : {};

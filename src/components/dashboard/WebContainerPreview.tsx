@@ -138,12 +138,12 @@ export default function WebContainerPreview({
   const getViewportClasses = () => {
     switch(viewportSize) {
       case 'mobile':
-        return 'w-full max-w-[320px] mx-auto border border-border rounded-lg shadow-lg h-[640px]';
+        return 'w-full max-w-[320px] mx-auto border border-border rounded-lg shadow-lg h-[540px]';
       case 'tablet':
-        return 'w-full max-w-[768px] mx-auto border border-border rounded-lg shadow-lg h-[1024px]';
+        return 'w-full max-w-[768px] mx-auto border border-border rounded-lg shadow-lg h-[800px]';
       case 'desktop':
       default:
-        return 'w-full h-full';
+        return 'w-full h-full max-h-[600px]';
     }
   };
   
@@ -171,8 +171,7 @@ export default function WebContainerPreview({
   
   return (
     <div className="h-full flex-1 overflow-hidden flex items-center justify-center">
-      {/* Made the preview container smaller and centered */}
-      <div className={`${getViewportClasses()} max-h-[85%]`} style={{ position: 'relative' }}>
+      <div className={`${getViewportClasses()} max-h-[70vh]`}>
         <iframe 
           ref={iframeRef}
           className="w-full h-full"

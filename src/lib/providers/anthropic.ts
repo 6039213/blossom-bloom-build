@@ -62,10 +62,10 @@ export const anthropicProvider: LLMProvider = {
       onToken("Connecting to Claude 3.7 Sonnet...");
       
       try {
-        // Fix the thinking parameter format - it should not have a "type: reasoning" field
+        // Fix the thinking parameter format - it should use "enabled" instead of "type: reasoning"
         const thinkingConfig = options.thinkingBudget ? {
           thinking: {
-            enabled: true, // Use enabled instead of type: reasoning
+            enabled: true,
             budget_tokens: options.thinkingBudget
           }
         } : {};
