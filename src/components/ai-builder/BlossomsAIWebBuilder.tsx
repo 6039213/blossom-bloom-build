@@ -64,13 +64,11 @@ export default function BlossomsAIWebBuilder() {
       Create clean, well-structured components with proper imports and exports.
       ${useAdvancedMode ? 'Include advanced animations, responsive designs, and optimized performance.' : ''}`;
 
-      // Call the Claude API with fixed parameters
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      // Call the Claude API through our proxy
+      const response = await fetch('/api/claude-proxy', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: 'claude-3-7-sonnet-20240229',
@@ -87,7 +85,7 @@ export default function BlossomsAIWebBuilder() {
           // Fixed Claude 3.7 thinking feature format
           ...(thinkingBudget > 0 && {
             thinking: {
-              enabled: true,  // FIXED: Using enabled: true instead of type: reasoning
+              enabled: true,
               budget_tokens: thinkingBudget
             }
           })

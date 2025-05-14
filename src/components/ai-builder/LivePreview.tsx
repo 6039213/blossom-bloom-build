@@ -22,12 +22,12 @@ const LivePreview: React.FC<LivePreviewProps> = ({
   const viewportStyle = useMemo(() => {
     switch (viewportSize) {
       case 'mobile':
-        return { maxWidth: '375px', height: '100%' };
+        return { maxWidth: '375px', height: '580px' };
       case 'tablet': 
-        return { maxWidth: '768px', height: '100%' };
+        return { maxWidth: '768px', height: '600px' };
       case 'desktop':
       default:
-        return { width: '100%', height: '100%' };
+        return { width: '100%', height: '600px' };
     }
   }, [viewportSize]);
 

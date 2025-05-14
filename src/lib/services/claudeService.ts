@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 export interface FileContent {
@@ -35,18 +34,16 @@ export class ClaudeService {
       // Fix the thinking parameter format - using "enabled: true" instead of "type: reasoning"
       const thinkingConfig = options.thinkingBudget ? {
         thinking: {
-          enabled: true,  // FIXED: Using enabled: true instead of type: reasoning
+          enabled: true,
           budget_tokens: options.thinkingBudget
         }
       } : {};
       
-      // Call the Claude API
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      // Call the Claude API through our proxy
+      const response = await fetch('/api/claude-proxy', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': API_KEY,
-          'anthropic-version': '2023-06-01'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: MODEL_NAME,

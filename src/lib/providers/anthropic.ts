@@ -12,14 +12,11 @@ export const callClaude = async (prompt: string, system?: string, files: Record<
   try {
     console.log("Calling Claude API with prompt:", prompt.substring(0, 50) + "...");
     
-    // Make a request directly to Claude API
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Make a request through our proxy instead of directly to Claude API
+    const response = await fetch('/api/claude-proxy', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true' // Add CORS header
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: MODEL_NAME,
@@ -65,19 +62,16 @@ export const anthropicProvider: LLMProvider = {
         // Fix the thinking parameter format - it should use "enabled" instead of "type: reasoning"
         const thinkingConfig = options.thinkingBudget ? {
           thinking: {
-            enabled: true,  // FIXED: Using enabled: true instead of type: reasoning
+            enabled: true,
             budget_tokens: options.thinkingBudget
           }
         } : {};
         
-        // Make a direct request to Claude API
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        // Make a request through our proxy instead of directly to Claude API
+        const response = await fetch('/api/claude-proxy', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': API_KEY,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true' // Add CORS header
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             model: MODEL_NAME,
