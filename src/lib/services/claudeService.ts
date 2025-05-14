@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 export interface FileContent {
@@ -6,7 +5,7 @@ export interface FileContent {
   content: string;
 }
 
-// Use the provided API key
+// Use the environment variable API key
 const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
 const CLAUDE_MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
 
@@ -33,10 +32,10 @@ export const generateCode = async (
     
     console.log("Generating code with Claude 3.7 Sonnet API...");
     
-    // Configure thinking budget for Claude 3.7
+    // Configure thinking budget for Claude 3.7 - fixed the format
     const thinkingConfig = options.thinkingBudget ? {
       thinking: {
-        enabled: true,
+        enabled: true, // Use enabled instead of type: reasoning
         budget_tokens: options.thinkingBudget
       }
     } : {};

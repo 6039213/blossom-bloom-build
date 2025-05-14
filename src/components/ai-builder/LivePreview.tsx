@@ -213,11 +213,16 @@ const LivePreview: React.FC<LivePreviewProps> = ({
         </Button>
       </div>
       
-      {/* Preview iframe container */}
+      {/* Preview iframe container - Made smaller and centered */}
       <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-4 flex items-center justify-center overflow-auto">
         <div 
           className="bg-white rounded-md shadow-lg transition-all duration-300 h-full overflow-hidden"
-          style={viewportStyle}
+          style={{
+            ...viewportStyle,
+            position: 'relative',
+            maxHeight: '90%', // Limit height to make preview smaller
+            margin: 'auto'
+          }}
         >
           {previewUrl ? (
             <iframe

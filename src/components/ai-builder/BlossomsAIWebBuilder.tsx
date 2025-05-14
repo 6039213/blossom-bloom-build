@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,7 +22,8 @@ export default function BlossomsAIWebBuilder() {
   const [generatedFiles, setGeneratedFiles] = useState<Record<string, string>>({});
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string>('');
-  const [apiKey, setApiKey] = useState<string>('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');
+  // Use API key from environment variable only
+  const apiKey = import.meta.env.VITE_CLAUDE_API_KEY;
   
   // Premium features
   const [temperature, setTemperature] = useState<number>(0.7);
@@ -35,7 +35,7 @@ export default function BlossomsAIWebBuilder() {
 
   useEffect(() => {
     // Always use the provided API key
-    setApiKey('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');
+    // setApiKey('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');
   }, []);
 
   // Generate code based on prompt
@@ -64,7 +64,7 @@ export default function BlossomsAIWebBuilder() {
       Create clean, well-structured components with proper imports and exports.
       ${useAdvancedMode ? 'Include advanced animations, responsive designs, and optimized performance.' : ''}`;
 
-      // Call the Claude API with advanced parameters
+      // Call the Claude API with fixed parameters
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -84,7 +84,7 @@ export default function BlossomsAIWebBuilder() {
               'standard HTML, CSS and JavaScript'
             } for: ${prompt}. Include all necessary components and styling.` }
           ],
-          // New Claude 3.7 thinking feature
+          // Fixed Claude 3.7 thinking feature format
           ...(thinkingBudget > 0 && {
             thinking: {
               enabled: true,
@@ -186,12 +186,12 @@ export default function BlossomsAIWebBuilder() {
   const getViewportStyle = () => {
     switch (viewportSize) {
       case 'mobile':
-        return { maxWidth: '375px', margin: '0 auto', height: '100%' };
+        return { maxWidth: '375px', margin: '0 auto', height: '90%', maxHeight: '600px' };
       case 'tablet':
-        return { maxWidth: '768px', margin: '0 auto', height: '100%' };
+        return { maxWidth: '768px', margin: '0 auto', height: '90%', maxHeight: '800px' };
       case 'desktop':
       default:
-        return { width: '100%', height: '100%' };
+        return { width: '90%', height: '90%', margin: 'auto', maxHeight: '800px' };
     }
   };
 

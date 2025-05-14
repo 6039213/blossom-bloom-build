@@ -170,13 +170,16 @@ export default function WebContainerPreview({
   }
   
   return (
-    <div className={`h-full flex-1 overflow-hidden ${getViewportClasses()}`}>
-      <iframe 
-        ref={iframeRef}
-        className="w-full h-full"
-        title="preview"
-        sandbox="allow-scripts allow-same-origin"
-      />
+    <div className="h-full flex-1 overflow-hidden flex items-center justify-center">
+      {/* Made the preview container smaller and centered */}
+      <div className={`${getViewportClasses()} max-h-[85%]`} style={{ position: 'relative' }}>
+        <iframe 
+          ref={iframeRef}
+          className="w-full h-full"
+          title="preview"
+          sandbox="allow-scripts allow-same-origin"
+        />
+      </div>
     </div>
   );
 }
