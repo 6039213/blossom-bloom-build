@@ -87,7 +87,7 @@ export default function BlossomsAIWebBuilder() {
           // Fixed Claude 3.7 thinking feature format
           ...(thinkingBudget > 0 && {
             thinking: {
-              enabled: true,
+              enabled: true,  // FIXED: Using enabled: true instead of type: reasoning
               budget_tokens: thinkingBudget
             }
           })

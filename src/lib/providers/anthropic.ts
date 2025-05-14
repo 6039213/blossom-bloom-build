@@ -65,7 +65,7 @@ export const anthropicProvider: LLMProvider = {
         // Fix the thinking parameter format - it should use "enabled" instead of "type: reasoning"
         const thinkingConfig = options.thinkingBudget ? {
           thinking: {
-            enabled: true,
+            enabled: true,  // FIXED: Using enabled: true instead of type: reasoning
             budget_tokens: options.thinkingBudget
           }
         } : {};

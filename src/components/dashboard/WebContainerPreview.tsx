@@ -135,15 +135,16 @@ export default function WebContainerPreview({
     }
   };
   
+  // STEP 2: Update getViewportClasses to give each viewport a fixed width + height
   const getViewportClasses = () => {
     switch(viewportSize) {
       case 'mobile':
-        return 'w-full max-w-[320px] mx-auto border border-border rounded-lg shadow-lg h-[540px]';
+        return 'w-[320px] h-[540px] mx-auto border border-border rounded-lg shadow-lg';
       case 'tablet':
-        return 'w-full max-w-[768px] mx-auto border border-border rounded-lg shadow-lg h-[800px]';
+        return 'w-[768px] h-[600px] mx-auto border border-border rounded-lg shadow-lg';
       case 'desktop':
       default:
-        return 'w-full h-full max-h-[600px]';
+        return 'w-full max-w-[1024px] h-[600px] mx-auto border border-border rounded-lg shadow-lg';
     }
   };
   
@@ -171,10 +172,12 @@ export default function WebContainerPreview({
   
   return (
     <div className="h-full flex-1 overflow-hidden flex items-center justify-center">
-      <div className={`${getViewportClasses()} max-h-[70vh]`}>
+      {/* STEP 1: Remove max-h-[70vh] and only use getViewportClasses */}
+      <div className={getViewportClasses()}>
+        {/* STEP 3: Add rounded-lg and border to iframe for a cleaner look */}
         <iframe 
           ref={iframeRef}
-          className="w-full h-full"
+          className="w-full h-full rounded-lg border"
           title="preview"
           sandbox="allow-scripts allow-same-origin"
         />
