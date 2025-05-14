@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -262,9 +261,14 @@ export default function UnifiedAIBuilder() {
       toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       console.error("Generation error:", error);
       
-      // Update error in AI message
+      // Update error in AI message - replace findLast with filter and index
       setMessages(prev => {
-        const lastAssistantMessage = prev.findLast(m => m.role === 'assistant');
+        // Find the last assistant message
+        const assistantMessages = prev.filter(m => m.role === 'assistant');
+        const lastAssistantMessage = assistantMessages.length > 0 
+          ? assistantMessages[assistantMessages.length - 1] 
+          : null;
+          
         if (lastAssistantMessage) {
           return prev.map(msg => 
             msg.id === lastAssistantMessage.id 
