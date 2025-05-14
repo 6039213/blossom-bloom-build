@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Layout from '@/components/Layout';
-import BlossomsAIWebBuilder from '@/components/ai-builder/BlossomsAIWebBuilder';
+import UnifiedAIBuilder from '@/components/ai-builder/UnifiedAIBuilder';
 
 export default function AIBuilder() {
   // Check if API key is configured
@@ -27,7 +27,7 @@ export default function AIBuilder() {
               </div>
             </div>
           ) : (
-            <BlossomsAIWebBuilder />
+            <UnifiedAIBuilder />
           )}
         </div>
       </motion.div>
