@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -334,6 +335,7 @@ The code will be directly executed in a preview environment, so it must be compl
           ],
           thinking: {
             enabled: true,
+            type: "reasoning",
             budget_tokens: thinkingBudget
           }
         })
@@ -868,7 +870,7 @@ The code will be directly executed in a preview environment, so it must be compl
               <div className="w-full h-full bg-gray-50 dark:bg-gray-800 p-4 flex items-center justify-center overflow-auto">
                 <div
                   className="bg-white dark:bg-gray-900 rounded-md shadow-lg transition-all duration-300 h-full overflow-hidden border border-gray-200 dark:border-gray-700"
-                  style={getViewportStyle()}
+                  style={{...getViewportStyle(), position: "absolute"}}
                 >
                   {files.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center p-8">

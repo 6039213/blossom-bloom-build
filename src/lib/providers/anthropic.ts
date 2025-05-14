@@ -66,6 +66,7 @@ export const anthropicProvider: LLMProvider = {
         const thinkingConfig = options.thinkingBudget ? {
           thinking: {
             enabled: true,
+            type: "reasoning", // Add missing 'type' field
             budget_tokens: options.thinkingBudget
           }
         } : {};

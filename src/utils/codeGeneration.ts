@@ -1,13 +1,8 @@
 
 /**
- * Functions for handling code generation and extraction
- */
-
-/**
- * Extract code blocks from a text response
- * 
- * @param text Text containing markdown code blocks
- * @returns Object with file paths as keys and code content as values
+ * Extract code blocks from a markdown-formatted string
+ * @param text - The string containing code blocks
+ * @returns Record mapping file paths to code content
  */
 export const extractCodeBlocks = (text: string): Record<string, string> => {
   const files: Record<string, string> = {};
@@ -29,10 +24,9 @@ export const extractCodeBlocks = (text: string): Record<string, string> => {
 };
 
 /**
- * Determine file type based on file extension
- * 
- * @param path File path with extension
- * @returns The language name for syntax highlighting
+ * Determine the file type based on file extension
+ * @param path - The file path
+ * @returns String representing the file type for syntax highlighting
  */
 export const getFileType = (path: string): string => {
   const extension = path.split('.').pop()?.toLowerCase() || '';
