@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 
 interface WebContainerPreviewProps {
@@ -135,7 +135,7 @@ export default function WebContainerPreview({
     }
   };
   
-  // STEP 2: Update getViewportClasses to give each viewport a fixed width + height
+  // Get viewport classes based on size
   const getViewportClasses = () => {
     switch(viewportSize) {
       case 'mobile':
@@ -153,6 +153,7 @@ export default function WebContainerPreview({
       <div className="h-full flex items-center justify-center">
         <Alert className="max-w-lg">
           <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
           <AlertDescription>
             {error}
           </AlertDescription>
@@ -171,10 +172,8 @@ export default function WebContainerPreview({
   }
   
   return (
-    <div className="h-full flex-1 overflow-hidden flex items-center justify-center">
-      {/* STEP 1: Remove max-h-[70vh] and only use getViewportClasses */}
+    <div className="h-full flex-1 overflow-hidden flex items-center justify-center p-4">
       <div className={getViewportClasses()}>
-        {/* STEP 3: Add rounded-lg and border to iframe for a cleaner look */}
         <iframe 
           ref={iframeRef}
           className="w-full h-full rounded-lg border"

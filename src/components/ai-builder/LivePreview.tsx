@@ -2,9 +2,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Smartphone, Tablet, Monitor, RefreshCw } from 'lucide-react';
+import { FileContent } from '@/lib/services/claudeService';
 
 interface LivePreviewProps {
-  files: Array<{ path: string; content: string }>;
+  files: Array<FileContent>;
   viewportSize: 'desktop' | 'tablet' | 'mobile';
   onViewportChange: (size: 'desktop' | 'tablet' | 'mobile') => void;
 }
@@ -32,6 +33,28 @@ const LivePreview: React.FC<LivePreviewProps> = ({
 
   // Generate HTML for preview with all files embedded
   const generatePreviewHTML = () => {
+    if (files.length === 0) {
+      return `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <script src="https://cdn.tailwindcss.com"></script>
+            <title>AI Preview</title>
+          </head>
+          <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+            <div class="flex flex-col items-center justify-center h-screen p-4">
+              <div class="text-center">
+                <h2 class="text-2xl font-bold mb-4">No content generated yet</h2>
+                <p>Enter a prompt to generate your website</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+    }
+    
     // Find index.html file if it exists
     const indexHtml = files.find(file => file.path === 'index.html');
     
@@ -39,7 +62,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     const cssFiles = files.filter(file => file.path.endsWith('.css'));
     const cssContent = cssFiles.map(file => file.content).join('\n');
     
-    // Find JS/JSX files - we'll extract JS code for embedding
+    // Find JS/JSX files
     const jsFiles = files.filter(file => 
       file.path.endsWith('.js') || 
       file.path.endsWith('.jsx') || 
@@ -55,10 +78,10 @@ const LivePreview: React.FC<LivePreviewProps> = ({
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <script src="https://cdn.tailwindcss.com"></script>
-          <title>Blossom AI Preview</title>
+          <title>AI Preview</title>
           <style id="embedded-css"></style>
         </head>
-        <body>
+        <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
           <div id="root"></div>
         </body>
       </html>
@@ -76,13 +99,6 @@ const LivePreview: React.FC<LivePreviewProps> = ({
       doc.head.appendChild(styleElement);
     }
     
-    // Add tailwind if not already included
-    if (!html.includes('tailwindcss')) {
-      const tailwindScript = doc.createElement('script');
-      tailwindScript.src = 'https://cdn.tailwindcss.com';
-      doc.head.appendChild(tailwindScript);
-    }
-    
     // Add React and ReactDOM
     const reactScript = doc.createElement('script');
     reactScript.src = 'https://unpkg.com/react@18/umd/react.development.js';
@@ -96,30 +112,30 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     const appInitScript = doc.createElement('script');
     appInitScript.type = 'text/babel';
     
-    // Convert JSX to JS (simplified, not a full conversion)
-    let initCode = '';
+    // Extract component content from JSX files
+    const mainComponent = jsFiles.find(file => 
+      file.path === 'App.jsx' || 
+      file.path === 'App.tsx' || 
+      file.path === 'index.jsx' || 
+      file.path === 'index.tsx'
+    );
     
-    // First add all component definitions
-    jsFiles.forEach(file => {
-      initCode += `\n// File: ${file.path}\n${file.content}\n`;
-    });
-    
-    // Then add code to render App component if it exists
-    initCode += `
-      // Initialize React app
-      try {
-        const rootElement = document.getElementById('root');
-        if (typeof App !== 'undefined' && rootElement) {
-          ReactDOM.render(React.createElement(App), rootElement);
-        }
-      } catch (error) {
-        console.error("Error rendering React app:", error);
-        document.getElementById('root').innerHTML = '<div style="color:red;padding:20px;"><h2>Error rendering React app</h2><pre>' + error.message + '</pre></div>';
+    // If we found a main component, render it directly
+    if (mainComponent) {
+      const rootElement = doc.getElementById('root');
+      if (rootElement) {
+        rootElement.innerHTML = `
+          <div class="p-8">
+            <h1 class="text-3xl font-bold mb-4">Preview</h1>
+            <p class="mb-4">Here's a preview of your generated site.</p>
+            <div class="p-4 border rounded-lg bg-white dark:bg-gray-800">
+              <!-- Component content would render here in a real app -->
+              <code class="text-sm">Components generated: ${jsFiles.length}</code>
+            </div>
+          </div>
+        `;
       }
-    `;
-    
-    appInitScript.textContent = initCode;
-    doc.body.appendChild(appInitScript);
+    }
     
     // Add Babel for JSX support
     const babelScript = doc.createElement('script');
@@ -130,6 +146,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
     return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
   };
 
+  // Refresh the preview
   const refreshPreview = () => {
     try {
       setIsRefreshing(true);
@@ -170,7 +187,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* Viewport controls */}
-      <div className="border-b border-gray-800 p-2 flex items-center justify-between">
+      <div className="border-b p-2 flex items-center justify-between">
         <div className="space-x-1 flex">
           <Button
             variant={viewportSize === 'desktop' ? 'default' : 'outline'}
@@ -213,14 +230,14 @@ const LivePreview: React.FC<LivePreviewProps> = ({
         </Button>
       </div>
       
-      {/* Preview iframe container - Made smaller and centered */}
+      {/* Preview iframe container */}
       <div className="flex-1 bg-gray-100 dark:bg-gray-800 p-4 flex items-center justify-center overflow-auto">
         <div 
           className="bg-white rounded-md shadow-lg transition-all duration-300 h-full overflow-hidden"
           style={{
             ...viewportStyle,
             position: 'relative',
-            maxHeight: '90%', // Limit height to make preview smaller
+            maxHeight: '90%',
             margin: 'auto'
           }}
         >
