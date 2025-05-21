@@ -57,6 +57,15 @@ interface WebsiteFile {
   type: string;
 }
 
+// Pro features interface
+interface ProFeatures {
+  temperature: number;
+  maxTokens: number;
+  thinkingBudget: number;
+  useAdvancedMode: boolean;
+  framework: 'react-tailwind' | 'next-tailwind' | 'html-css';
+}
+
 export default function BoltAIWebBuilder() {
   const [activeTab, setActiveTab] = useState('chat');
   const [prompt, setPrompt] = useState('');
@@ -71,6 +80,33 @@ export default function BoltAIWebBuilder() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [projectId] = useState(uuidv4().substring(0, 6));
   
+  // Pro features state
+  const [proFeatures, setProFeatures] = useState<ProFeatures>({
+    temperature: 0.7,
+    maxTokens: 4000,
+    thinkingBudget: 1000,
+    useAdvancedMode: false,
+    framework: 'react-tailwind'
+  });
+  
+  // Check if user has pro subscription
+  const [isProUser, setIsProUser] = useState(false);
+  
+  useEffect(() => {
+    // Check if user has pro subscription
+    const checkProStatus = async () => {
+      try {
+        const response = await fetch('/api/subscription/status');
+        const data = await response.json();
+        setIsProUser(data.isPro);
+      } catch (error) {
+        console.error('Error checking pro status:', error);
+      }
+    };
+    
+    checkProStatus();
+  }, []);
+
   // Scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -202,8 +238,39 @@ export default function BoltAIWebBuilder() {
     try {
       const model = process.env.VITE_CLAUDE_MODEL || 'claude-3-7-sonnet-20250219';
       
-      const systemPrompt = `You are an expert web developer specializing in creating beautiful, modern websites with React and Tailwind CSS. 
-      
+      // Enhanced system prompt for pro users
+      const systemPrompt = isProUser && proFeatures.useAdvancedMode
+        ? `You are an expert web developer specializing in creating beautiful, modern websites with ${proFeatures.framework}. 
+          
+When given a website description, you will:
+1. Generate ALL necessary files with complete, working code.
+2. Structure your response as multiple file blocks using this format:
+\`\`\`jsx src/components/ComponentName.tsx
+// Complete file content here with imports, component code, etc.
+\`\`\`
+3. Include:
+   - All import statements
+   - All component definitions with proper TypeScript types
+   - Complete Tailwind CSS styling
+   - All necessary utility functions
+4. Create a fully functional, responsive design
+5. Use modern React patterns (hooks, context if needed)
+6. Ensure the code is immediately runnable
+7. Include at minimum:
+   - App.tsx or index.tsx as the entry point
+   - Multiple component files organized logically
+   - Any utility files needed
+8. Add advanced features like:
+   - Animations and transitions
+   - Interactive components
+   - State management
+   - API integrations
+   - SEO optimization
+   - Performance optimizations
+
+The code will be directly executed in a preview environment, so it must be complete and error-free.`
+        : `You are an expert web developer specializing in creating beautiful, modern websites with React and Tailwind CSS. 
+          
 When given a website description, you will:
 1. Generate ALL necessary files with complete, working code.
 2. Structure your response as multiple file blocks using this format:
@@ -240,7 +307,14 @@ The code will be directly executed in a preview environment, so it must be compl
               content: `Create a complete website based on this description: "${userPrompt}". Provide all necessary files to make it functional.`
             }
           ],
-          max_tokens: 4000
+          max_tokens: isProUser ? proFeatures.maxTokens : 4000,
+          temperature: isProUser ? proFeatures.temperature : 0.7,
+          ...(isProUser && proFeatures.thinkingBudget > 0 ? {
+            thinking: {
+              enabled: true,
+              budget_tokens: proFeatures.thinkingBudget
+            }
+          } : {})
         })
       });
 
@@ -313,12 +387,14 @@ The code will be directly executed in a preview environment, so it must be compl
           </div>
 
           <div className="flex items-center space-x-2">
-            <Switch 
-              id="advanced-mode" 
-              checked={showAdvanced} 
-              onCheckedChange={setShowAdvanced} 
-              className="data-[state=checked]:bg-blue-600"
-            />
+            {isProUser && (
+              <Switch 
+                id="advanced-mode" 
+                checked={proFeatures.useAdvancedMode} 
+                onCheckedChange={(checked) => setProFeatures(prev => ({ ...prev, useAdvancedMode: checked }))} 
+                className="data-[state=checked]:bg-blue-600"
+              />
+            )}
             <Label htmlFor="advanced-mode" className="text-xs">Advanced</Label>
           </div>
         </div>
@@ -389,6 +465,62 @@ The code will be directly executed in a preview environment, so it must be compl
                   className="min-h-28 resize-none focus:border-blue-500"
                   disabled={isGenerating}
                 />
+                
+                {isProUser && proFeatures.useAdvancedMode && (
+                  <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="space-y-2">
+                      <Label>Framework</Label>
+                      <select
+                        value={proFeatures.framework}
+                        onChange={(e) => setProFeatures(prev => ({ ...prev, framework: e.target.value as ProFeatures['framework'] }))}
+                        className="w-full p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
+                      >
+                        <option value="react-tailwind">React + Tailwind</option>
+                        <option value="next-tailwind">Next.js + Tailwind</option>
+                        <option value="html-css">HTML/CSS/JS</option>
+                      </select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Temperature: {proFeatures.temperature}</Label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={proFeatures.temperature}
+                        onChange={(e) => setProFeatures(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Max Tokens: {proFeatures.maxTokens}</Label>
+                      <input
+                        type="range"
+                        min="1000"
+                        max="8000"
+                        step="1000"
+                        value={proFeatures.maxTokens}
+                        onChange={(e) => setProFeatures(prev => ({ ...prev, maxTokens: parseInt(e.target.value) }))}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Thinking Budget: {proFeatures.thinkingBudget}</Label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="2000"
+                        step="100"
+                        value={proFeatures.thinkingBudget}
+                        onChange={(e) => setProFeatures(prev => ({ ...prev, thinkingBudget: parseInt(e.target.value) }))}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                )}
                 
                 <Button 
                   type="submit"
