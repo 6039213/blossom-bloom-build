@@ -10,6 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Sparkles, Settings, Key } from 'lucide-react';
 import { toast } from 'sonner';
+import { callClaude } from "@/api/claude";
 
 export default function ClaudeSettings() {
   const [apiKey, setApiKey] = useState('');
@@ -63,34 +64,25 @@ export default function ClaudeSettings() {
     }
   };
   
-  const testConnection = async () => {
-    setIsSaving(true);
-    
+  const testAPIKey = async (key: string) => {
     try {
-      const response = await fetch('/api/claude', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: model,
-          max_tokens: 20,
-          prompt: 'Say hello in exactly 3 words'
-        })
+      const response = await callClaude({
+        prompt: "Hello, Claude!",
+        system: "You are a helpful AI assistant.",
+        model: import.meta.env.VITE_CLAUDE_MODEL || 'claude-3-sonnet-20240229',
+        max_tokens: 100,
+        temperature: 0.7,
+        stream: false
       });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API returned ${response.status}: ${errorText}`);
+
+      if (response.error) {
+        throw new Error(response.error);
       }
-      
-      const data = await response.json();
-      toast.success('Connection successful! Claude is working.');
+
+      return true;
     } catch (error) {
-      console.error('Error testing connection:', error);
-      toast.error(`Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsSaving(false);
+      console.error('Error testing API key:', error);
+      return false;
     }
   };
   
@@ -218,7 +210,7 @@ export default function ClaudeSettings() {
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button 
-                onClick={testConnection}
+                onClick={testAPIKey}
                 variant="outline"
                 disabled={isSaving || !apiKey.trim()}
               >

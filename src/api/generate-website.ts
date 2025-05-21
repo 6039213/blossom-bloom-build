@@ -1,3 +1,5 @@
+import { callClaude } from "@/api/claude";
+
 // Removing the NextApiRequest import since we're not using Next.js
 export default async function handler(req: Request) {
   // Handle CORS
@@ -54,34 +56,22 @@ Respond with clear, properly formatted code blocks for each file using the forma
 Create clean, well-structured components with proper imports and exports.`;
 
     // Call the Claude API through our proxy
-    const response = await fetch('/api/claude', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-opus-20240229',
-        max_tokens: 4000,
-        system: systemMessage,
-        prompt: `Create a beautiful, responsive website with React and Tailwind CSS for: ${prompt}. Include all necessary components and styling.`
-      })
+    const response = await callClaude({
+      prompt: prompt,
+      system: systemMessage,
+      model: import.meta.env.VITE_CLAUDE_MODEL || 'claude-3-sonnet-20240229',
+      max_tokens: 4000,
+      temperature: 0.7,
+      stream: false
     });
 
-    // Check for API errors
-    if (!response.ok) {
-      console.error('API Error:', await response.text());
-      return new Response(
-        JSON.stringify({ error: `AI service error: ${response.statusText}` }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (response.error) {
+      throw new Error(response.error);
     }
 
-    // Parse response
-    const data = await response.json();
-    
     // Return the generated content
     return new Response(
-      JSON.stringify({ content: data.content[0].text }),
+      JSON.stringify({ content: response.content || '' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

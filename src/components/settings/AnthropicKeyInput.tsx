@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Key, Eye, EyeOff } from 'lucide-react';
+import { callClaude } from "@/api/claude";
 
 export default function AnthropicKeyInput() {
   const [apiKey, setApiKey] = useState('');
@@ -82,6 +83,28 @@ export default function AnthropicKeyInput() {
     if (!key) return '';
     if (key.length <= 8) return '••••••••';
     return `${key.substring(0, 4)}••••••${key.substring(key.length - 4)}`;
+  };
+
+  const testAPIKey = async (key: string) => {
+    try {
+      const response = await callClaude({
+        prompt: "Hello, Claude!",
+        system: "You are a helpful AI assistant.",
+        model: import.meta.env.VITE_CLAUDE_MODEL || 'claude-3-sonnet-20240229',
+        max_tokens: 100,
+        temperature: 0.7,
+        stream: false
+      });
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error testing API key:', error);
+      return false;
+    }
   };
 
   return (

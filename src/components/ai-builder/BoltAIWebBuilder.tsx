@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { extractCodeBlocks, getFileType } from "@/utils/codeGeneration";
+import { callClaude } from "@/api/claude";
 import WebsitePreview from './WebsitePreview';
 import FileExplorer from './FileExplorer';
 import CodePane from './CodePane';
@@ -255,39 +256,20 @@ export default function BoltAIWebBuilder() {
           \`\`\``
         : "You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS.";
       
-      const response = await fetch('/api/claude', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: proFeatures.maxTokens,
-          temperature: proFeatures.temperature,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          ...(proFeatures.thinkingBudget ? {
-            thinking: {
-              enabled: true,
-              budget_tokens: proFeatures.thinkingBudget
-            }
-          } : {})
-        })
+      const response = await callClaude({
+        prompt: userPrompt,
+        system: systemPrompt,
+        model,
+        max_tokens: proFeatures.maxTokens,
+        temperature: proFeatures.temperature,
+        stream: false
       });
       
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      if (response.error) {
+        throw new Error(response.error);
       }
       
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      
-      return data.content || '';
+      return response.content || '';
     } catch (error) {
       console.error('Error calling Claude API:', error);
       throw error;

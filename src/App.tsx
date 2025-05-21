@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -11,6 +10,7 @@ import Footer from './components/layout/Footer';
 import MainNavbar from './components/layout/MainNavbar';
 import BlossomsAIWebBuilder from './components/ai-builder/BlossomsAIWebBuilder';
 import { AuthProvider } from './contexts/AuthContext';
+import { callClaude } from "@/api/claude";
 
 // Import the page components
 import Index from './pages/Index';

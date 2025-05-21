@@ -14,6 +14,7 @@ import ClaudeTest from './ClaudeTest';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { callClaude } from "@/api/claude";
 
 export default function BlossomsAIWebBuilder() {
   const [activeTab, setActiveTab] = useState('editor');
@@ -37,6 +38,30 @@ export default function BlossomsAIWebBuilder() {
     // Always use the provided API key
     // setApiKey('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');
   }, []);
+
+  const callClaudeAPI = async (userPrompt: string): Promise<string> => {
+    try {
+      const model = import.meta.env.VITE_CLAUDE_MODEL || 'claude-3-sonnet-20240229';
+      
+      const response = await callClaude({
+        prompt: userPrompt,
+        system: "You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS.",
+        model,
+        max_tokens: 4000,
+        temperature: 0.7,
+        stream: false
+      });
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      return response.content || '';
+    } catch (error) {
+      console.error('Error calling Claude API:', error);
+      throw error;
+    }
+  };
 
   // Generate code based on prompt
   const handleGenerateCode = async () => {

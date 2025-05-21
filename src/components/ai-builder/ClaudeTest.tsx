@@ -4,11 +4,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, Terminal, Bot } from "lucide-react";
 import { toast } from 'sonner';
+import { callClaude } from "@/api/claude";
 
 const ClaudeTest: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
+  const [testResult, setTestResult] = useState('');
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,57 +24,48 @@ const ClaudeTest: React.FC = () => {
     setResponse('');
     
     try {
-      const response = await fetch('/api/claude', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: process.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229",
-          messages: [
-            { 
-              role: 'system', 
-              content: "You are Claude 3.7 Sonnet, an advanced AI assistant that helps with coding and web development questions."
-            },
-            { 
-              role: 'user', 
-              content: prompt 
-            }
-          ],
-          max_tokens: 4000,
-          temperature: 0.7
-        })
+      const response = await callClaude({
+        prompt: prompt,
+        system: "You are Claude 3.7 Sonnet, an advanced AI assistant that helps with coding and web development questions.",
+        model: process.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229",
+        max_tokens: 4000,
+        temperature: 0.7,
+        stream: false
       });
-
-      // Get the response text first
-      const text = await response.text();
       
-      if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status} ${text}`);
+      if (response.error) {
+        throw new Error(response.error);
       }
       
-      // Safely parse the JSON response
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.error("Failed to parse response as JSON:", text.substring(0, 200));
-        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
-      }
-      
-      if (data.content && data.content[0] && data.content[0].text) {
-        setResponse(data.content[0].text);
-      } else if (data.error) {
-        throw new Error(data.error);
-      } else {
-        throw new Error("Unexpected response format from Claude API");
-      }
+      setResponse(response.content || '');
     } catch (error) {
-      console.error("Error calling Claude:", error);
+      console.error('Error calling Claude:', error);
       toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setResponse(`An error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const testClaudeAPI = async () => {
+    try {
+      const response = await callClaude({
+        prompt: "Hello, Claude!",
+        system: "You are a helpful AI assistant.",
+        model: import.meta.env.VITE_CLAUDE_MODEL || 'claude-3-sonnet-20240229',
+        max_tokens: 100,
+        temperature: 0.7,
+        stream: false
+      });
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      setTestResult(response.content || '');
+    } catch (error) {
+      console.error('Error testing Claude API:', error);
+      setTestResult(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
   
