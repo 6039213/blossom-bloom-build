@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 
 export interface FileContent {
@@ -57,12 +58,22 @@ export class ClaudeService {
         })
       });
       
+      // Handle non-OK responses
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Claude API error: ${response.status} ${errorText}`);
       }
       
-      const result = await response.json();
+      // Safely parse the JSON response
+      const text = await response.text();
+      let result;
+      
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse response as JSON:", text.substring(0, 200));
+        throw new Error(`Invalid JSON response from Claude API`);
+      }
       
       if (!result.content || !result.content[0] || !result.content[0].text) {
         throw new Error("Unexpected response format from Claude API");
@@ -141,7 +152,6 @@ The code should work with React, Tailwind CSS, and use modern ES6+ syntax.`;
     };
     
     // If we have a streaming callback, simulate it for now with the prompt
-    // (In a real implementation, you'd use actual streaming from the API)
     if (onStreamUpdate) {
       onStreamUpdate("Processing request...");
       
@@ -154,20 +164,30 @@ The code should work with React, Tailwind CSS, and use modern ES6+ syntax.`;
       onStreamUpdate("Generating code based on your requirements...");
     }
     
-    const codeBlocks = await ClaudeService.generateCode(fullPrompt, options);
-    
-    // Combine all code blocks into a single response for processing
-    let fullResponse = "";
-    codeBlocks.forEach(file => {
-      fullResponse += `\`\`\`jsx ${file.path}\n${file.content}\n\`\`\`\n\n`;
-    });
-    
-    // If we're streaming, provide the final response
-    if (onStreamUpdate) {
-      onStreamUpdate(fullResponse);
+    try {
+      const codeBlocks = await ClaudeService.generateCode(fullPrompt, options);
+      
+      // Combine all code blocks into a single response for processing
+      let fullResponse = "";
+      codeBlocks.forEach(file => {
+        fullResponse += `\`\`\`jsx ${file.path}\n${file.content}\n\`\`\`\n\n`;
+      });
+      
+      // If we're streaming, provide the final response
+      if (onStreamUpdate) {
+        onStreamUpdate(fullResponse);
+      }
+      
+      return fullResponse;
+    } catch (error) {
+      console.error("Error in generateCode:", error);
+      
+      if (onStreamUpdate) {
+        onStreamUpdate(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+      
+      throw error;
     }
-    
-    return fullResponse;
   } catch (error) {
     console.error("Error in generateCode:", error);
     throw error;

@@ -30,10 +30,20 @@ export const callClaude = async (prompt: string, system?: string, files: Record<
     });
     
     if (!response.ok) {
-      throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`Claude API error: ${response.status} ${errorText}`);
     }
     
-    const data = await response.json();
+    // Safely parse the JSON response
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("Failed to parse response as JSON:", text.substring(0, 200));
+      throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+    }
+    
     console.log("Claude API response received successfully");
     return data;
   } catch (error) {
@@ -86,10 +96,20 @@ export const anthropicProvider: LLMProvider = {
         });
         
         if (!response.ok) {
-          throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          throw new Error(`Claude API error: ${response.status} ${errorText}`);
         }
         
-        const data = await response.json();
+        // Safely parse the JSON response
+        const text = await response.text();
+        let data;
+        
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          console.error("Failed to parse response as JSON:", text.substring(0, 200));
+          throw new Error(`Invalid JSON response from Claude API: ${text.substring(0, 100)}...`);
+        }
         
         let fullResponse = '';
         
