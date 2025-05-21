@@ -43,19 +43,12 @@ async function* streamFromClaude(
   prompt: string,
   onToken: (token: string) => void
 ) {
-  // Use the constant from lib/constants or fallback
-  const apiKey = ANTHROPIC_API_KEY;
-  
   try {
-    // Create a proxy URL to avoid CORS issues
-    const proxyUrl = 'https://claude-proxy.lovable-worker.workers.dev/v1/messages';
-    
-    const response = await fetch(proxyUrl, {
+    // Call our proxy endpoint
+    const response = await fetch('/api/claude', {
       method: 'POST',
       headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: "claude-3-7-sonnet-20250219",
@@ -67,145 +60,66 @@ async function* streamFromClaude(
       }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Anthropic API error: ${errorData.error?.message || response.statusText}`);
-    }
-
-    let diff = '';
-    const filesChanged: string[] = [];
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
+    // Get the response text first
+    const text = await response.text();
     
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(line => line.trim() !== '');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const jsonString = line.slice(6);
-            
-            // End of stream marker
-            if (jsonString === "[DONE]") break;
-            
-            try {
-              const data = JSON.parse(jsonString);
-              
-              // Extract the content delta if it exists
-              if (data.type === 'content_block_delta' && data.delta?.text) {
-                const text = data.delta.text;
-                onToken(text);
-                diff += text;
-                
-                // Check for file changes
-                if (text.includes('// FILE:') || text.includes('```')) {
-                  // Extract filename from content like "// FILE: src/path/to/file.tsx"
-                  const fileRegex = /\/\/ FILE: ([^\n]+)/g;
-                  let match;
-                  while ((match = fileRegex.exec(text)) !== null) {
-                    filesChanged.push(match[1]);
-                  }
-                  
-                  // Also check for ```typescript filename or ```tsx filename patterns
-                  const codeBlockRegex = /```(?:typescript|tsx|jsx|js) ([^\n]+)/g;
-                  while ((match = codeBlockRegex.exec(text)) !== null) {
-                    filesChanged.push(match[1]);
-                  }
-                }
-                
-                // Yield the processed chunk
-                yield { diff: text, filesChanged };
-              }
-            } catch (e) {
-              console.error('Error parsing SSE data:', e);
-            }
-          }
-        }
-      }
+    if (!response.ok) {
+      throw new Error(`Claude API error: ${response.status} ${text}`);
+    }
+    
+    // Safely parse the JSON response
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("Failed to parse response as JSON:", text.substring(0, 200));
+      throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+    }
+    
+    if (data.content && data.content[0] && data.content[0].text) {
+      onToken(data.content[0].text);
+      yield { done: false, filesChanged: [], error: false };
+    } else if (data.error) {
+      throw new Error(data.error);
+    } else {
+      throw new Error("Unexpected response format from Claude API");
     }
     
     // Final yield to indicate completion
-    yield { done: true, filesChanged };
-    return true;
+    yield { done: true, filesChanged: [], error: false };
   } catch (error) {
     console.error("Error streaming from Claude:", error);
-    onToken(`Error connecting to Claude: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    
-    // Return null to indicate we should fall back to Gemini
-    return null;
+    onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    yield { done: true, filesChanged: [], error: true };
   }
 }
 
-// Stream generator for Gemini API (original implementation)
+// Stream generator for Gemini API (fallback)
 async function* streamFromGemini(
   prompt: string,
   onToken: (token: string) => void
 ) {
-  // Use constant from lib/constants
-  const apiKey = GEMINI_API_KEY;
-  
-  if (!apiKey || !genAI) {
-    onToken("Error: No Gemini API key found. Using Claude instead.");
-    yield { done: true, filesChanged: [], error: true };
-    return;
+  if (!genAI) {
+    throw new Error("Gemini API not configured");
   }
   
   try {
-    // Get the model - specifically use gemini-2.5-flash-preview
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview' });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const result = await model.generateContentStream(prompt);
     
-    // Generate content stream - using the correct format for content generation
-    const generationConfig = {
-      temperature: 0.7,
-      topP: 1,
-      topK: 40,
-      maxOutputTokens: 2048,
-    };
-    
-    // Create the stream
-    const result = await model.generateContentStream({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig
-    });
-    
-    let diff = '';
-    const filesChanged: string[] = [];
-    
-    // Process each chunk from the stream
     for await (const chunk of result.stream) {
       const text = chunk.text();
-      onToken(text);
-      diff += text;
-      
-      // Check for file changes
-      if (text.includes('// FILE:') || text.includes('```')) {
-        // Extract filename from content like "// FILE: src/path/to/file.tsx"
-        const fileRegex = /\/\/ FILE: ([^\n]+)/g;
-        let match;
-        while ((match = fileRegex.exec(text)) !== null) {
-          filesChanged.push(match[1]);
-        }
-        
-        // Also check for ```typescript filename or ```tsx filename patterns
-        const codeBlockRegex = /```(?:typescript|tsx|jsx|js) ([^\n]+)/g;
-        while ((match = codeBlockRegex.exec(text)) !== null) {
-          filesChanged.push(match[1]);
-        }
+      if (text) {
+        onToken(text);
+        yield { done: false, filesChanged: [], error: false };
       }
-      
-      // Yield the extracted diff and changed files
-      yield { diff: text, filesChanged };
     }
     
     // Final yield to indicate completion
-    yield { done: true, filesChanged };
+    yield { done: true, filesChanged: [], error: false };
   } catch (error) {
     console.error("Error streaming from Gemini:", error);
-    onToken(`Error streaming from Gemini: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     yield { done: true, filesChanged: [], error: true };
   }
 }

@@ -1,4 +1,3 @@
-
 /**
  * Claude API Client for Anthropic's Claude models
  */
@@ -10,7 +9,7 @@ const getApiKey = (): string => {
   if (localKey) return localKey;
   
   // Then check environment variable (may be empty in browser context)
-  const envKey = import.meta.env.VITE_CLAUDE_API_KEY;
+  const envKey = process.env.VITE_CLAUDE_API_KEY;
   return envKey || '';
 };
 
@@ -28,16 +27,10 @@ export const generateWithClaude = async (
   prompt: string, 
   options: ClaudeRequestOptions = {}
 ): Promise<string> => {
-  const apiKey = getApiKey();
-  
-  if (!apiKey) {
-    throw new Error("Claude API key not found. Please set it in the settings.");
-  }
-
   try {
     // Prepare request body
     const requestBody = {
-      model: import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229",
+      model: process.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229",
       max_tokens: options.maxTokens || 4000,
       temperature: options.temperature || 0.7,
       messages: [
@@ -56,26 +49,38 @@ export const generateWithClaude = async (
       });
     }
     
-    // Call Anthropic API directly
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    // Call our proxy endpoint
+    const response = await fetch("/api/claude", {
       method: "POST",
       headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-        "anthropic-dangerous-direct-browser-access": "true" // Add CORS header
+        "content-type": "application/json"
       },
       body: JSON.stringify(requestBody)
     });
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Anthropic API error (${response.status}): ${errorData}`);
-    }
-
-    const data = await response.json();
+    // Get the response text first
+    const text = await response.text();
     
-    return data.content[0].text;
+    if (!response.ok) {
+      throw new Error(`Claude API error: ${response.status} ${text}`);
+    }
+    
+    // Safely parse the JSON response
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("Failed to parse response as JSON:", text.substring(0, 200));
+      throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+    }
+    
+    if (data.content && data.content[0] && data.content[0].text) {
+      return data.content[0].text;
+    } else if (data.error) {
+      throw new Error(data.error);
+    } else {
+      throw new Error("Unexpected response format from Claude API");
+    }
   } catch (error) {
     console.error("Error calling Claude API:", error);
     throw error;
@@ -90,17 +95,10 @@ export const streamWithClaude = async (
   onToken: (token: string) => void,
   options: ClaudeRequestOptions = {}
 ): Promise<void> => {
-  const apiKey = getApiKey();
-  
-  if (!apiKey) {
-    onToken("Error: Claude API key not found. Please set it in the settings.");
-    return;
-  }
-
   try {
     // Prepare request body with streaming enabled
     const requestBody = {
-      model: import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229",
+      model: process.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229",
       max_tokens: options.maxTokens || 4000,
       temperature: options.temperature || 0.7,
       stream: true,
@@ -122,55 +120,36 @@ export const streamWithClaude = async (
     
     onToken("Connecting to Claude...");
     
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch("/api/claude", {
       method: "POST",
       headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-        "anthropic-dangerous-direct-browser-access": "true" // Add CORS header
+        "content-type": "application/json"
       },
       body: JSON.stringify(requestBody)
     });
 
+    // Get the response text first
+    const text = await response.text();
+    
     if (!response.ok) {
-      const errorData = await response.text();
-      onToken(`\nError: Anthropic API error (${response.status}): ${errorData}`);
-      return;
-    }
-
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    
-    if (!reader) {
-      onToken("\nError: Response body is not readable.");
-      return;
+      throw new Error(`Claude API error: ${response.status} ${text}`);
     }
     
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n').filter(line => line.trim() !== '');
-      
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const jsonStr = line.slice(6);
-          
-          // End of stream marker
-          if (jsonStr === "[DONE]") break;
-          
-          try {
-            const data = JSON.parse(jsonStr);
-            if (data.type === 'content_block_delta' && data.delta?.text) {
-              onToken(data.delta.text);
-            }
-          } catch (e) {
-            console.error('Error parsing SSE data:', e);
-          }
-        }
-      }
+    // Safely parse the JSON response
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("Failed to parse response as JSON:", text.substring(0, 200));
+      throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+    }
+    
+    if (data.content && data.content[0] && data.content[0].text) {
+      onToken(data.content[0].text);
+    } else if (data.error) {
+      throw new Error(data.error);
+    } else {
+      throw new Error("Unexpected response format from Claude API");
     }
   } catch (error) {
     console.error("Error streaming from Claude API:", error);

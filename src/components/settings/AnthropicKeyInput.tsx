@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +19,7 @@ export default function AnthropicKeyInput() {
     }
   }, []);
 
-  const handleSaveKey = () => {
+  const handleSaveKey = async () => {
     if (!apiKey.trim()) {
       toast.error("Please enter a valid API key");
       return;
@@ -29,11 +28,47 @@ export default function AnthropicKeyInput() {
     setIsSaving(true);
     
     try {
+      // Test the API key with a simple request
+      const response = await fetch('/api/claude', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: process.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229",
+          messages: [
+            { role: 'user', content: 'Hello' }
+          ],
+          max_tokens: 10
+        })
+      });
+
+      // Get the response text first
+      const text = await response.text();
+      
+      if (!response.ok) {
+        throw new Error(`API key validation failed: ${response.status} ${text}`);
+      }
+      
+      // Safely parse the JSON response
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse response as JSON:", text.substring(0, 200));
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+      }
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      // If we get here, the API key is valid
       localStorage.setItem('CLAUDE_API_KEY', apiKey.trim());
       toast.success("Anthropic API key saved successfully");
     } catch (error) {
       console.error("Error saving API key:", error);
-      toast.error("Failed to save API key");
+      toast.error(`Failed to save API key: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }

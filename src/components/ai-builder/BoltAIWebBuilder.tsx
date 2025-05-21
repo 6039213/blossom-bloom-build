@@ -200,8 +200,7 @@ export default function BoltAIWebBuilder() {
   // Call Claude API through our proxy endpoint
   const callClaudeAPI = async (userPrompt: string): Promise<string> => {
     try {
-      const apiKey = import.meta.env.VITE_CLAUDE_API_KEY || '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';
-      const model = import.meta.env.VITE_CLAUDE_MODEL || 'claude-3-7-sonnet-20250219';
+      const model = process.env.VITE_CLAUDE_MODEL || 'claude-3-7-sonnet-20250219';
       
       const systemPrompt = `You are an expert web developer specializing in creating beautiful, modern websites with React and Tailwind CSS. 
       
@@ -244,16 +243,32 @@ The code will be directly executed in a preview environment, so it must be compl
           max_tokens: 4000
         })
       });
+
+      // Get the response text first
+      const text = await response.text();
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Claude API error: ${errorData.error?.message || response.statusText}`);
+        throw new Error(`Claude API error: ${response.status} ${text}`);
       }
       
-      const data = await response.json();
-      return data.content[0].text || '';
+      // Safely parse the JSON response
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse response as JSON:", text.substring(0, 200));
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+      }
+      
+      if (data.content && data.content[0] && data.content[0].text) {
+        return data.content[0].text;
+      } else if (data.error) {
+        throw new Error(data.error);
+      } else {
+        throw new Error("Unexpected response format from Claude API");
+      }
     } catch (error) {
-      console.error('Error calling Claude API:', error);
+      console.error("Error calling Claude API:", error);
       throw error;
     }
   };
