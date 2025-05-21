@@ -1,4 +1,4 @@
-// Removing the NextApiRequest import since we're not using Next.js
+
 export default async function handler(req: Request) {
   // Handle CORS
   const corsHeaders = {
@@ -60,25 +60,39 @@ Create clean, well-structured components with proper imports and exports.`;
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-3-opus-20240229',
+        model: 'claude-3-7-sonnet-20240229',
         max_tokens: 4000,
         system: systemMessage,
         prompt: `Create a beautiful, responsive website with React and Tailwind CSS for: ${prompt}. Include all necessary components and styling.`
       })
     });
 
-    // Check for API errors
-    if (!response.ok) {
-      console.error('API Error:', await response.text());
+    // Get the response as text first
+    const text = await response.text();
+    let data;
+    
+    // Safely parse the JSON
+    try {
+      data = response.headers.get('content-type')?.includes('json')
+        ? JSON.parse(text)
+        : { error: text };
+    } catch (error) {
+      console.error('Failed to parse response:', text.substring(0, 200));
       return new Response(
-        JSON.stringify({ error: `AI service error: ${response.statusText}` }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: `Invalid JSON response: ${text.substring(0, 100)}...` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Parse response
-    const data = await response.json();
-    
+    // Check for API errors
+    if (data.error) {
+      console.error('API Error:', data.error);
+      return new Response(
+        JSON.stringify({ error: data.error }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Return the generated content
     return new Response(
       JSON.stringify({ content: data.content[0].text }),
@@ -87,7 +101,7 @@ Create clean, well-structured components with proper imports and exports.`;
   } catch (error) {
     console.error('Generate website error:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to generate website: ' + (error.message || 'Unknown error') }),
+      JSON.stringify({ error: 'Failed to generate website: ' + (error instanceof Error ? error.message : 'Unknown error') }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -1,3 +1,4 @@
+
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -35,7 +36,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    let data;
+    
+    try {
+      data = JSON.parse(text);
+    } catch (error) {
+      console.error('Failed to parse Claude API response as JSON:', text.substring(0, 200));
+      return res.status(500).json({ error: `Invalid JSON response from Claude API: ${text.substring(0, 100)}...` });
+    }
 
     if (!response.ok) {
       console.error('Claude API error:', data);
@@ -47,4 +56,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Error in Claude proxy:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
-} 
+}

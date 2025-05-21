@@ -1,151 +1,128 @@
-import type { LLMProvider, StreamResult } from "../types";
 
-// Get the API key and model name from environment variables
-const API_KEY = process.env.VITE_CLAUDE_API_KEY;
-const MODEL_NAME = process.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+import { toast } from 'sonner';
 
-/**
- * Call Claude API through our backend endpoint
- */
-export const callClaude = async (prompt: string, system?: string, files: Record<string, string> = {}) => {
+// Helper function to safely parse JSON
+const safeJsonParse = async (response: Response) => {
+  const text = await response.text();
   try {
-    console.log("Calling Claude API with prompt:", prompt.substring(0, 50) + "...");
-    
-    // Make a request through our proxy
-    const response = await fetch('/api/claude', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: MODEL_NAME,
-        max_tokens: 4000,
-        temperature: 0.7,
-        messages: [
-          system ? { role: 'system', content: system } : null,
-          { role: 'user', content: prompt }
-        ].filter(Boolean)
-      })
-    });
-    
-    // Get the response text first
-    const text = await response.text();
-    
-    if (!response.ok) {
-      throw new Error(`Claude API error: ${response.status} ${text}`);
-    }
-    
-    // Safely parse the JSON response
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      console.error("Failed to parse response as JSON:", text.substring(0, 200));
-      throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
-    }
-    
-    console.log("Claude API response received successfully");
-    return data;
-  } catch (error) {
-    console.error("Error calling Claude API:", error);
-    throw error;
+    return response.headers.get('content-type')?.includes('json')
+      ? JSON.parse(text)
+      : { error: text };
+  } catch (e) {
+    console.error("Failed to parse response as JSON:", text.substring(0, 200));
+    throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
   }
 };
 
-export const anthropicProvider: LLMProvider = {
-  name: "claude",
-  models: [MODEL_NAME],
+export const anthropicProvider = {
+  id: 'anthropic',
+  name: 'Anthropic Claude',
+  
+  async generate(prompt: string, options: any = {}) {
+    try {
+      const apiKey = localStorage.getItem('CLAUDE_API_KEY') || process.env.CLAUDE_API_KEY;
+      
+      if (!apiKey) {
+        toast.error("Claude API key not configured");
+        return { error: "API key not configured" };
+      }
+      
+      const model = options.model || localStorage.getItem('CLAUDE_MODEL') || "claude-3-7-sonnet-20240229";
+      const temperature = options.temperature || localStorage.getItem('CLAUDE_TEMPERATURE') || 0.7;
+      const maxTokens = options.maxOutputTokens || localStorage.getItem('CLAUDE_MAX_TOKENS') || 4000;
+      
+      const response = await fetch('/api/claude', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          temperature: parseFloat(temperature),
+          max_tokens: parseInt(maxTokens),
+          system: options.system || "",
+          prompt
+        })
+      });
+      
+      const data = await safeJsonParse(response);
+      
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'API Error');
+      }
+      
+      if (data.content && data.content[0] && data.content[0].text) {
+        return data.content[0].text;
+      } 
+      
+      throw new Error("Unexpected response format");
+    } catch (error) {
+      console.error("Claude generation error:", error);
+      toast.error(`Generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
+  },
   
   async generateStream(
-    prompt: string, 
-    onToken: (token: string) => void, 
-    options: { system?: string; temperature?: number; maxOutputTokens?: number; thinkingBudget?: number } = {}
-  ): Promise<StreamResult> {
+    prompt: string,
+    onToken: (text: string) => void,
+    options: any = {}
+  ) {
     try {
-      // Prepare system message if provided
-      const systemMessage = options.system || 
-        "You are an AI that generates React + Tailwind webapps. Return modified files as JSON. No explanation, no markdown, only JSON.";
+      const apiKey = localStorage.getItem('CLAUDE_API_KEY');
       
-      onToken("Connecting to Claude 3.7 Sonnet...");
-      
-      try {
-        // Fix the thinking parameter format - it should use "enabled" instead of "type: reasoning"
-        const thinkingConfig = options.thinkingBudget ? {
-          thinking: {
-            enabled: true,
-            budget_tokens: options.thinkingBudget
-          }
-        } : {};
-        
-        // Make a request through our proxy
-        const response = await fetch('/api/claude', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: MODEL_NAME,
-            max_tokens: options.maxOutputTokens || 4000,
-            temperature: options.temperature || 0.7,
-            messages: [
-              { role: 'system', content: systemMessage },
-              { role: 'user', content: prompt }
-            ],
-            ...thinkingConfig
-          })
-        });
-        
-        // Get the text response first
-        const text = await response.text();
-        
-        if (!response.ok) {
-          throw new Error(`Claude API error: ${response.status} ${text}`);
-        }
-        
-        // Safely parse the JSON response
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          console.error("Failed to parse response as JSON:", text.substring(0, 200));
-          throw new Error(`Invalid JSON response from Claude API: ${text.substring(0, 100)}...`);
-        }
-        
-        let fullResponse = '';
-        
-        // Handle response format
-        if (data.content && data.content[0] && data.content[0].text) {
-          fullResponse = data.content[0].text;
-          onToken(fullResponse);
-        } else if (data.error) {
-          throw new Error(data.error);
-        } else {
-          throw new Error("Unexpected response format from Claude API");
-        }
-        
-        return {
-          tokens: fullResponse.length / 4, // Approximate token count
-          creditsUsed: 1, // Placeholder
-          complete: true,
-          fullResponse
-        };
-      } catch (error) {
-        console.error('Error generating content:', error);
-        onToken(`\nError: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again later.`);
-        return {
-          tokens: 0,
-          creditsUsed: 0,
-          complete: false
-        };
+      if (!apiKey) {
+        toast.error("Claude API key not configured");
+        throw new Error("API key not configured");
       }
+      
+      const model = options.model || localStorage.getItem('CLAUDE_MODEL') || "claude-3-7-sonnet-20240229";
+      const temperature = options.temperature || localStorage.getItem('CLAUDE_TEMPERATURE') || 0.7;
+      const maxTokens = options.maxOutputTokens || localStorage.getItem('CLAUDE_MAX_TOKENS') || 4000;
+      
+      const response = await fetch('/api/claude', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          temperature: parseFloat(temperature),
+          max_tokens: parseInt(maxTokens),
+          system: options.system || "",
+          prompt
+        })
+      });
+      
+      const data = await safeJsonParse(response);
+      
+      if (!response.ok || data.error) {
+        throw new Error(data.error || `API Error: ${response.status}`);
+      }
+      
+      if (data.content && data.content[0] && data.content[0].text) {
+        // Since we don't have actual streaming yet, we'll simulate it
+        const text = data.content[0].text;
+        let currentPosition = 0;
+        
+        // Simulate streaming by splitting the text
+        while (currentPosition < text.length) {
+          const chunk = text.slice(currentPosition, currentPosition + 10);
+          onToken(chunk);
+          currentPosition += 10;
+          
+          // Small delay to simulate streaming
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        
+        return text;
+      }
+      
+      throw new Error("Unexpected response format");
     } catch (error) {
-      console.error("Error generating content:", error);
-      onToken(`\nError: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again later.`);
-      return {
-        tokens: 0,
-        creditsUsed: 0,
-        complete: false
-      };
+      console.error("Claude streaming error:", error);
+      toast.error(`Streaming failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
     }
   }
 };
