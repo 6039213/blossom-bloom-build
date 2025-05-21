@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -119,7 +120,7 @@ The application should be complete, functional, and ready to run without any add
       console.log("Creating your application with Blossom AI...");
       
       // Call the API to generate code with enhanced prompt
-      await model.generateStream(
+      const result = await model.generateStream(
         enhancePrompt(prompt), 
         addToken, 
         {
@@ -128,19 +129,24 @@ The application should be complete, functional, and ready to run without any add
         }
       );
       
-      // Extract code blocks from response
-      const codeBlocks = extractCodeBlocks(fullResponse);
-      
-      // If no code blocks were found, show an error
-      if (Object.keys(codeBlocks).length === 0) {
-        console.error("No code blocks found in response:", fullResponse.substring(0, 500) + "...");
-        toast.error('Please try again with a more specific prompt.');
-      } else {
-        console.log(`Generated ${Object.keys(codeBlocks).length} files:`, Object.keys(codeBlocks));
+      // Only proceed with parsing if we have a successful response
+      if (result.complete && fullResponse) {
+        // Extract code blocks from response
+        const codeBlocks = extractCodeBlocks(fullResponse);
         
-        // Pass the extracted code blocks to the parent component
-        onCodeGenerated(codeBlocks);
-        toast.success(`Generated ${Object.keys(codeBlocks).length} files for your application`);
+        // If no code blocks were found, show an error
+        if (Object.keys(codeBlocks).length === 0) {
+          console.error("No code blocks found in response:", fullResponse.substring(0, 500) + "...");
+          toast.error('Please try again with a more specific prompt.');
+        } else {
+          console.log(`Generated ${Object.keys(codeBlocks).length} files:`, Object.keys(codeBlocks));
+          
+          // Pass the extracted code blocks to the parent component
+          onCodeGenerated(codeBlocks);
+          toast.success(`Generated ${Object.keys(codeBlocks).length} files for your application`);
+        }
+      } else {
+        toast.error('Failed to generate a complete response. Please try again.');
       }
     } catch (error) {
       console.error('Error generating code:', error);

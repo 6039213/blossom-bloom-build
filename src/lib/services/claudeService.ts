@@ -58,16 +58,16 @@ export class ClaudeService {
         })
       });
       
+      // Get the text response first
+      const text = await response.text();
+      
       // Handle non-OK responses
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Claude API error: ${response.status} ${errorText}`);
+        throw new Error(`Claude API error: ${response.status} ${text}`);
       }
       
       // Safely parse the JSON response
-      const text = await response.text();
       let result;
-      
       try {
         result = JSON.parse(text);
       } catch (e) {

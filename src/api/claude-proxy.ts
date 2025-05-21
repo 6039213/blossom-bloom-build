@@ -1,7 +1,7 @@
 
 export async function POST(req: Request) {
   // Extract the Claude API key from environment variables
-  const API_KEY = process.env.VITE_CLAUDE_API_KEY || "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";
+  const API_KEY = process.env.VITE_CLAUDE_API_KEY || "";
   
   try {
     // Parse request body
@@ -21,8 +21,28 @@ export async function POST(req: Request) {
       body: JSON.stringify(body)
     });
     
-    // Get response data
-    const data = await claudeResponse.json();
+    // Get response as text first
+    const text = await claudeResponse.text();
+    
+    // Try to parse as JSON
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      // If not valid JSON, return the text as an error message
+      return new Response(
+        JSON.stringify({ error: `Invalid JSON from Claude API: ${text.substring(0, 100)}...` }),
+        { 
+          status: claudeResponse.status,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, x-api-key, anthropic-version',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
     
     // Return the response with CORS headers
     return new Response(JSON.stringify(data), {

@@ -29,13 +29,14 @@ export const callClaude = async (prompt: string, system?: string, files: Record<
       })
     });
     
+    // Get the response text first
+    const text = await response.text();
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Claude API error: ${response.status} ${errorText}`);
+      throw new Error(`Claude API error: ${response.status} ${text}`);
     }
     
     // Safely parse the JSON response
-    const text = await response.text();
     let data;
     try {
       data = JSON.parse(text);
@@ -95,15 +96,15 @@ export const anthropicProvider: LLMProvider = {
           })
         });
         
+        // Get the text response first
+        const text = await response.text();
+        
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Claude API error: ${response.status} ${errorText}`);
+          throw new Error(`Claude API error: ${response.status} ${text}`);
         }
         
         // Safely parse the JSON response
-        const text = await response.text();
         let data;
-        
         try {
           data = JSON.parse(text);
         } catch (e) {

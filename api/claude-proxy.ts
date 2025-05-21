@@ -2,7 +2,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  
   try {
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -13,11 +14,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: JSON.stringify(req.body),
     });
+    
+    // Get response as text first
     const text = await upstream.text();
+    
+    // Parse as JSON if possible, otherwise return text as error
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch (e) {
+      // If it's not valid JSON, return the text as an error
+      return res.status(upstream.status).json({ 
+        error: `Invalid JSON from Claude API: ${text.substring(0, 100)}...` 
+      });
+    }
+    
+    // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/json');
-    res.status(upstream.status).send(text);
+    
+    // Return parsed JSON with the original status code
+    res.status(upstream.status).json(payload);
   } catch (err) {
+    // Ensure error is always returned as JSON
     res.status(500).json({ error: (err as Error).message });
   }
 }
