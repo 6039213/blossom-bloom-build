@@ -236,80 +236,39 @@ export default function BoltAIWebBuilder() {
   // Call Claude API through our proxy endpoint
   const callClaudeAPI = async (userPrompt: string): Promise<string> => {
     try {
-      const model = process.env.VITE_CLAUDE_MODEL || 'claude-3-7-sonnet-20250219';
+      const model = import.meta.env.VITE_CLAUDE_MODEL || 'claude-3-sonnet-20240229';
       
       // Enhanced system prompt for pro users
       const systemPrompt = isProUser && proFeatures.useAdvancedMode
         ? `You are an expert web developer specializing in creating beautiful, modern websites with ${proFeatures.framework}. 
           
-When given a website description, you will:
-1. Generate ALL necessary files with complete, working code.
-2. Structure your response as multiple file blocks using this format:
-\`\`\`jsx src/components/ComponentName.tsx
-// Complete file content here with imports, component code, etc.
-\`\`\`
-3. Include:
-   - All import statements
-   - All component definitions with proper TypeScript types
-   - Complete Tailwind CSS styling
-   - All necessary utility functions
-4. Create a fully functional, responsive design
-5. Use modern React patterns (hooks, context if needed)
-6. Ensure the code is immediately runnable
-7. Include at minimum:
-   - App.tsx or index.tsx as the entry point
-   - Multiple component files organized logically
-   - Any utility files needed
-8. Add advanced features like:
-   - Animations and transitions
-   - Interactive components
-   - State management
-   - API integrations
-   - SEO optimization
-   - Performance optimizations
-
-The code will be directly executed in a preview environment, so it must be complete and error-free.`
-        : `You are an expert web developer specializing in creating beautiful, modern websites with React and Tailwind CSS. 
+          Follow these guidelines:
+          1. Use modern React patterns and best practices
+          2. Implement responsive design with Tailwind CSS
+          3. Write clean, maintainable code with proper TypeScript types
+          4. Include helpful comments and documentation
+          5. Optimize for performance and accessibility
           
-When given a website description, you will:
-1. Generate ALL necessary files with complete, working code.
-2. Structure your response as multiple file blocks using this format:
-\`\`\`jsx src/components/ComponentName.tsx
-// Complete file content here with imports, component code, etc.
-\`\`\`
-3. Include:
-   - All import statements
-   - All component definitions with proper TypeScript types
-   - Complete Tailwind CSS styling
-   - All necessary utility functions
-4. Create a fully functional, responsive design
-5. Use modern React patterns (hooks, context if needed)
-6. Ensure the code is immediately runnable
-7. Include at minimum:
-   - App.tsx or index.tsx as the entry point
-   - Multiple component files organized logically
-   - Any utility files needed
-
-The code will be directly executed in a preview environment, so it must be complete and error-free.`;
-
-      // Use our API endpoint for the Claude proxy
+          Return the code files in the following format:
+          \`\`\`jsx filename.jsx
+          // Code here
+          \`\`\``
+        : "You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS.";
+      
       const response = await fetch('/api/claude', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: model,
-          system: systemPrompt,
+          model,
+          max_tokens: proFeatures.maxTokens,
+          temperature: proFeatures.temperature,
           messages: [
-            {
-              role: 'user',
-              content: `Create a complete website based on this description: "${userPrompt}". Provide all necessary files to make it functional.`
-            }
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
           ],
-          max_tokens: isProUser ? proFeatures.maxTokens : 4000,
-          temperature: isProUser ? proFeatures.temperature : 0.7,
-          ...(isProUser && proFeatures.thinkingBudget > 0 ? {
+          ...(proFeatures.thinkingBudget ? {
             thinking: {
               enabled: true,
               budget_tokens: proFeatures.thinkingBudget
@@ -317,32 +276,20 @@ The code will be directly executed in a preview environment, so it must be compl
           } : {})
         })
       });
-
-      // Get the response text first
-      const text = await response.text();
       
       if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status} ${text}`);
+        throw new Error(`API error: ${response.status}`);
       }
       
-      // Safely parse the JSON response
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.error("Failed to parse response as JSON:", text.substring(0, 200));
-        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
-      }
+      const data = await response.json();
       
-      if (data.content && data.content[0] && data.content[0].text) {
-        return data.content[0].text;
-      } else if (data.error) {
+      if (data.error) {
         throw new Error(data.error);
-      } else {
-        throw new Error("Unexpected response format from Claude API");
       }
+      
+      return data.content || '';
     } catch (error) {
-      console.error("Error calling Claude API:", error);
+      console.error('Error calling Claude API:', error);
       throw error;
     }
   };

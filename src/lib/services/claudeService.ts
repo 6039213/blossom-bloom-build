@@ -1,4 +1,5 @@
-import { toast } from "sonner";
+import { callClaude } from '../../api/claude';
+import { toast } from 'sonner';
 
 interface FileContent {
   path: string;
@@ -6,8 +7,8 @@ interface FileContent {
 }
 
 // Use the environment variable API key
-const API_KEY = process.env.VITE_CLAUDE_API_KEY;
-const MODEL_NAME = process.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
+const MODEL_NAME = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229";
 
 // Helper function to parse code blocks from text
 function parseCodeBlocks(text: string): FileContent[] {
@@ -29,83 +30,121 @@ function parseCodeBlocks(text: string): FileContent[] {
 }
 
 export class ClaudeService {
-  static async generateCode(
-    prompt: string,
-    options: { 
-      system?: string; 
-      temperature?: number; 
-      maxTokens?: number;
-      thinkingBudget?: number;
-    } = {}
-  ): Promise<FileContent[]> {
-    if (!API_KEY) {
-      toast.error("Claude API key not configured. Please add it to your environment variables.");
-      return [];
+  static async generateCode(prompt: string, options: {
+    system?: string;
+    model?: string;
+    max_tokens?: number;
+    temperature?: number;
+  } = {}) {
+    try {
+      const response = await callClaude({
+        prompt,
+        system: options.system || "You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS.",
+        model: options.model || MODEL_NAME,
+        max_tokens: options.max_tokens || 4000,
+        temperature: options.temperature || 0.7
+      });
+
+      if (response.error) {
+        toast.error(response.error);
+        throw new Error(response.error);
+      }
+
+      return parseCodeBlocks(response.content || '');
+    } catch (error) {
+      console.error('Error generating code:', error);
+      throw error;
+    }
+  }
+
+  static extractCodeBlocks(text: string): string[] {
+    const codeBlockRegex = /```[\s\S]*?```/g;
+    return text.match(codeBlockRegex) || [];
+  }
+}
+
+// Add the missing exports needed by BlossomAIWebBuilder
+export const generateCode = async (
+  prompt: string,
+  existingFiles: FileContent[] = [],
+  onStreamUpdate?: (text: string) => void
+): Promise<string> => {
+  let filesContext = "";
+  
+  // If we have existing files, include them in the prompt
+  if (existingFiles.length > 0) {
+    filesContext = "\n\nHere are the current project files:\n\n";
+    existingFiles.forEach(file => {
+      filesContext += `File: ${file.path}\n\`\`\`\n${file.content}\n\`\`\`\n\n`;
+    });
+  }
+  
+  // Combine the prompt with file context
+  const fullPrompt = `${prompt}${filesContext}
+  
+Please generate or update React code files based on the prompt. For each file, use the format:
+\`\`\`jsx filename.jsx
+// Code here
+\`\`\`
+
+The code should work with React, Tailwind CSS, and use modern ES6+ syntax.`;
+
+  try {
+    // Call Claude API through our service method
+    const options = {
+      system: "You are an expert React developer that creates clean, responsive websites using React and Tailwind CSS. Return only code files with clear file names.",
+      temperature: 0.7,
+      max_tokens: 4000,
+    };
+    
+    // If we have a streaming callback, simulate it for now with the prompt
+    if (onStreamUpdate) {
+      onStreamUpdate("Processing request...");
+      
+      // Simulate thinking process with delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      onStreamUpdate("Analyzing prompt and existing code...");
+      
+      // Give more detailed updates as we "think"
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      onStreamUpdate("Generating code based on your requirements...");
     }
     
     try {
-      // Prepare system message
-      const systemMessage = options.system || 
-        "You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS.";
+      const codeBlocks = await ClaudeService.generateCode(fullPrompt, options);
       
-      console.log("Generating code with Claude 3.7 Sonnet API...");
-      
-      // Fix the thinking parameter format - using "enabled: true" instead of "type: reasoning"
-      const thinkingConfig = options.thinkingBudget ? {
-        thinking: {
-          enabled: true,
-          budget_tokens: options.thinkingBudget
-        }
-      } : {};
-      
-      // Call the Claude API through our proxy
-      const response = await fetch('/api/claude', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: MODEL_NAME,
-          max_tokens: options.maxTokens || 4000,
-          temperature: options.temperature || 0.7,
-          messages: [
-            { role: 'system', content: systemMessage },
-            { role: 'user', content: prompt }
-          ],
-          ...thinkingConfig
-        })
+      // Combine all code blocks into a single response for processing
+      let fullResponse = "";
+      codeBlocks.forEach(block => {
+        fullResponse += `\`\`\`jsx ${block.path}\n${block.content}\n\`\`\`\n\n`;
       });
       
-      // Get the text response first
-      const text = await response.text();
-      
-      // Handle non-OK responses
-      if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status} ${text}`);
+      // If we're streaming, provide the final response
+      if (onStreamUpdate) {
+        onStreamUpdate(fullResponse);
       }
       
-      // Safely parse the JSON response
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.error("Failed to parse response as JSON:", text.substring(0, 200));
-        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
-      }
-      
-      if (data.content && data.content[0] && data.content[0].text) {
-        return parseCodeBlocks(data.content[0].text);
-      } else if (data.error) {
-        throw new Error(data.error);
-      } else {
-        throw new Error("Unexpected response format from Claude API");
-      }
+      return fullResponse;
     } catch (error) {
-      console.error("Error generating code:", error);
-      toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      return [];
+      console.error("Error in generateCode:", error);
+      
+      if (onStreamUpdate) {
+        onStreamUpdate(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+      
+      throw error;
     }
+  } catch (error) {
+    console.error("Error in generateCode:", error);
+    throw error;
   }
-}
+};
+
+export const extractFilesFromResponse = (responseText: string): FileContent[] => {
+  return ClaudeService.extractCodeBlocks(responseText).map(block => ({
+    path: `file${responseText.split('\n').length - 1}.js`,
+    content: block
+  }));
+};
 
 export default ClaudeService;

@@ -1,51 +1,30 @@
-import type { LLMProvider, StreamResult } from "../types";
+import { callClaude } from '../../api/claude';
+import { LLMProvider, StreamResult } from '../types';
 
 // Get the API key and model name from environment variables
-const API_KEY = process.env.VITE_CLAUDE_API_KEY;
-const MODEL_NAME = process.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
+const MODEL_NAME = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-sonnet-20240229";
 
 /**
  * Call Claude API through our backend endpoint
  */
-export const callClaude = async (prompt: string, system?: string, files: Record<string, string> = {}) => {
+export const callClaudeAPI = async (prompt: string, system?: string, files: Record<string, string> = {}) => {
   try {
     console.log("Calling Claude API with prompt:", prompt.substring(0, 50) + "...");
     
-    // Make a request through our proxy
-    const response = await fetch('/api/claude', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: MODEL_NAME,
-        max_tokens: 4000,
-        temperature: 0.7,
-        messages: [
-          system ? { role: 'system', content: system } : null,
-          { role: 'user', content: prompt }
-        ].filter(Boolean)
-      })
+    const response = await callClaude({
+      prompt,
+      system: system || "You are an AI assistant that helps with web development.",
+      model: MODEL_NAME,
+      max_tokens: 4000,
+      temperature: 0.7
     });
     
-    // Get the response text first
-    const text = await response.text();
-    
-    if (!response.ok) {
-      throw new Error(`Claude API error: ${response.status} ${text}`);
+    if (response.error) {
+      throw new Error(response.error);
     }
     
-    // Safely parse the JSON response
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      console.error("Failed to parse response as JSON:", text.substring(0, 200));
-      throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
-    }
-    
-    console.log("Claude API response received successfully");
-    return data;
+    return response.content || '';
   } catch (error) {
     console.error("Error calling Claude API:", error);
     throw error;
@@ -57,94 +36,50 @@ export const anthropicProvider: LLMProvider = {
   models: [MODEL_NAME],
   
   async generateStream(
-    prompt: string, 
-    onToken: (token: string) => void, 
-    options: { system?: string; temperature?: number; maxOutputTokens?: number; thinkingBudget?: number } = {}
+    prompt: string,
+    onToken: (token: string) => void,
+    options: {
+      system?: string;
+      temperature?: number;
+      maxOutputTokens?: number;
+    } = {}
   ): Promise<StreamResult> {
     try {
-      // Prepare system message if provided
-      const systemMessage = options.system || 
-        "You are an AI that generates React + Tailwind webapps. Return modified files as JSON. No explanation, no markdown, only JSON.";
-      
-      onToken("Connecting to Claude 3.7 Sonnet...");
-      
-      try {
-        // Fix the thinking parameter format - it should use "enabled" instead of "type: reasoning"
-        const thinkingConfig = options.thinkingBudget ? {
-          thinking: {
-            enabled: true,
-            budget_tokens: options.thinkingBudget
-          }
-        } : {};
-        
-        // Make a request through our proxy
-        const response = await fetch('/api/claude', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: MODEL_NAME,
-            max_tokens: options.maxOutputTokens || 4000,
-            temperature: options.temperature || 0.7,
-            messages: [
-              { role: 'system', content: systemMessage },
-              { role: 'user', content: prompt }
-            ],
-            ...thinkingConfig
-          })
-        });
-        
-        // Get the text response first
-        const text = await response.text();
-        
-        if (!response.ok) {
-          throw new Error(`Claude API error: ${response.status} ${text}`);
-        }
-        
-        // Safely parse the JSON response
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          console.error("Failed to parse response as JSON:", text.substring(0, 200));
-          throw new Error(`Invalid JSON response from Claude API: ${text.substring(0, 100)}...`);
-        }
-        
-        let fullResponse = '';
-        
-        // Handle response format
-        if (data.content && data.content[0] && data.content[0].text) {
-          fullResponse = data.content[0].text;
-          onToken(fullResponse);
-        } else if (data.error) {
-          throw new Error(data.error);
-        } else {
-          throw new Error("Unexpected response format from Claude API");
-        }
-        
-        return {
-          tokens: fullResponse.length / 4, // Approximate token count
-          creditsUsed: 1, // Placeholder
-          complete: true,
-          fullResponse
-        };
-      } catch (error) {
-        console.error('Error generating content:', error);
-        onToken(`\nError: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again later.`);
+      const response = await callClaude({
+        prompt,
+        system: options.system || "You are an AI assistant that helps with web development.",
+        model: MODEL_NAME,
+        max_tokens: options.maxOutputTokens || 4000,
+        temperature: options.temperature || 0.7,
+        stream: true
+      });
+
+      if (response.error) {
+        onToken(`Error: ${response.error}`);
         return {
           tokens: 0,
           creditsUsed: 0,
-          complete: false
+          complete: false,
+          fullResponse: ''
         };
       }
+
+      const content = response.content || '';
+      onToken(content);
+      return {
+        tokens: content.length / 4, // Approximate token count
+        creditsUsed: 1,
+        complete: true,
+        fullResponse: content
+      };
     } catch (error) {
-      console.error("Error generating content:", error);
-      onToken(`\nError: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again later.`);
+      console.error('Error generating content:', error);
+      onToken(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return {
         tokens: 0,
         creditsUsed: 0,
-        complete: false
+        complete: false,
+        fullResponse: ''
       };
     }
   }

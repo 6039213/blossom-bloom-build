@@ -65,40 +65,31 @@ export default function BlossomsAIWebBuilder() {
       ${useAdvancedMode ? 'Include advanced animations, responsive designs, and optimized performance.' : ''}`;
 
       // Call the Claude API through our proxy
-      const response = await fetch('/api/claude-proxy', {
+      const response = await fetch('/api/claude', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          prompt: prompt,
+          system: systemMessage,
           model: 'claude-3-7-sonnet-20240229',
           max_tokens: 4000,
-          temperature: temperature,
-          messages: [
-            { role: 'system', content: systemMessage },
-            { role: 'user', content: `Create a beautiful, responsive website with ${
-              framework === 'react-tailwind' ? 'React and Tailwind CSS' : 
-              framework === 'next-tailwind' ? 'Next.js and Tailwind CSS' : 
-              'standard HTML, CSS and JavaScript'
-            } for: ${prompt}. Include all necessary components and styling.` }
-          ],
-          // Fixed Claude 3.7 thinking feature format
-          ...(thinkingBudget > 0 && {
-            thinking: {
-              enabled: true,
-              budget_tokens: thinkingBudget
-            }
-          })
+          temperature: temperature
         })
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Claude API error: ${response.status} ${errorText}`);
+      const text = await response.text();
+      const data = response.headers.get('content-type')?.includes('json')
+        ? JSON.parse(text)
+        : { error: text };
+
+      if (data.error) {
+        toast.error(data.error);
+        throw new Error(data.error);
       }
 
-      const data = await response.json();
-      const responseText = data.content[0].text;
+      const responseText = data.content || '';
 
       // Extract code blocks from the response
       const files = extractCodeBlocks(responseText);
