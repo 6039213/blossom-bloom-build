@@ -1,4 +1,3 @@
-
 // Removing the NextApiRequest import since we're not using Next.js
 export default async function handler(req: Request) {
   // Handle CORS
@@ -54,21 +53,17 @@ Respond with clear, properly formatted code blocks for each file using the forma
 \`\`\`
 Create clean, well-structured components with proper imports and exports.`;
 
-    // Call the Claude API
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Call the Claude API through our proxy
+    const response = await fetch('/api/claude', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-3-opus-20240229', // or other appropriate model
+        model: 'claude-3-opus-20240229',
         max_tokens: 4000,
-        messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user', content: `Create a beautiful, responsive website with React and Tailwind CSS for: ${prompt}. Include all necessary components and styling.` }
-        ]
+        system: systemMessage,
+        prompt: `Create a beautiful, responsive website with React and Tailwind CSS for: ${prompt}. Include all necessary components and styling.`
       })
     });
 
