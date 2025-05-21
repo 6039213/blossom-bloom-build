@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Layout from '@/components/Layout';
@@ -68,17 +67,15 @@ export default function ClaudeSettings() {
     setIsSaving(true);
     
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/claude', {
         method: 'POST',
         headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: model,
           max_tokens: 20,
-          messages: [{ role: 'user', content: 'Say hello in exactly 3 words' }]
+          prompt: 'Say hello in exactly 3 words'
         })
       });
       

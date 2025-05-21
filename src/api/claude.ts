@@ -1,5 +1,4 @@
-
-// Use proper CORS headers to avoid issues with cross-origin requests
+// Standard CORS headers to avoid issues with cross-origin requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -9,48 +8,22 @@ const corsHeaders = {
 
 export async function POST(req: Request) {
   // Extract the Claude API key from environment variables
-  const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
-  const MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+  const API_KEY = process.env.VITE_CLAUDE_API_KEY;
+  const MODEL = process.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+  
+  if (!API_KEY) {
+    return new Response(
+      JSON.stringify({ error: "API key not configured" }), 
+      { 
+        status: 401,
+        headers: corsHeaders
+      }
+    );
+  }
   
   try {
     // Parse request body
     const body = await req.json();
-    
-    // Format messages for Claude API
-    let messages = [];
-    
-    // Add system message
-    messages.push({
-      role: 'system',
-      content: body.system || "You are an AI that generates React + Tailwind webapps. Return modified files as JSON. No explanation, no markdown, only JSON."
-    });
-    
-    // Add the user's prompt as a message
-    messages.push({
-      role: 'user',
-      content: `${body.prompt || ''}`
-    });
-    
-    // Include existing files context if provided
-    if (body.files && typeof body.files === 'object' && Object.keys(body.files).length > 0) {
-      // Format files for the context
-      const filesContext = Object.entries(body.files)
-        .map(([path, content]) => `${path}:\n${content}`)
-        .join('\n\n');
-      
-      // Add files context as a separate user message
-      messages.push({
-        role: 'user',
-        content: `Existing files:\n${filesContext}`
-      });
-    }
-    
-    console.log("Calling Claude API with request:", {
-      model: MODEL,
-      temperature: body.temperature || 0.7,
-      max_tokens: body.max_tokens || 4000,
-      messages
-    });
     
     // Forward the request to Claude API
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -58,24 +31,30 @@ export async function POST(req: Request) {
       headers: {
         'x-api-key': API_KEY,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-access': 'true' // Add CORS header
+        'content-type': 'application/json'
       },
       body: JSON.stringify({
         model: MODEL,
         temperature: body.temperature || 0.7,
         max_tokens: body.max_tokens || 4000,
-        messages
+        messages: body.messages || [
+          { role: 'system', content: body.system || "You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS." },
+          { role: 'user', content: body.prompt || '' }
+        ]
       })
     });
     
-    // Check if the response is successful
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text();
-      console.error("Claude API error response:", errorText);
-      
+    // Get response as text first
+    const text = await claudeResponse.text();
+    
+    // Try to parse as JSON
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      // If not valid JSON, return the text as an error message
       return new Response(
-        JSON.stringify({ error: `Claude API error: ${claudeResponse.status} ${claudeResponse.statusText}`, details: errorText }), 
+        JSON.stringify({ error: `Invalid JSON from Claude API: ${text.substring(0, 100)}...` }),
         { 
           status: claudeResponse.status,
           headers: corsHeaders
@@ -83,41 +62,15 @@ export async function POST(req: Request) {
       );
     }
     
-    // Get response data
-    const data = await claudeResponse.json();
-    console.log("Claude API response status:", claudeResponse.status);
-    
-    // Check if the response contains text content
-    if (!data.content || !data.content[0] || data.content[0].type !== 'text') {
-      return new Response(
-        JSON.stringify({ error: "Invalid response format from Claude API" }), 
-        { 
-          status: 500,
-          headers: corsHeaders
-        }
-      );
-    }
-    
-    // Extract the text content
-    const responseText = data.content[0].text;
-    
-    // Return the raw response
-    return new Response(
-      JSON.stringify({ content: responseText }), 
-      { 
-        status: 200,
-        headers: corsHeaders
-      }
-    );
-    
+    // Return the response with CORS headers
+    return new Response(JSON.stringify(data), {
+      status: claudeResponse.status,
+      headers: corsHeaders
+    });
   } catch (error) {
     console.error('Error proxying request to Claude API:', error);
     return new Response(
-      JSON.stringify({ 
-        error: 'Failed to proxy request to Claude API', 
-        details: error.message,
-        stack: error.stack
-      }),
+      JSON.stringify({ error: 'Failed to proxy request to Claude API' }),
       { 
         status: 500,
         headers: corsHeaders

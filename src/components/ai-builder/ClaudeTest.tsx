@@ -1,11 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, Terminal, Bot } from "lucide-react";
 import { toast } from 'sonner';
-import { callClaude } from '@/lib/providers/anthropic';
 
 const ClaudeTest: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -24,11 +22,50 @@ const ClaudeTest: React.FC = () => {
     setResponse('');
     
     try {
-      const result = await callClaude(prompt, "You are Claude 3.7 Sonnet, an advanced AI assistant that helps with coding and web development questions.");
-      if (result.content && result.content[0] && result.content[0].text) {
-        setResponse(result.content[0].text);
+      const response = await fetch('/api/claude', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: process.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229",
+          messages: [
+            { 
+              role: 'system', 
+              content: "You are Claude 3.7 Sonnet, an advanced AI assistant that helps with coding and web development questions."
+            },
+            { 
+              role: 'user', 
+              content: prompt 
+            }
+          ],
+          max_tokens: 4000,
+          temperature: 0.7
+        })
+      });
+
+      // Get the response text first
+      const text = await response.text();
+      
+      if (!response.ok) {
+        throw new Error(`Claude API error: ${response.status} ${text}`);
+      }
+      
+      // Safely parse the JSON response
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse response as JSON:", text.substring(0, 200));
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+      }
+      
+      if (data.content && data.content[0] && data.content[0].text) {
+        setResponse(data.content[0].text);
+      } else if (data.error) {
+        throw new Error(data.error);
       } else {
-        throw new Error("Unexpected response format");
+        throw new Error("Unexpected response format from Claude API");
       }
     } catch (error) {
       console.error("Error calling Claude:", error);
@@ -40,53 +77,61 @@ const ClaudeTest: React.FC = () => {
   };
   
   return (
-    <Card>
+    <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Bot size={18} /> Claude 3.7 Sonnet
+          <Bot className="h-5 w-5 text-blue-500" />
+          Claude API Test
         </CardTitle>
         <CardDescription>
-          Ask coding questions or get help with development tasks
+          Test the Claude API integration with a simple prompt
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit}>
-          <Textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="How do I create a modal component with React?"
-            className="min-h-[120px] mb-4"
-          />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="prompt" className="text-sm font-medium">
+              Enter your prompt:
+            </label>
+            <Textarea
+              id="prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Ask Claude something..."
+              className="min-h-[100px]"
+            />
+          </div>
           <Button 
             type="submit" 
-            disabled={loading || !prompt.trim()} 
+            disabled={loading || !prompt.trim()}
             className="w-full"
           >
             {loading ? (
               <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing...
+                <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                Thinking...
               </>
             ) : (
               <>
-                <Sparkles className="mr-2 h-4 w-4" /> Ask Claude 3.7
+                <Terminal className="mr-2 h-4 w-4" />
+                Send to Claude
               </>
             )}
           </Button>
         </form>
         
         {response && (
-          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-md">
-            <h4 className="text-sm font-medium mb-2 flex items-center">
-              <Terminal className="mr-2 h-4 w-4" /> Claude 3.7 Response:
-            </h4>
-            <div className="text-sm whitespace-pre-wrap">{response}</div>
+          <div className="mt-6 space-y-2">
+            <h3 className="text-sm font-medium">Response:</h3>
+            <div className="rounded-md bg-muted p-4">
+              <pre className="whitespace-pre-wrap text-sm">{response}</pre>
+            </div>
           </div>
         )}
       </CardContent>
+      <CardFooter className="text-xs text-muted-foreground">
+        Using Claude 3.7 Sonnet API through our proxy endpoint
+      </CardFooter>
     </Card>
   );
 };

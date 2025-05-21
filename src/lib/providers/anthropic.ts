@@ -1,9 +1,8 @@
-
 import type { LLMProvider, StreamResult } from "../types";
 
 // Get the API key and model name from environment variables
-const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
-const MODEL_NAME = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+const API_KEY = process.env.VITE_CLAUDE_API_KEY;
+const MODEL_NAME = process.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
 
 /**
  * Call Claude API through our backend endpoint
@@ -12,8 +11,8 @@ export const callClaude = async (prompt: string, system?: string, files: Record<
   try {
     console.log("Calling Claude API with prompt:", prompt.substring(0, 50) + "...");
     
-    // Make a request through our proxy instead of directly to Claude API
-    const response = await fetch('/api/claude-proxy', {
+    // Make a request through our proxy
+    const response = await fetch('/api/claude', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -78,8 +77,8 @@ export const anthropicProvider: LLMProvider = {
           }
         } : {};
         
-        // Make a request through our proxy instead of directly to Claude API
-        const response = await fetch('/api/claude-proxy', {
+        // Make a request through our proxy
+        const response = await fetch('/api/claude', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
