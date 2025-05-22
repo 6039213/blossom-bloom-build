@@ -21,7 +21,7 @@ export default function AIBuilder() {
         <div className="h-full">
           {!apiKeyConfigured ? (
             <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-              <Alert variant="warning" className="max-w-xl">
+              <Alert variant="destructive" className="max-w-xl">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>⚠️ Claude API Key Not Configured</AlertTitle>
                 <AlertDescription>

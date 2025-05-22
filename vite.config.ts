@@ -1,3 +1,4 @@
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -21,7 +22,7 @@ export default defineConfig(({ mode }) => ({
           proxy.on('error', (err, _req, _res) => {
             console.log('proxy error', err);
           });
-          proxy.on('proxyReq', (proxyReq, req, _res) => {
+          proxy.on('proxyReq', (proxyReq, req: any, _res) => {
             // Add the API key from the request body to headers
             if (req.body && req.body.apiKey) {
               proxyReq.setHeader('x-api-key', req.body.apiKey);

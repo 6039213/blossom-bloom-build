@@ -1,3 +1,4 @@
+
 // Standard CORS headers to avoid issues with cross-origin requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,8 +9,8 @@ const corsHeaders = {
 
 export async function POST(req: Request) {
   // Extract the Claude API key from environment variables
-  const API_KEY = process.env.VITE_CLAUDE_API_KEY;
-  const MODEL = process.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+  const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
+  const MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
   
   if (!API_KEY) {
     return new Response(
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function OPTIONS() {
+export function OPTIONS() {
   // Handle CORS preflight requests
   return new Response(null, {
     headers: corsHeaders

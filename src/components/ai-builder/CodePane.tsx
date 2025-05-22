@@ -6,9 +6,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 interface CodePaneProps {
   files: Array<{path: string; content: string; type?: string}>;
   activeFile: string | null;
+  onContentChange?: (filePath: string, content: string) => void;
 }
 
-export default function CodePane({ files, activeFile }: CodePaneProps) {
+export default function CodePane({ files, activeFile, onContentChange }: CodePaneProps) {
   // Find the active file or default to the first file
   const currentFile = activeFile 
     ? files.find(file => file.path === activeFile) 
@@ -19,6 +20,12 @@ export default function CodePane({ files, activeFile }: CodePaneProps) {
     // This is a very basic implementation
     // In a real app, you would use a proper syntax highlighter
     return code;
+  };
+
+  const handleContentChange = (content: string) => {
+    if (currentFile && onContentChange) {
+      onContentChange(currentFile.path, content);
+    }
   };
 
   return (
