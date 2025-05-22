@@ -1,6 +1,9 @@
 
 // Application constants
 
+// App name
+export const APP_NAME = "Blossom";
+
 // Plan definitions
 export const PLANS = {
   FREE: {
@@ -57,7 +60,7 @@ Your responses should be clear, helpful, and focused on best practices.`;
 
 // Company information
 export const COMPANY_INFO = {
-  name: "Blossom",
+  name: APP_NAME,
   tagline: "Create Beautiful Websites with AI-Powered Magic",
   email: "support@blossom.io",
   socialLinks: {
