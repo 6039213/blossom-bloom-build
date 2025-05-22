@@ -10,14 +10,22 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     proxy: {
       '/api/claude': {
-        target: 'https://api.anthropic.com/v1/messages',
+        target: 'https://api.anthropic.com',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/claude/, ''),
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/claude/, '/v1/messages'),
+        headers: {
+          'anthropic-version': '2023-06-01'
+        },
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.log('proxy error', err);
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Add the API key from the request body to headers
+            if (req.body && req.body.apiKey) {
+              proxyReq.setHeader('x-api-key', req.body.apiKey);
+            }
             console.log('Sending Request to the Target:', req.method, req.url);
           });
           proxy.on('proxyRes', (proxyRes, req, _res) => {
