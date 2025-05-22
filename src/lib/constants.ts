@@ -3,6 +3,17 @@ export const APP_NAME = "Blossom AI";
 
 export const CLAUDE_MODEL = "claude-3-7-sonnet-20240229";
 
+// API Keys - Use environment variables or empty strings as defaults
+export const ANTHROPIC_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY || "";
+export const OPENAI_API_KEY = "";
+export const GEMINI_API_KEY = "";
+
+// System prompts
+export const SYSTEM_PROMPT = "You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS.";
+
+// Cache settings
+export const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
 // Plans configuration
 export const PLANS = {
   FREE: {
