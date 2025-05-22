@@ -1,90 +1,110 @@
 
 import React from 'react';
-import { Folder, FileText, Code, Image, File } from 'lucide-react';
-import { FileContent } from '@/lib/services/claudeService';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Folder, FileText, ChevronRight, ChevronDown } from 'lucide-react';
 
 interface FileExplorerProps {
-  files: FileContent[];
+  files: Array<{path: string; content: string; type?: string}>;
   activeFile: string | null;
-  onFileSelect: (filePath: string) => void;
+  onFileSelect: (path: string) => void;
 }
 
-const FileExplorer: React.FC<FileExplorerProps> = ({ files, activeFile, onFileSelect }) => {
-  const getFileIcon = (filePath: string) => {
-    if (filePath.endsWith('.js') || filePath.endsWith('.jsx') || filePath.endsWith('.ts') || filePath.endsWith('.tsx')) {
-      return <Code className="h-4 w-4 mr-2 text-blue-500" />;
-    }
-    if (filePath.endsWith('.css') || filePath.endsWith('.scss')) {
-      return <FileText className="h-4 w-4 mr-2 text-pink-500" />;
-    }
-    if (filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.svg')) {
-      return <Image className="h-4 w-4 mr-2 text-green-500" />;
-    }
-    if (filePath.endsWith('.html')) {
-      return <FileText className="h-4 w-4 mr-2 text-orange-500" />;
-    }
-    return <File className="h-4 w-4 mr-2 text-gray-500" />;
+export default function FileExplorer({ files, activeFile, onFileSelect }: FileExplorerProps) {
+  // Group files by directory
+  const getFileStructure = () => {
+    const structure: Record<string, Array<{path: string; name: string; type?: string}>> = {
+      '/': []
+    };
+    
+    files.forEach(file => {
+      const parts = file.path.split('/');
+      const fileName = parts.pop() || '';
+      const directory = parts.join('/') || '/';
+      
+      if (!structure[directory]) {
+        structure[directory] = [];
+      }
+      
+      structure[directory].push({
+        path: file.path,
+        name: fileName,
+        type: file.type
+      });
+    });
+    
+    return structure;
   };
-
-  // Group files by directories
-  const groupedFiles: Record<string, FileContent[]> = {};
   
-  files.forEach(file => {
-    const parts = file.path.split('/');
-    const dir = parts.length > 1 ? parts.slice(0, -1).join('/') : '/';
+  // Get icon based on file extension
+  const getFileIcon = (fileName: string) => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
     
-    if (!groupedFiles[dir]) {
-      groupedFiles[dir] = [];
+    switch (extension) {
+      case 'tsx':
+      case 'jsx':
+        return <FileText size={16} className="text-blue-500" />;
+      case 'css':
+        return <FileText size={16} className="text-purple-500" />;
+      case 'json':
+        return <FileText size={16} className="text-yellow-500" />;
+      default:
+        return <FileText size={16} className="text-gray-500" />;
     }
+  };
+  
+  const fileStructure = getFileStructure();
+  
+  // Get directory tree
+  const renderDirectory = (dir: string, level = 0) => {
+    const files = fileStructure[dir] || [];
+    if (files.length === 0) return null;
     
-    groupedFiles[dir].push(file);
-  });
-
-  // Sort directories and files
-  const sortedDirs = Object.keys(groupedFiles).sort();
-
-  if (files.length === 0) {
     return (
-      <div className="p-4 text-center text-gray-500">
-        No files generated yet
+      <div key={dir} style={{ paddingLeft: `${level * 16}px` }}>
+        {dir !== '/' && (
+          <div className="flex items-center py-1 px-2 text-sm">
+            <ChevronDown className="h-4 w-4 mr-1" />
+            <Folder className="h-4 w-4 mr-1 text-yellow-500" />
+            <span>{dir.split('/').pop()}</span>
+          </div>
+        )}
+        
+        <div>
+          {files.map(file => (
+            <div 
+              key={file.path}
+              className={`flex items-center py-1 px-2 text-sm cursor-pointer hover:bg-accent ${
+                activeFile === file.path ? 'bg-accent text-accent-foreground' : ''
+              }`}
+              style={{ paddingLeft: `${(level + 1) * 16}px` }}
+              onClick={() => onFileSelect(file.path)}
+            >
+              {getFileIcon(file.name)}
+              <span className="ml-1">{file.name}</span>
+            </div>
+          ))}
+        </div>
       </div>
     );
-  }
+  };
 
   return (
-    <div className="text-sm">
-      {sortedDirs.map(dir => (
-        <div key={dir} className="mb-2">
-          {dir !== '/' && (
-            <div className="flex items-center py-1 px-2 text-gray-600 dark:text-gray-300 font-medium">
-              <Folder className="h-4 w-4 mr-2 text-amber-500" />
-              {dir}
+    <div className="h-full flex flex-col border-r">
+      <div className="p-2 border-b bg-muted/30">
+        <h3 className="font-medium text-sm">Project Files</h3>
+      </div>
+      
+      <ScrollArea className="flex-1">
+        <div className="p-2">
+          {files.length === 0 ? (
+            <div className="p-4 text-center text-muted-foreground text-sm">
+              No files available
             </div>
+          ) : (
+            Object.keys(fileStructure).sort().map(dir => renderDirectory(dir))
           )}
-          <div className="ml-2">
-            {groupedFiles[dir].sort((a, b) => a.path.localeCompare(b.path)).map(file => {
-              const fileName = file.path.split('/').pop() || '';
-              
-              return (
-                <div
-                  key={file.path}
-                  className={`flex items-center py-1 px-2 rounded-md cursor-pointer ${
-                    activeFile === file.path 
-                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300' 
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                  }`}
-                  onClick={() => onFileSelect(file.path)}
-                >
-                  {getFileIcon(file.path)}
-                  <span className="truncate">{fileName}</span>
-                </div>
-              );
-            })}
-          </div>
         </div>
-      ))}
+      </ScrollArea>
     </div>
   );
-};
-
-export default FileExplorer;
+}

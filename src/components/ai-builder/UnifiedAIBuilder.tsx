@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import LivePreview from './LivePreview';
 import CodePane from './CodePane';
 import ChatInterface from './ChatInterface';
@@ -26,12 +28,55 @@ export default function UnifiedAIBuilder() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [viewportSize, setViewportSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [currentFile, setCurrentFile] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [messages, setMessages] = useState<Array<{
     id: string;
     role: 'user' | 'assistant';
     content: string;
     files?: Array<{path: string, content: string}>;
   }>>([]);
+  
+  // Initialize the builder
+  useEffect(() => {
+    const initializeBuilder = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Add a small delay to ensure any required resources are loaded
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Initialize with an empty state/sample file if needed
+        if (files.length === 0) {
+          setFiles([{
+            path: 'src/App.tsx',
+            content: `import React from 'react';
+
+export default function App() {
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-3xl font-bold mb-4">Welcome to AI Builder</h1>
+      <p className="mb-4">Start by describing what you want to build in the chat.</p>
+    </div>
+  );
+}`,
+            type: 'tsx'
+          }]);
+        }
+        
+        setIsInitialized(true);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to initialize AI Builder:", err);
+        setError("Failed to initialize the preview. Please refresh the page and try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    initializeBuilder();
+  }, []);
   
   // Handle file generation from AI chat
   const handleGenerateFiles = async (prompt: string, existingFiles: FileContent[] = []) => {
@@ -92,6 +137,40 @@ export default function UnifiedAIBuilder() {
   const handleViewportChange = (size: 'desktop' | 'tablet' | 'mobile') => {
     setViewportSize(size);
   };
+  
+  // Show loading state while initializing
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4 text-primary" />
+          <h2 className="text-xl font-medium mb-2">Initializing AI Builder</h2>
+          <p className="text-muted-foreground">Loading preview environment...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show error state if initialization failed
+  if (error) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-6">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+          <div className="mt-4">
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-red-100 text-red-800 rounded hover:bg-red-200 transition-colors"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </Alert>
+      </div>
+    );
+  }
   
   // Layout is now modified to have chat on the left and preview/code on the right
   return (

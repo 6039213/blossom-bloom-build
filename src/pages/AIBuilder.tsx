@@ -3,6 +3,8 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import Layout from '@/components/Layout';
 import UnifiedAIBuilder from '@/components/ai-builder/UnifiedAIBuilder';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 export default function AIBuilder() {
   // Check if API key is configured
@@ -19,15 +21,18 @@ export default function AIBuilder() {
         <div className="h-full">
           {!apiKeyConfigured ? (
             <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-              <div className="bg-amber-100 text-amber-800 p-4 rounded-lg max-w-xl">
-                <h3 className="text-lg font-bold mb-2">⚠️ Claude API Key Not Configured</h3>
-                <p className="mb-4">
+              <Alert variant="warning" className="max-w-xl">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>⚠️ Claude API Key Not Configured</AlertTitle>
+                <AlertDescription>
                   To use the AI Web Builder, please set your Claude API key in the VITE_CLAUDE_API_KEY environment variable.
-                </p>
-              </div>
+                </AlertDescription>
+              </Alert>
             </div>
           ) : (
-            <UnifiedAIBuilder />
+            <div className="relative w-full h-full">
+              <UnifiedAIBuilder />
+            </div>
           )}
         </div>
       </motion.div>
