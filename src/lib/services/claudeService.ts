@@ -4,6 +4,7 @@ import { toast } from "sonner";
 export interface FileContent {
   path: string;
   content: string;
+  type?: string; // Make type optional to be compatible with both interfaces
 }
 
 // Helper function to parse code blocks from text
@@ -18,7 +19,8 @@ export function extractFilesFromResponse(text: string): FileContent[] {
     
     codeBlocks.push({
       path,
-      content
+      content,
+      type: path.split('.').pop() || 'js' // Add type based on file extension
     });
   }
   

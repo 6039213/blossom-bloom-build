@@ -6,19 +6,31 @@ import LivePreview from './LivePreview';
 import CodePane from './CodePane';
 import ChatInterface from './ChatInterface';
 import FileExplorer from './FileExplorer';
-import EditorTabs from './EditorTabs';
 import { FileContent, generateCode, extractFilesFromResponse } from '@/lib/services/claudeService';
 
 export default function UnifiedAIBuilder() {
   const [activeTab, setActiveTab] = useState('preview');
   const [files, setFiles] = useState<FileContent[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [viewportSize, setViewportSize] = useState('desktop');
+  const [viewportSize, setViewportSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [currentFile, setCurrentFile] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Array<{
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    files?: Array<{path: string, content: string}>;
+  }>>([]);
   
   // Handle file generation from AI chat
   const handleGenerateFiles = async (prompt: string, existingFiles: FileContent[] = []) => {
     setIsGenerating(true);
+    
+    // Add user message to chat
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      role: 'user',
+      content: prompt
+    }]);
     
     try {
       const response = await generateCode(prompt, existingFiles, undefined, {
@@ -29,8 +41,24 @@ export default function UnifiedAIBuilder() {
       
       if (newFiles.length > 0) {
         setFiles(prev => [...prev, ...newFiles]);
+        
+        // Add assistant message with response
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: response.replace(/```[\s\S]*?```/g, ''), // Remove code blocks from the message
+          files: newFiles.map(file => ({ path: file.path, content: file.content }))
+        }]);
+        
         toast.success(`Generated ${newFiles.length} files successfully`);
       } else {
+        // Add assistant message with just the text response
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: response
+        }]);
+        
         toast.warning("No files were generated from the response");
       }
       
@@ -50,6 +78,7 @@ export default function UnifiedAIBuilder() {
         <ChatInterface 
           onSendPrompt={handleGenerateFiles}
           isLoading={isGenerating}
+          messages={messages}
         />
       </div>
       
