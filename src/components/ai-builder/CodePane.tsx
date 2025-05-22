@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
+import { FileContent } from '@/lib/services/claudeService';
 
 interface CodePaneProps {
-  files: Array<{path: string; content: string; type: string}>;
+  files: FileContent[];
   activeFile: string | null;
   onContentChange?: (filePath: string, content: string) => void;
 }

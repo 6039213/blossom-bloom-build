@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { Folder, FileText, Code, Image, File } from 'lucide-react';
+import { FileContent } from '@/lib/services/claudeService';
 
 interface FileExplorerProps {
-  files: Array<{path: string; content: string; type: string}>;
+  files: FileContent[];
   activeFile: string | null;
   onFileSelect: (filePath: string) => void;
 }

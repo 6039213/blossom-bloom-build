@@ -52,7 +52,13 @@ export default function UnifiedAIBuilder() {
       const newFiles = extractFilesFromResponse(response);
       
       if (newFiles.length > 0) {
-        setFiles(prev => [...prev, ...newFiles]);
+        // Add type property to files if it doesn't exist
+        const filesWithType = newFiles.map(file => ({
+          ...file,
+          type: file.type || file.path.split('.').pop() || 'js'
+        }));
+        
+        setFiles(prev => [...prev, ...filesWithType]);
         
         // Add assistant message with response
         setMessages(prev => [...prev, {
@@ -144,16 +150,15 @@ export default function UnifiedAIBuilder() {
           <TabsContent value="code" className="flex-1 p-0">
             <CodePane 
               files={files} 
-              currentFile={currentFile}
-              onFileChange={setCurrentFile}
+              activeFile={currentFile}
             />
           </TabsContent>
           
           <TabsContent value="files" className="flex-1 p-0">
             <FileExplorer 
               files={files} 
+              activeFile={currentFile}
               onFileSelect={setCurrentFile}
-              currentFile={currentFile}
             />
           </TabsContent>
         </Tabs>
