@@ -3,7 +3,7 @@ import { toast } from "sonner";
 export interface FileContent {
   path: string;
   content: string;
-  type?: string;
+  type?: string; // Make type optional to match usage in the codebase
 }
 
 // Helper function to parse code blocks from text
@@ -16,6 +16,7 @@ export function extractFilesFromResponse(text: string): FileContent[] {
     const path = match[1]?.trim() || `file${codeBlocks.length + 1}.js`;
     const content = match[2]?.trim() || "";
     
+    // Always include type, but make it optional in the interface
     codeBlocks.push({
       path,
       content,

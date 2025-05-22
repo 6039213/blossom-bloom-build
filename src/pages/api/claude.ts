@@ -1,7 +1,24 @@
 
-import type { NextApiRequest, NextApiResponse } from 'next';
+// Define standard types instead of using Next.js types
+interface CustomRequest {
+  method: string;
+  headers: {
+    [key: string]: string | undefined;
+  };
+  body: any;
+}
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+interface CustomResponse {
+  status: (code: number) => CustomResponse;
+  json: (data: any) => void;
+  setHeader?: (name: string, value: string) => CustomResponse;
+}
+
+/**
+ * Claude API handler function
+ * Works with both NextJS API routes and standard HTTP handlers
+ */
+export default async function handler(req: CustomRequest, res: CustomResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
