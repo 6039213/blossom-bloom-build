@@ -1,167 +1,116 @@
 
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import React, { useState, useEffect } from 'react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, Sparkles, Send } from 'lucide-react';
 import LivePreview from './LivePreview';
-import { FileContent } from '@/lib/services/claudeService';
-import { generateCode, extractFilesFromResponse } from '@/lib/services/claudeService';
+import CodePane from './CodePane';
+import ChatInterface from './ChatInterface';
+import FileExplorer from './FileExplorer';
+import EditorTabs from './EditorTabs';
+import { FileContent, generateCode, extractFilesFromResponse } from '@/lib/services/claudeService';
 
-const UnifiedAIBuilder = () => {
-  const [prompt, setPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+export default function UnifiedAIBuilder() {
+  const [activeTab, setActiveTab] = useState('preview');
   const [files, setFiles] = useState<FileContent[]>([]);
-  const [viewportSize, setViewportSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
-  const [currentTab, setCurrentTab] = useState('preview');
-
-  // Handle code generation
-  const handleGenerateCode = async () => {
-    if (!prompt.trim()) {
-      toast.error("Please enter a description of what you want to build");
-      return;
-    }
-    
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [viewportSize, setViewportSize] = useState('desktop');
+  const [currentFile, setCurrentFile] = useState<string | null>(null);
+  
+  // Handle file generation from AI chat
+  const handleGenerateFiles = async (prompt: string, existingFiles: FileContent[] = []) => {
     setIsGenerating(true);
     
     try {
-      toast.info("Generating website with Claude 3.7 Sonnet...");
+      const response = await generateCode(prompt, existingFiles, undefined, {
+        system: "You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS."
+      });
       
-      // Call Claude API and handle streaming response
-      const response = await generateCode(
-        prompt,
-        [],
-        (text) => {
-          // This is the streaming callback if needed
-          console.log("Streaming update:", text.length > 100 ? text.substring(0, 100) + "..." : text);
-        }
-      );
+      const newFiles = extractFilesFromResponse(response);
       
-      // Process the response to extract files
-      const extractedFiles = extractFilesFromResponse(response);
-      
-      if (extractedFiles.length === 0) {
-        throw new Error("No valid code files could be extracted from Claude's response");
+      if (newFiles.length > 0) {
+        setFiles(prev => [...prev, ...newFiles]);
+        toast.success(`Generated ${newFiles.length} files successfully`);
+      } else {
+        toast.warning("No files were generated from the response");
       }
       
-      setFiles(extractedFiles);
-      toast.success(`Generated ${extractedFiles.length} files successfully!`);
-      setCurrentTab('preview'); // Switch to preview tab
     } catch (error) {
-      console.error("Error generating code:", error);
-      toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error generating files:', error);
+      toast.error(`Failed to generate files: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGenerating(false);
     }
   };
-
-  // Sample prompts for quick selection
-  const samplePrompts = [
-    "Create a landing page for a coffee shop with a hero section and menu",
-    "Build a simple todo list app with React",
-    "Generate a responsive portfolio website with projects section",
-    "Design a product showcase page with image gallery"
-  ];
-
+  
+  // Layout is now modified to have chat on the left and preview/code on the right
   return (
-    <div className="flex flex-col h-full">
-      <div className="border-b p-4 bg-background">
-        <div className="flex items-center space-x-2 mb-4">
-          <Sparkles className="w-5 h-5 text-blue-500" />
-          <h2 className="text-xl font-bold">AI Website Builder</h2>
-        </div>
-        
-        <div className="relative mb-4">
-          <Textarea
-            placeholder="Describe the website you want to build..."
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            className="min-h-24 p-4 resize-none" 
-            disabled={isGenerating}
-          />
-        </div>
-        
-        <div className="flex flex-col sm:flex-row justify-between gap-4">
-          <Button 
-            onClick={handleGenerateCode}
-            disabled={isGenerating || !prompt.trim()}
-            className="flex-1 sm:flex-none"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Send className="mr-2 h-4 w-4" />
-                Generate Website
-              </>
-            )}
-          </Button>
-          
-          <div className="flex flex-wrap gap-2">
-            {samplePrompts.map((sample, idx) => (
-              <Button
-                key={idx}
-                variant="outline"
-                size="sm"
-                onClick={() => setPrompt(sample)}
-                className="text-xs truncate max-w-40"
-              >
-                {sample.length > 25 ? sample.substring(0, 25) + "..." : sample}
-              </Button>
-            ))}
-          </div>
-        </div>
+    <div className="flex flex-col lg:flex-row h-full gap-4">
+      {/* Chat interface on the left */}
+      <div className="w-full lg:w-1/3 flex flex-col">
+        <ChatInterface 
+          onSendPrompt={handleGenerateFiles}
+          isLoading={isGenerating}
+        />
       </div>
       
-      <div className="flex-1 overflow-hidden">
-        <Tabs value={currentTab} onValueChange={setCurrentTab} className="h-full flex flex-col">
-          <div className="border-b px-4">
+      {/* Preview and code on the right */}
+      <div className="w-full lg:w-2/3 flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+          <div className="flex justify-between items-center border-b">
             <TabsList>
               <TabsTrigger value="preview">Preview</TabsTrigger>
               <TabsTrigger value="code">Code</TabsTrigger>
+              <TabsTrigger value="files">Files</TabsTrigger>
             </TabsList>
+            
+            {activeTab === 'preview' && (
+              <div className="flex gap-2 pr-2">
+                <button 
+                  onClick={() => setViewportSize('mobile')}
+                  className={`px-2 py-1 rounded ${viewportSize === 'mobile' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                >
+                  Mobile
+                </button>
+                <button 
+                  onClick={() => setViewportSize('tablet')}
+                  className={`px-2 py-1 rounded ${viewportSize === 'tablet' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                >
+                  Tablet
+                </button>
+                <button 
+                  onClick={() => setViewportSize('desktop')}
+                  className={`px-2 py-1 rounded ${viewportSize === 'desktop' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                >
+                  Desktop
+                </button>
+              </div>
+            )}
           </div>
           
-          <div className="flex-1 overflow-hidden">
-            <TabsContent value="preview" className="h-full m-0">
-              <LivePreview 
-                files={files}
-                viewportSize={viewportSize}
-                onViewportChange={setViewportSize}
-              />
-            </TabsContent>
-            
-            <TabsContent value="code" className="h-full m-0 p-4">
-              <div className="h-full overflow-auto">
-                {files.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {files.map((file, index) => (
-                      <div key={index} className="border rounded-md overflow-hidden">
-                        <div className="bg-muted px-3 py-2 text-sm font-medium border-b">
-                          {file.path}
-                        </div>
-                        <pre className="p-4 overflow-auto text-xs bg-muted/30 max-h-96">
-                          <code>{file.content}</code>
-                        </pre>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                    <p>No code generated yet. Enter a prompt to generate website code.</p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </div>
+          <TabsContent value="preview" className="flex-1 p-0">
+            <LivePreview 
+              files={files} 
+              viewportSize={viewportSize} 
+            />
+          </TabsContent>
+          
+          <TabsContent value="code" className="flex-1 p-0">
+            <CodePane 
+              files={files} 
+              currentFile={currentFile}
+              onFileChange={setCurrentFile}
+            />
+          </TabsContent>
+          
+          <TabsContent value="files" className="flex-1 p-0">
+            <FileExplorer 
+              files={files} 
+              onFileSelect={setCurrentFile}
+              currentFile={currentFile}
+            />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
   );
-};
-
-export default UnifiedAIBuilder;
+}

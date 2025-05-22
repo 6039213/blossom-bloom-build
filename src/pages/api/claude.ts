@@ -7,15 +7,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY || 
+                   req.headers['x-claude-api-key'] as string;
+    
     if (!apiKey) {
       return res.status(500).json({ error: 'Claude API key not configured' });
     }
 
-    const { prompt, system, model = 'claude-3-7-sonnet-20240229', temperature = 0.7, max_tokens = 4000 } = req.body;
+    const { 
+      prompt, 
+      system, 
+      model = 'claude-3-7-sonnet-20240229', 
+      temperature = 0.7, 
+      max_tokens = 4000,
+      messages,
+      thinking
+    } = req.body;
 
-    if (!prompt) {
-      return res.status(400).json({ error: 'Prompt is required' });
+    if (!prompt && !messages) {
+      return res.status(400).json({ error: 'Prompt or messages is required' });
+    }
+
+    // Construct the API request body
+    const requestBody: any = {
+      model,
+      max_tokens,
+      temperature,
+    };
+
+    // Use messages if provided, otherwise construct from prompt and system
+    if (messages) {
+      requestBody.messages = messages;
+    } else {
+      requestBody.messages = [
+        ...(system ? [{ role: 'system', content: system }] : []),
+        { role: 'user', content: prompt }
+      ];
+    }
+
+    // Add thinking budget if specified
+    if (thinking && thinking.enabled) {
+      requestBody.thinking = thinking;
     }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -25,15 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          ...(system ? [{ role: 'system', content: system }] : []),
-          { role: 'user', content: prompt }
-        ],
-        temperature,
-        max_tokens
-      })
+      body: JSON.stringify(requestBody)
     });
 
     const text = await response.text();
