@@ -74,14 +74,15 @@ export async function generateCode(
     
     console.log("Generating code with Claude API...");
     
-    // Call the proxy endpoint instead of the API directly
-    const response = await fetch('/api/claude', {
+    // Call the Claude API directly
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        apiKey: API_KEY,
         model: MODEL,
         max_tokens: options.maxTokens || 4000,
         temperature: options.temperature || 0.7,
