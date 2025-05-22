@@ -27,7 +27,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ files, activeFile, onFileSe
   };
 
   // Group files by directories
-  const groupedFiles: Record<string, Array<{path: string; content: string; type: string}>> = {};
+  const groupedFiles: Record<string, FileContent[]> = {};
   
   files.forEach(file => {
     const parts = file.path.split('/');

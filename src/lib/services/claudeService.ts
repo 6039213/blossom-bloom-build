@@ -4,7 +4,7 @@ import { toast } from "sonner";
 export interface FileContent {
   path: string;
   content: string;
-  type?: string; // Make type optional to be compatible with both interfaces
+  type?: string;
 }
 
 // Helper function to parse code blocks from text
