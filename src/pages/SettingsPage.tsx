@@ -1,95 +1,93 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, User, Bell, Shield, Palette } from 'lucide-react';
+import { Settings, User, Mail, Lock, Key } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import Layout from '@/components/Layout';
 
+interface UserProfile {
+  displayName: string;
+  email: string;
+  avatar?: string;
+}
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
-  const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: false,
-    projectUpdates: false,
-    teamMessages: false,
-    securityAlerts: false
+  const [profile, setProfile] = useState<UserProfile>({
+    displayName: '',
+    email: '',
   });
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [themeSettings, setThemeSettings] = useState({
-    darkMode: false,
-    reducedMotion: false,
-    highContrast: false
-  });
-
-  // Load user settings from localStorage
+  // Load user profile from localStorage
   useEffect(() => {
-    const savedDisplayName = localStorage.getItem('user_display_name');
-    const savedEmail = localStorage.getItem('user_email');
-    const savedNotifications = localStorage.getItem('notification_settings');
-    const savedTheme = localStorage.getItem('theme_settings');
-
-    if (savedDisplayName) setDisplayName(savedDisplayName);
-    if (savedEmail) setEmail(savedEmail);
-    if (savedNotifications) {
+    const savedProfile = localStorage.getItem('user_profile');
+    if (savedProfile) {
       try {
-        setNotificationSettings(JSON.parse(savedNotifications));
+        setProfile(JSON.parse(savedProfile));
       } catch (e) {
-        console.error('Error parsing notification settings:', e);
-      }
-    }
-    if (savedTheme) {
-      try {
-        setThemeSettings(JSON.parse(savedTheme));
-      } catch (e) {
-        console.error('Error parsing theme settings:', e);
+        console.error('Error parsing user profile:', e);
       }
     }
   }, []);
 
-  const handleSaveProfile = () => {
+  const handleUpdateProfile = async () => {
+    setIsLoading(true);
     try {
-      localStorage.setItem('user_display_name', displayName);
-      localStorage.setItem('user_email', email);
-      toast.success('Profile settings saved successfully');
+      // Here you would typically make an API call to update the profile
+      // For now, we'll just update localStorage
+      localStorage.setItem('user_profile', JSON.stringify(profile));
+      toast.success('Profile updated successfully');
     } catch (error) {
-      console.error('Error saving profile:', error);
-      toast.error('Failed to save profile settings');
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleToggleNotification = (setting: string) => {
-    const newSettings = {
-      ...notificationSettings,
-      [setting]: !notificationSettings[setting]
-    };
-    setNotificationSettings(newSettings);
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      localStorage.setItem('notification_settings', JSON.stringify(newSettings));
-      toast.success(`${setting} setting updated`);
+      // Here you would typically make an API call to change the password
+      // For now, we'll just simulate a successful change
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast.success('Password changed successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (error) {
-      console.error('Error saving notification settings:', error);
-      toast.error('Failed to save notification settings');
+      console.error('Error changing password:', error);
+      toast.error('Failed to change password');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleToggleTheme = (setting: string) => {
-    const newSettings = {
-      ...themeSettings,
-      [setting]: !themeSettings[setting]
-    };
-    setThemeSettings(newSettings);
+  const handleUpdateEmail = async () => {
+    setIsLoading(true);
     try {
-      localStorage.setItem('theme_settings', JSON.stringify(newSettings));
-      toast.success(`${setting} setting updated`);
+      // Here you would typically make an API call to update the email
+      // For now, we'll just update localStorage
+      localStorage.setItem('user_profile', JSON.stringify(profile));
+      toast.success('Email updated successfully');
     } catch (error) {
-      console.error('Error saving theme settings:', error);
-      toast.error('Failed to save theme settings');
+      console.error('Error updating email:', error);
+      toast.error('Failed to update email');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -109,7 +107,7 @@ export default function SettingsPage() {
                 Account Settings
               </h1>
               <p className="text-muted-foreground">
-                Manage your account preferences and settings
+                Manage your account information and security
               </p>
             </div>
           </div>
@@ -120,32 +118,28 @@ export default function SettingsPage() {
                 <User className="h-4 w-4 mr-2" />
                 Profile
               </TabsTrigger>
-              <TabsTrigger value="notifications" className="flex items-center">
-                <Bell className="h-4 w-4 mr-2" />
-                Notifications
+              <TabsTrigger value="email" className="flex items-center">
+                <Mail className="h-4 w-4 mr-2" />
+                Email
               </TabsTrigger>
-              <TabsTrigger value="appearance" className="flex items-center">
-                <Palette className="h-4 w-4 mr-2" />
-                Appearance
-              </TabsTrigger>
-              <TabsTrigger value="security" className="flex items-center">
-                <Shield className="h-4 w-4 mr-2" />
-                Security
+              <TabsTrigger value="password" className="flex items-center">
+                <Lock className="h-4 w-4 mr-2" />
+                Password
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile" className="mt-0">
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-medium">Profile Settings</h3>
-                  <p className="text-sm text-muted-foreground">Update your profile information</p>
+                  <h3 className="text-lg font-medium">Profile Information</h3>
+                  <p className="text-sm text-muted-foreground">Update your profile details</p>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center space-x-4">
                     <Avatar className="h-16 w-16">
-                      <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${displayName || 'User'}`} />
-                      <AvatarFallback>{displayName?.charAt(0) || 'U'}</AvatarFallback>
+                      <AvatarImage src={profile.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${profile.displayName || 'User'}`} />
+                      <AvatarFallback>{profile.displayName?.charAt(0) || 'U'}</AvatarFallback>
                     </Avatar>
                     <Button variant="outline">Change Avatar</Button>
                   </div>
@@ -156,155 +150,105 @@ export default function SettingsPage() {
                     </label>
                     <Input
                       id="display-name"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
+                      value={profile.displayName}
+                      onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
                       placeholder="Enter your display name"
                     />
                   </div>
 
+                  <Button 
+                    onClick={handleUpdateProfile}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="email" className="mt-0">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium">Email Settings</h3>
+                  <p className="text-sm text-muted-foreground">Update your email address</p>
+                </div>
+
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <label htmlFor="email" className="text-sm font-medium">
-                      Email
+                      Email Address
                     </label>
                     <Input
                       id="email"
                       type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      value={profile.email}
+                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                       placeholder="Enter your email"
                     />
                   </div>
 
-                  <Button onClick={handleSaveProfile}>Save Changes</Button>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="notifications" className="mt-0">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium">Notification Settings</h3>
-                  <p className="text-sm text-muted-foreground">Choose how you receive notifications</p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium">Email Notifications</h4>
-                      <p className="text-xs text-muted-foreground">Receive notifications via email</p>
-                    </div>
-                    <Switch 
-                      checked={notificationSettings.emailNotifications} 
-                      onCheckedChange={() => handleToggleNotification('emailNotifications')}
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium">Project Updates</h4>
-                      <p className="text-xs text-muted-foreground">Get notified about project changes</p>
-                    </div>
-                    <Switch 
-                      checked={notificationSettings.projectUpdates} 
-                      onCheckedChange={() => handleToggleNotification('projectUpdates')}
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium">Team Messages</h4>
-                      <p className="text-xs text-muted-foreground">Get notified about new team messages</p>
-                    </div>
-                    <Switch 
-                      checked={notificationSettings.teamMessages} 
-                      onCheckedChange={() => handleToggleNotification('teamMessages')}
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium">Security Alerts</h4>
-                      <p className="text-xs text-muted-foreground">Get notified about security events</p>
-                    </div>
-                    <Switch 
-                      checked={notificationSettings.securityAlerts} 
-                      onCheckedChange={() => handleToggleNotification('securityAlerts')}
-                    />
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="appearance" className="mt-0">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium">Appearance Settings</h3>
-                  <p className="text-sm text-muted-foreground">Customize how the application looks</p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium">Dark Mode</h4>
-                      <p className="text-xs text-muted-foreground">Enable dark mode theme</p>
-                    </div>
-                    <Switch 
-                      checked={themeSettings.darkMode} 
-                      onCheckedChange={() => handleToggleTheme('darkMode')}
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium">Reduced Motion</h4>
-                      <p className="text-xs text-muted-foreground">Reduce animation and motion effects</p>
-                    </div>
-                    <Switch 
-                      checked={themeSettings.reducedMotion} 
-                      onCheckedChange={() => handleToggleTheme('reducedMotion')}
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium">High Contrast</h4>
-                      <p className="text-xs text-muted-foreground">Enable high contrast mode</p>
-                    </div>
-                    <Switch 
-                      checked={themeSettings.highContrast} 
-                      onCheckedChange={() => handleToggleTheme('highContrast')}
-                    />
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="security" className="mt-0">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium">Security Settings</h3>
-                  <p className="text-sm text-muted-foreground">Manage your account security</p>
-                </div>
-
-                <div className="space-y-4">
-                  <Button variant="outline" className="w-full justify-start">
-                    Change Password
+                  <Button 
+                    onClick={handleUpdateEmail}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Updating...' : 'Update Email'}
                   </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    Enable Two-Factor Authentication
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700">
-                    Delete Account
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="password" className="mt-0">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium">Change Password</h3>
+                  <p className="text-sm text-muted-foreground">Update your password</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="current-password" className="text-sm font-medium">
+                      Current Password
+                    </label>
+                    <Input
+                      id="current-password"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Enter current password"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="new-password" className="text-sm font-medium">
+                      New Password
+                    </label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="confirm-password" className="text-sm font-medium">
+                      Confirm New Password
+                    </label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+
+                  <Button 
+                    onClick={handleChangePassword}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Changing...' : 'Change Password'}
                   </Button>
                 </div>
               </div>
