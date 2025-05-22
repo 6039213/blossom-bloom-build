@@ -150,4 +150,5 @@ export class ClaudeService {
   }
 }
 
+// Default export for convenient importing
 export default ClaudeService;
