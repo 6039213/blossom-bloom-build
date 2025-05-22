@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 export interface FileContent {
@@ -20,7 +19,7 @@ export function extractFilesFromResponse(text: string): FileContent[] {
     codeBlocks.push({
       path,
       content,
-      type: path.split('.').pop() || 'js' // Add type based on file extension
+      type: path.split('.').pop() || 'js'
     });
   }
   
@@ -46,11 +45,11 @@ export async function generateCode(
     thinkingBudget?: number;
   } = {}
 ): Promise<string> {
-  // Get API key from localStorage (saved in settings)
-  const API_KEY = localStorage.getItem('CLAUDE_API_KEY');
+  const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
+  const MODEL = import.meta.env.VITE_CLAUDE_MODEL;
   
   if (!API_KEY) {
-    toast.error("Claude API key not configured. Please add it in Settings.");
+    toast.error("Claude API key not configured");
     return "";
   }
   
@@ -74,18 +73,22 @@ export async function generateCode(
     
     console.log("Generating code with Claude API...");
     
-    // Call the Claude API through our proxy
-    const response = await fetch('/api/claude', {
+    // Call the Claude API directly
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: localStorage.getItem('CLAUDE_MODEL') || "claude-3-7-sonnet-20240229",
+        model: MODEL,
         max_tokens: options.maxTokens || 4000,
         temperature: options.temperature || 0.7,
-        system: systemMessage,
-        prompt: fullPrompt,
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: fullPrompt }
+        ],
         ...(options.thinkingBudget ? {
           thinking: {
             enabled: true,
@@ -107,9 +110,7 @@ export async function generateCode(
     // Safely parse the JSON response
     let data;
     try {
-      data = response.headers.get('content-type')?.includes('json')
-        ? JSON.parse(text)
-        : { error: text };
+      data = JSON.parse(text);
     } catch (e) {
       console.error("Failed to parse response as JSON:", text.substring(0, 200));
       throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
