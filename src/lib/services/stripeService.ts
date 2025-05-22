@@ -1,5 +1,6 @@
 import { loadStripe } from '@stripe/stripe-js';
-import { STRIPE_PUBLIC_KEY, PLANS } from '../constants';
+
+const STRIPE_PUBLIC_KEY = 'pk_live_51R2XkQP3GFaeFOE467f1y4JLmp6cXwtrLi8CxrsFirS0zqdCL1H42cNU6UUCvRg5WlI6zVpgjzS2LtJRJRkBx35M004xazkEeo';
 
 const stripePromise = loadStripe(STRIPE_PUBLIC_KEY);
 
@@ -13,18 +14,28 @@ export interface SubscriptionPlan {
 
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
-    id: 'standard',
-    name: PLANS.STANDARD.name,
-    price: PLANS.STANDARD.price,
-    features: PLANS.STANDARD.features,
-    productId: PLANS.STANDARD.productId
+    id: 'basic',
+    name: 'Basic Plan',
+    price: 20,
+    features: [
+      'Basic AI Code Generation',
+      'Standard Support',
+      'Up to 5 Projects'
+    ],
+    productId: 'prod_S9HVoXku7P4TBW'
   },
   {
     id: 'premium',
-    name: PLANS.PREMIUM.name,
-    price: PLANS.PREMIUM.price,
-    features: PLANS.PREMIUM.features,
-    productId: PLANS.PREMIUM.productId
+    name: 'Premium Plan',
+    price: 100,
+    features: [
+      'Advanced AI Code Generation',
+      'Priority Support',
+      'Unlimited Projects',
+      'Custom Templates',
+      'Team Collaboration'
+    ],
+    productId: 'prod_S9HVkBwzlkjjAE'
   }
 ];
 
@@ -104,4 +115,4 @@ export async function cancelSubscription(subscriptionId: string) {
     console.error('Error canceling subscription:', error);
     throw error;
   }
-}
+} 

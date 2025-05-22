@@ -20,17 +20,16 @@ export const anthropicProvider = {
   
   async generate(prompt: string, options: any = {}) {
     try {
-      // Use environment variable directly - no need to store in localStorage
-      const apiKey = import.meta.env.VITE_CLAUDE_API_KEY;
+      const apiKey = localStorage.getItem('CLAUDE_API_KEY') || process.env.CLAUDE_API_KEY;
       
       if (!apiKey) {
         toast.error("Claude API key not configured");
         return { error: "API key not configured" };
       }
       
-      const model = options.model || import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
-      const temperature = options.temperature || 0.7;
-      const maxTokens = options.maxOutputTokens || 4000;
+      const model = options.model || localStorage.getItem('CLAUDE_MODEL') || "claude-3-7-sonnet-20240229";
+      const temperature = options.temperature || localStorage.getItem('CLAUDE_TEMPERATURE') || 0.7;
+      const maxTokens = options.maxOutputTokens || localStorage.getItem('CLAUDE_MAX_TOKENS') || 4000;
       
       const response = await fetch('/api/claude', {
         method: 'POST',
@@ -70,17 +69,16 @@ export const anthropicProvider = {
     options: any = {}
   ) {
     try {
-      // Use environment variable directly - no need to store in localStorage
-      const apiKey = import.meta.env.VITE_CLAUDE_API_KEY;
+      const apiKey = localStorage.getItem('CLAUDE_API_KEY');
       
       if (!apiKey) {
         toast.error("Claude API key not configured");
         throw new Error("API key not configured");
       }
       
-      const model = options.model || import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
-      const temperature = options.temperature || 0.7;
-      const maxTokens = options.maxOutputTokens || 4000;
+      const model = options.model || localStorage.getItem('CLAUDE_MODEL') || "claude-3-7-sonnet-20240229";
+      const temperature = options.temperature || localStorage.getItem('CLAUDE_TEMPERATURE') || 0.7;
+      const maxTokens = options.maxOutputTokens || localStorage.getItem('CLAUDE_MAX_TOKENS') || 4000;
       
       const response = await fetch('/api/claude', {
         method: 'POST',

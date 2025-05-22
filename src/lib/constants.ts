@@ -1,52 +1,75 @@
 
-export const APP_NAME = "Blossom AI";
+// Application constants
 
-export const CLAUDE_MODEL = "claude-3-7-sonnet-20240229";
+// App name
+export const APP_NAME = "Blossom";
 
-// Plans configuration
+// Plan definitions
 export const PLANS = {
   FREE: {
-    id: "free",
     name: "Free",
     price: 0,
     features: [
-      "3 AI projects per month",
-      "Basic AI generation models",
+      "3 projects",
+      "Basic AI website generation",
       "Community support",
-      "24-hour response time"
+      "Standard templates",
+      "Public hosting",
     ]
   },
   STANDARD: {
-    id: "standard",
-    productId: "prod_S9HVoXku7P4TBW",
     name: "Standard",
-    price: 20,
+    price: 29,
     features: [
-      "Unlimited AI projects",
-      "Advanced AI models",
-      "Priority email support",
+      "Unlimited projects",
+      "Advanced AI website generation",
       "Custom domains",
-      "4-hour response time"
+      "Priority support",
+      "Premium templates",
+      "API access",
+      "Remove Blossom branding",
     ]
   },
   PREMIUM: {
-    id: "premium",
-    productId: "prod_S9HVkBwzlkjjAE",
     name: "Premium",
-    price: 100,
+    price: 99,
     features: [
       "Everything in Standard",
-      "Dedicated account manager",
-      "Custom AI model training",
       "Team collaboration",
-      "Phone support",
-      "1-hour response time"
+      "Custom AI training",
+      "Advanced analytics",
+      "Dedicated account manager",
+      "White-label solution",
+      "SSO Authentication",
+      "24/7 priority support",
     ]
   }
 };
 
-// Stripe configuration
-export const STRIPE_PUBLIC_KEY = "pk_live_51R2XkQP3GFaeFOE467f1y4JLmp6cXwtrLi8CxrsFirS0zqdCL1H42cNU6UUCvRg5WlI6zVpgjzS2LtJRJRkBx35M004xazkEeo";
+// API keys (retrieved from environment variables)
+export const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || '';
+export const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
+export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
-// API settings (using your common API)
-export const USE_COMMON_API = true;
+// Cache duration in milliseconds (24 hours)
+export const CACHE_DURATION = 24 * 60 * 60 * 1000;
+
+// System prompt for AI generation
+export const SYSTEM_PROMPT = `You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS.
+Your responses should be clear, helpful, and focused on best practices.`;
+
+// Company information
+export const COMPANY_INFO = {
+  name: APP_NAME,
+  tagline: "Create Beautiful Websites with AI-Powered Magic",
+  email: "support@blossom.io",
+  socialLinks: {
+    twitter: "https://twitter.com/blossomaiapp",
+    github: "https://github.com/blossom-ai",
+    discord: "https://discord.gg/blossom"
+  },
+  address: "123 AI Boulevard, San Francisco, CA 94107",
+};
+
+// Copyright text
+export const COPYRIGHT_TEXT = `© ${new Date().getFullYear()} ${COMPANY_INFO.name}. All rights reserved.`;

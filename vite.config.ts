@@ -23,8 +23,10 @@ export default defineConfig(({ mode }) => ({
             console.log('proxy error', err);
           });
           proxy.on('proxyReq', (proxyReq, req: any, _res) => {
-            // Add the API key from the environment variable directly
-            proxyReq.setHeader('x-api-key', import.meta.env.VITE_CLAUDE_API_KEY);
+            // Add the API key from the request body to headers
+            if (req.body && req.body.apiKey) {
+              proxyReq.setHeader('x-api-key', req.body.apiKey);
+            }
             console.log('Sending Request to the Target:', req.method, req.url);
           });
           proxy.on('proxyRes', (proxyRes, req, _res) => {
