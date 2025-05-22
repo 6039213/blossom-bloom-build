@@ -14,21 +14,24 @@ const createResponse = (body: any, status = 200) => {
   });
 };
 
-// Define subscription plans
+// Import subscription plans from constants
+import { PLANS } from '@/lib/constants';
+
+// Define subscription plans as an array for lookup
 const SUBSCRIPTION_PLANS = [
   {
-    id: 'starter',
-    name: 'Starter',
-    price: 9,
-    productId: 'prod_starter',
-    features: ['Basic features', 'Limited usage', 'Email support']
+    id: 'standard',
+    name: PLANS.STANDARD.name,
+    price: PLANS.STANDARD.price,
+    productId: PLANS.STANDARD.productId,
+    features: PLANS.STANDARD.features
   },
   {
-    id: 'pro',
-    name: 'Professional',
-    price: 29,
-    productId: 'prod_pro',
-    features: ['All features', 'Unlimited usage', 'Priority support', 'API access']
+    id: 'premium',
+    name: PLANS.PREMIUM.name,
+    price: PLANS.PREMIUM.price,
+    productId: PLANS.PREMIUM.productId,
+    features: PLANS.PREMIUM.features
   }
 ];
 
@@ -54,4 +57,4 @@ export async function POST(request: Request) {
     console.error('Error creating checkout session:', error);
     return createResponse({ error: 'Failed to create checkout session' }, 500);
   }
-} 
+}

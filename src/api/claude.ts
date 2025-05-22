@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 export async function POST(req: Request) {
-  // Extract the Claude API key from environment variables
+  // Claude API key is now set in the environment variable
   const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
   const MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
   
