@@ -5,7 +5,7 @@ import { Smartphone, Tablet, Monitor, RefreshCw } from 'lucide-react';
 import { FileContent } from '@/lib/services/claudeService';
 
 interface LivePreviewProps {
-  files: Array<FileContent>;
+  files: FileContent[];
   viewportSize: 'desktop' | 'tablet' | 'mobile';
   onViewportChange: (size: 'desktop' | 'tablet' | 'mobile') => void;
 }

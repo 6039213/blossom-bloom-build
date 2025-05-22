@@ -8,6 +8,18 @@ import ChatInterface from './ChatInterface';
 import FileExplorer from './FileExplorer';
 import { FileContent, generateCode, extractFilesFromResponse } from '@/lib/services/claudeService';
 
+// Define the props interface for ChatInterface
+interface ChatInterfaceProps {
+  onSendPrompt: (prompt: string, existingFiles?: FileContent[]) => Promise<void>;
+  isLoading: boolean;
+  messages: Array<{
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    files?: Array<{path: string, content: string}>;
+  }>;
+}
+
 export default function UnifiedAIBuilder() {
   const [activeTab, setActiveTab] = useState('preview');
   const [files, setFiles] = useState<FileContent[]>([]);
@@ -69,6 +81,11 @@ export default function UnifiedAIBuilder() {
       setIsGenerating(false);
     }
   };
+
+  // Handler for viewport size changes
+  const handleViewportChange = (size: 'desktop' | 'tablet' | 'mobile') => {
+    setViewportSize(size);
+  };
   
   // Layout is now modified to have chat on the left and preview/code on the right
   return (
@@ -95,19 +112,19 @@ export default function UnifiedAIBuilder() {
             {activeTab === 'preview' && (
               <div className="flex gap-2 pr-2">
                 <button 
-                  onClick={() => setViewportSize('mobile')}
+                  onClick={() => handleViewportChange('mobile')}
                   className={`px-2 py-1 rounded ${viewportSize === 'mobile' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
                 >
                   Mobile
                 </button>
                 <button 
-                  onClick={() => setViewportSize('tablet')}
+                  onClick={() => handleViewportChange('tablet')}
                   className={`px-2 py-1 rounded ${viewportSize === 'tablet' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
                 >
                   Tablet
                 </button>
                 <button 
-                  onClick={() => setViewportSize('desktop')}
+                  onClick={() => handleViewportChange('desktop')}
                   className={`px-2 py-1 rounded ${viewportSize === 'desktop' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
                 >
                   Desktop
@@ -119,7 +136,8 @@ export default function UnifiedAIBuilder() {
           <TabsContent value="preview" className="flex-1 p-0">
             <LivePreview 
               files={files} 
-              viewportSize={viewportSize} 
+              viewportSize={viewportSize}
+              onViewportChange={handleViewportChange}
             />
           </TabsContent>
           
