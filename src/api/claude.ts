@@ -8,11 +8,12 @@ const corsHeaders = {
 };
 
 export async function POST(req: Request) {
-  // Extract the Claude API key from environment variables
+  // Extract the Claude API key from environment variables using process.env (server-side)
   const API_KEY = process.env.VITE_CLAUDE_API_KEY;
   const MODEL = process.env.VITE_CLAUDE_MODEL || "claude-3-5-sonnet-20241022";
   
   if (!API_KEY) {
+    console.error("VITE_CLAUDE_API_KEY environment variable is not set on the server");
     return new Response(
       JSON.stringify({ error: "API key not configured" }), 
       { 
