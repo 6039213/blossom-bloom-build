@@ -605,7 +605,6 @@ The code will be directly executed in a preview environment, so it must be compl
             <CodePane 
               files={files}
               activeFile={activeFile}
-              onContentChange={handleFileContentChange}
             />
           </TabsContent>
           

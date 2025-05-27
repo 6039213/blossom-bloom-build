@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const { planId, userId } = await request.json();
     
     // Find the plan
-    const plan = Object.values(PLANS).find(p => p.priceId === planId);
+    const plan = Object.values(PLANS).find(p => 'priceId' in p && p.priceId === planId);
     if (!plan) {
       return new Response(
         JSON.stringify({ error: 'Invalid plan ID' }),

@@ -62,6 +62,11 @@ export const ANTHROPIC_CONFIG = {
   temperature: 0.7
 };
 
+// API Keys (for compatibility with legacy code)
+export const ANTHROPIC_API_KEY = ANTHROPIC_CONFIG.apiKey;
+export const OPENAI_API_KEY = '';
+export const GEMINI_API_KEY = '';
+
 // System prompt for AI generation
 export const SYSTEM_PROMPT = `You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS.
 Your responses should be clear, helpful, and focused on best practices.

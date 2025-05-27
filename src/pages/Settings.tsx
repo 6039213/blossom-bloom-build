@@ -94,7 +94,7 @@ export default function Settings() {
                           </li>
                         ))}
                       </ul>
-                      {plan.price > 0 && (
+                      {'priceId' in plan && (
                         <Button 
                           className="w-full" 
                           variant={key === 'STANDARD' ? 'default' : 'outline'}
