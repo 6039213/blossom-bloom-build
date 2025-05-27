@@ -5,10 +5,11 @@ import Layout from '@/components/Layout';
 import UnifiedAIBuilder from '@/components/ai-builder/UnifiedAIBuilder';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { ANTHROPIC_CONFIG } from '@/lib/constants';
 
 export default function AIBuilder() {
   // Check if API key is configured
-  const apiKeyConfigured = Boolean(import.meta.env.VITE_CLAUDE_API_KEY);
+  const apiKeyConfigured = Boolean(ANTHROPIC_CONFIG.apiKey);
 
   return (
     <Layout>
@@ -26,6 +27,7 @@ export default function AIBuilder() {
                 <AlertTitle>⚠️ Claude API Key Not Configured</AlertTitle>
                 <AlertDescription>
                   To use the AI Web Builder, please set your Claude API key in the VITE_CLAUDE_API_KEY environment variable.
+                  Contact your administrator to configure the API access.
                 </AlertDescription>
               </Alert>
             </div>

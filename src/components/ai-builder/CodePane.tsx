@@ -1,61 +1,94 @@
 
-import React from 'react';
-import { Card } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import React, { useState } from 'react';
+import { FileContent } from '@/lib/services/anthropicService';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Copy, Download } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CodePaneProps {
-  files: Array<{path: string; content: string; type?: string}>;
+  files: FileContent[];
   activeFile: string | null;
-  onContentChange?: (filePath: string, content: string) => void;
 }
 
-export default function CodePane({ files, activeFile, onContentChange }: CodePaneProps) {
-  // Find the active file or default to the first file
-  const currentFile = activeFile 
-    ? files.find(file => file.path === activeFile) 
-    : files[0];
-    
-  // Function to highlight code syntax (basic implementation)
-  const highlightCode = (code: string, fileType?: string): string => {
-    // This is a very basic implementation
-    // In a real app, you would use a proper syntax highlighter
-    return code;
-  };
-
-  const handleContentChange = (content: string) => {
-    if (currentFile && onContentChange) {
-      onContentChange(currentFile.path, content);
+export default function CodePane({ files, activeFile }: CodePaneProps) {
+  const [selectedFile, setSelectedFile] = useState<string>(activeFile || '');
+  
+  const currentFile = files.find(f => f.path === (selectedFile || activeFile));
+  
+  const handleCopyCode = () => {
+    if (currentFile) {
+      navigator.clipboard.writeText(currentFile.content);
+      toast.success('Code copied to clipboard');
     }
   };
 
+  const handleDownloadCode = () => {
+    if (currentFile) {
+      const blob = new Blob([currentFile.content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = currentFile.path.split('/').pop() || 'file.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('File downloaded');
+    }
+  };
+
+  if (files.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center text-gray-500">
+        <p>No files generated yet. Start by chatting with the AI!</p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col">
-      <div className="p-2 border-b bg-muted/30">
-        <div className="font-mono text-xs truncate">
-          {currentFile ? currentFile.path : 'No file selected'}
-        </div>
-      </div>
-      
-      <ScrollArea className="flex-1">
-        {currentFile ? (
-          <pre className="p-4 text-sm font-mono">
-            <code>
-              {highlightCode(currentFile.content, currentFile.type)}
-            </code>
-          </pre>
-        ) : (
-          <div className="flex items-center justify-center h-full p-8 text-center">
-            <div>
-              <p className="text-muted-foreground mb-2">No file selected or no files available.</p>
-              {files.length > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Select a file from the Files tab to view its contents.
-                </p>
-              )}
+      <Tabs value={selectedFile || activeFile || ''} onValueChange={setSelectedFile} className="flex-1 flex flex-col">
+        <div className="border-b p-2 flex items-center justify-between">
+          <TabsList className="flex-1 justify-start overflow-x-auto">
+            {files.map((file) => (
+              <TabsTrigger 
+                key={file.path} 
+                value={file.path}
+                className="text-xs whitespace-nowrap"
+              >
+                {file.path.split('/').pop()}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          
+          {currentFile && (
+            <div className="flex gap-2 ml-2">
+              <Button variant="outline" size="sm" onClick={handleCopyCode}>
+                <Copy className="h-3 w-3 mr-1" />
+                Copy
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDownloadCode}>
+                <Download className="h-3 w-3 mr-1" />
+                Download
+              </Button>
             </div>
-          </div>
-        )}
-      </ScrollArea>
+          )}
+        </div>
+        
+        <div className="flex-1 overflow-hidden">
+          {files.map((file) => (
+            <TabsContent key={file.path} value={file.path} className="h-full m-0">
+              <div className="h-full bg-gray-900 text-gray-100 p-4 overflow-auto">
+                <div className="mb-2 text-sm text-gray-400">
+                  {file.path}
+                </div>
+                <pre className="whitespace-pre-wrap text-sm font-mono">
+                  {file.content}
+                </pre>
+              </div>
+            </TabsContent>
+          ))}
+        </div>
+      </Tabs>
     </div>
   );
 }

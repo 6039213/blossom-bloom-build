@@ -1,110 +1,82 @@
 
 import React from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Folder, FileText, ChevronRight, ChevronDown } from 'lucide-react';
+import { Folder, File } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { FileContent } from '@/lib/services/anthropicService';
 
 interface FileExplorerProps {
-  files: Array<{path: string; content: string; type?: string}>;
+  files: FileContent[];
   activeFile: string | null;
   onFileSelect: (path: string) => void;
 }
 
 export default function FileExplorer({ files, activeFile, onFileSelect }: FileExplorerProps) {
-  // Group files by directory
-  const getFileStructure = () => {
-    const structure: Record<string, Array<{path: string; name: string; type?: string}>> = {
-      '/': []
-    };
+  // Build a tree structure from flat file paths
+  const buildFileTree = (files: FileContent[]) => {
+    const tree: any = {};
     
     files.forEach(file => {
       const parts = file.path.split('/');
-      const fileName = parts.pop() || '';
-      const directory = parts.join('/') || '/';
+      let current = tree;
       
-      if (!structure[directory]) {
-        structure[directory] = [];
-      }
-      
-      structure[directory].push({
-        path: file.path,
-        name: fileName,
-        type: file.type
+      parts.forEach((part, index) => {
+        if (!current[part]) {
+          current[part] = {
+            type: index === parts.length - 1 ? 'file' : 'folder',
+            path: parts.slice(0, index + 1).join('/'),
+            children: {},
+            content: index === parts.length - 1 ? file.content : undefined
+          };
+        }
+        current = current[part].children;
       });
     });
     
-    return structure;
+    return tree;
   };
-  
-  // Get icon based on file extension
-  const getFileIcon = (fileName: string) => {
-    const extension = fileName.split('.').pop()?.toLowerCase();
-    
-    switch (extension) {
-      case 'tsx':
-      case 'jsx':
-        return <FileText size={16} className="text-blue-500" />;
-      case 'css':
-        return <FileText size={16} className="text-purple-500" />;
-      case 'json':
-        return <FileText size={16} className="text-yellow-500" />;
-      default:
-        return <FileText size={16} className="text-gray-500" />;
-    }
-  };
-  
-  const fileStructure = getFileStructure();
-  
-  // Get directory tree
-  const renderDirectory = (dir: string, level = 0) => {
-    const files = fileStructure[dir] || [];
-    if (files.length === 0) return null;
+
+  const renderTree = (node: any, name: string, depth = 0) => {
+    const isActive = activeFile === node.path;
     
     return (
-      <div key={dir} style={{ paddingLeft: `${level * 16}px` }}>
-        {dir !== '/' && (
-          <div className="flex items-center py-1 px-2 text-sm">
-            <ChevronDown className="h-4 w-4 mr-1" />
-            <Folder className="h-4 w-4 mr-1 text-yellow-500" />
-            <span>{dir.split('/').pop()}</span>
+      <div key={node.path || name} className="mb-1">
+        <div
+          className={cn(
+            "flex items-center py-1 px-2 rounded cursor-pointer text-sm",
+            isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100",
+            `ml-${depth * 4}`
+          )}
+          onClick={() => node.type === 'file' && onFileSelect(node.path)}
+        >
+          {node.type === 'folder' ? (
+            <Folder className="h-4 w-4 mr-2 text-gray-500" />
+          ) : (
+            <File className="h-4 w-4 mr-2 text-gray-500" />
+          )}
+          <span className="truncate">{name}</span>
+        </div>
+        
+        {node.type === 'folder' && Object.keys(node.children).length > 0 && (
+          <div>
+            {Object.entries(node.children).map(([childName, childNode]: [string, any]) =>
+              renderTree(childNode, childName, depth + 1)
+            )}
           </div>
         )}
-        
-        <div>
-          {files.map(file => (
-            <div 
-              key={file.path}
-              className={`flex items-center py-1 px-2 text-sm cursor-pointer hover:bg-accent ${
-                activeFile === file.path ? 'bg-accent text-accent-foreground' : ''
-              }`}
-              style={{ paddingLeft: `${(level + 1) * 16}px` }}
-              onClick={() => onFileSelect(file.path)}
-            >
-              {getFileIcon(file.name)}
-              <span className="ml-1">{file.name}</span>
-            </div>
-          ))}
-        </div>
       </div>
     );
   };
 
+  const fileTree = buildFileTree(files);
+
   return (
-    <div className="h-full flex flex-col border-r">
-      <div className="p-2 border-b bg-muted/30">
-        <h3 className="font-medium text-sm">Project Files</h3>
+    <div className="h-full overflow-auto p-2 bg-white border-r border-border">
+      <h2 className="font-semibold text-sm mb-2 text-gray-700 px-2">Files ({files.length})</h2>
+      <div className="space-y-1">
+        {Object.entries(fileTree).map(([name, node]: [string, any]) =>
+          renderTree(node, name)
+        )}
       </div>
-      
-      <ScrollArea className="flex-1">
-        <div className="p-2">
-          {files.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground text-sm">
-              No files available
-            </div>
-          ) : (
-            Object.keys(fileStructure).sort().map(dir => renderDirectory(dir))
-          )}
-        </div>
-      </ScrollArea>
     </div>
   );
 }

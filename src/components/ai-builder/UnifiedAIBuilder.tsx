@@ -8,18 +8,13 @@ import LivePreview from './LivePreview';
 import CodePane from './CodePane';
 import ChatInterface from './ChatInterface';
 import FileExplorer from './FileExplorer';
-import { FileContent, generateCode, extractFilesFromResponse } from '@/lib/services/claudeService';
+import { anthropicService, FileContent } from '@/lib/services/anthropicService';
 
-// Define the props interface for ChatInterface
-interface ChatInterfaceProps {
-  onSendPrompt: (prompt: string, existingFiles?: FileContent[]) => Promise<void>;
-  isLoading: boolean;
-  messages: Array<{
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    files?: Array<{path: string, content: string}>;
-  }>;
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  files?: Array<{path: string, content: string}>;
 }
 
 export default function UnifiedAIBuilder() {
@@ -31,12 +26,7 @@ export default function UnifiedAIBuilder() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [messages, setMessages] = useState<Array<{
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    files?: Array<{path: string, content: string}>;
-  }>>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   
   // Initialize the builder
   useEffect(() => {
@@ -44,27 +34,41 @@ export default function UnifiedAIBuilder() {
       try {
         setIsLoading(true);
         
-        // Add a small delay to ensure any required resources are loaded
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Initialize with an empty state/sample file if needed
-        if (files.length === 0) {
-          setFiles([{
-            path: 'src/App.tsx',
-            content: `import React from 'react';
+        // Initialize with a welcome file
+        const welcomeFile: FileContent = {
+          path: 'src/App.tsx',
+          content: `import React from 'react';
 
 export default function App() {
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-4">Welcome to AI Builder</h1>
-      <p className="mb-4">Start by describing what you want to build in the chat.</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center py-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Welcome to Blossom AI Builder
+          </h1>
+          <p className="text-lg text-gray-600 mb-8">
+            Start by describing what you want to build in the chat.
+          </p>
+          <div className="bg-white rounded-lg shadow-lg p-6 text-left">
+            <h2 className="text-xl font-semibold mb-4">Getting Started:</h2>
+            <ul className="space-y-2 text-gray-700">
+              <li>• Describe your website or app idea</li>
+              <li>• I'll generate React components with Tailwind CSS</li>
+              <li>• Review and iterate on the generated code</li>
+              <li>• See live preview of your creation</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }`,
-            type: 'tsx'
-          }]);
-        }
+          type: 'tsx'
+        };
         
+        setFiles([welcomeFile]);
+        setCurrentFile(welcomeFile.path);
         setIsInitialized(true);
         setError(null);
       } catch (err) {
@@ -83,44 +87,46 @@ export default function App() {
     setIsGenerating(true);
     
     // Add user message to chat
-    setMessages(prev => [...prev, {
+    const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: prompt
-    }]);
+    };
+    setMessages(prev => [...prev, userMessage]);
     
     try {
-      const response = await generateCode(prompt, existingFiles, undefined, {
-        system: "You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS."
-      });
-      
-      const newFiles = extractFilesFromResponse(response);
+      const response = await anthropicService.generateCode(prompt, existingFiles);
+      const newFiles = anthropicService.extractFilesFromResponse(response);
       
       if (newFiles.length > 0) {
-        // Add type property to files if it doesn't exist
-        const filesWithType = newFiles.map(file => ({
-          ...file,
-          type: file.type || file.path.split('.').pop() || 'js'
-        }));
-        
-        setFiles(prev => [...prev, ...filesWithType]);
+        // Merge new files with existing ones
+        setFiles(prev => {
+          const fileMap = new Map(prev.map(file => [file.path, file]));
+          newFiles.forEach(file => fileMap.set(file.path, file));
+          return Array.from(fileMap.values());
+        });
         
         // Add assistant message with response
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: response.replace(/```[\s\S]*?```/g, ''), // Remove code blocks from the message
+          content: response.replace(/```[\s\S]*?```/g, ''), // Remove code blocks from display
           files: newFiles.map(file => ({ path: file.path, content: file.content }))
-        }]);
+        };
+        setMessages(prev => [...prev, assistantMessage]);
         
         toast.success(`Generated ${newFiles.length} files successfully`);
+        
+        // Switch to preview tab to show results
+        setActiveTab('preview');
       } else {
         // Add assistant message with just the text response
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: response
-        }]);
+        };
+        setMessages(prev => [...prev, assistantMessage]);
         
         toast.warning("No files were generated from the response");
       }
@@ -128,6 +134,14 @@ export default function App() {
     } catch (error) {
       console.error('Error generating files:', error);
       toast.error(`Failed to generate files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsGenerating(false);
     }
@@ -172,7 +186,6 @@ export default function App() {
     );
   }
   
-  // Layout is now modified to have chat on the left and preview/code on the right
   return (
     <div className="flex flex-col lg:flex-row h-full gap-4">
       {/* Chat interface on the left */}

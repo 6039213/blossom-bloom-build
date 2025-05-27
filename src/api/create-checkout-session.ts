@@ -1,57 +1,48 @@
 
-// Define types to replace Next.js types
-interface Request {
-  method: string;
-  headers: Headers;
-  json: () => Promise<any>;
-}
+import { STRIPE_CONFIG, PLANS } from '@/lib/constants';
 
-// Create response helper
-const createResponse = (body: any, status = 200) => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' }
-  });
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Content-Type': 'application/json'
 };
 
-// Define subscription plans
-const SUBSCRIPTION_PLANS = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    price: 9,
-    productId: 'prod_starter',
-    features: ['Basic features', 'Limited usage', 'Email support']
-  },
-  {
-    id: 'pro',
-    name: 'Professional',
-    price: 29,
-    productId: 'prod_pro',
-    features: ['All features', 'Unlimited usage', 'Priority support', 'API access']
-  }
-];
+// Handle OPTIONS request for CORS preflight
+export function OPTIONS() {
+  return new Response(null, { headers: corsHeaders });
+}
 
 export async function POST(request: Request) {
   try {
     const { planId, userId } = await request.json();
     
-    // Get the plan details
-    const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId);
+    // Find the plan
+    const plan = Object.values(PLANS).find(p => p.priceId === planId);
     if (!plan) {
-      return createResponse({ error: 'Invalid plan' }, 400);
+      return new Response(
+        JSON.stringify({ error: 'Invalid plan ID' }),
+        { status: 400, headers: corsHeaders }
+      );
     }
 
-    // This is a placeholder for actual checkout session creation
-    // In a real implementation, you'd use a payment provider's API
-    const sessionData = { 
-      id: 'cs_test_' + Math.random().toString(36).substring(2, 15),
-      url: `https://checkout.example.com/${planId}?user=${userId}`
+    // In a real implementation, you would create a Stripe checkout session here
+    // For now, we'll create a mock session that redirects to Stripe
+    const sessionData = {
+      id: 'cs_' + Math.random().toString(36).substring(2, 15),
+      url: `https://checkout.stripe.com/pay/cs_test_${Math.random().toString(36).substring(2, 15)}#fidkdWxOYHwnPyd1blpxYHZxWjA0VGpyZDBLdGhATlZxVF01TktrVlZqT3FuNDRHTE1nVkRLTE9xTTVKajJKYm9qPGpCNk42a1NoSGR2M1FCNTFLf2J3UGNqUnZMMkNnbEpHYmFLXzVVb0FAN00wVTJSUEhKZzAxSycpJ2N3amhWYHdzYHcnP3F3cGApJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl`
     };
 
-    return createResponse(sessionData);
+    return new Response(
+      JSON.stringify(sessionData),
+      { headers: corsHeaders }
+    );
   } catch (error) {
     console.error('Error creating checkout session:', error);
-    return createResponse({ error: 'Failed to create checkout session' }, 500);
+    return new Response(
+      JSON.stringify({ error: 'Failed to create checkout session' }),
+      { status: 500, headers: corsHeaders }
+    );
   }
-} 
+}

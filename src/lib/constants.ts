@@ -19,7 +19,8 @@ export const PLANS = {
   },
   STANDARD: {
     name: "Standard",
-    price: 29,
+    price: 20,
+    priceId: "prod_S9HVoXku7P4TBW",
     features: [
       "Unlimited projects",
       "Advanced AI website generation",
@@ -32,7 +33,8 @@ export const PLANS = {
   },
   PREMIUM: {
     name: "Premium",
-    price: 99,
+    price: 100,
+    priceId: "prod_S9HVkBwzlkjjAE",
     features: [
       "Everything in Standard",
       "Team collaboration",
@@ -46,17 +48,29 @@ export const PLANS = {
   }
 };
 
-// API keys (retrieved from environment variables)
-export const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || '';
-export const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
-export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+// Stripe configuration
+export const STRIPE_CONFIG = {
+  publishableKey: "pk_live_51R2XkQP3GFaeFOE467f1y4JLmp6cXwtrLi8CxrsFirS0zqdCL1H42cNU6UUCvRg5WlI6zVpgjzS2LtJRJRkBx35M004xazkEeo",
+  secretKey: "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"
+};
 
-// Cache duration in milliseconds (24 hours)
-export const CACHE_DURATION = 24 * 60 * 60 * 1000;
+// Anthropic API configuration
+export const ANTHROPIC_CONFIG = {
+  apiKey: import.meta.env.VITE_CLAUDE_API_KEY || '',
+  model: "claude-3-5-sonnet-20241022",
+  maxTokens: 4000,
+  temperature: 0.7
+};
 
 // System prompt for AI generation
 export const SYSTEM_PROMPT = `You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS.
-Your responses should be clear, helpful, and focused on best practices.`;
+Your responses should be clear, helpful, and focused on best practices.
+Generate complete, functional React components with proper TypeScript typing.
+Use Tailwind CSS for all styling and ensure responsive design.
+Format your code blocks properly with file paths.`;
+
+// Cache duration in milliseconds (24 hours)
+export const CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 // Company information
 export const COMPANY_INFO = {
