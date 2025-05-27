@@ -1,9 +1,10 @@
+
 import { toast } from "sonner";
 
 export interface FileContent {
   path: string;
   content: string;
-  type?: string; // Make type optional to match usage in the codebase
+  type?: string;
 }
 
 // Helper function to parse code blocks from text
@@ -16,7 +17,6 @@ export function extractFilesFromResponse(text: string): FileContent[] {
     const path = match[1]?.trim() || `file${codeBlocks.length + 1}.js`;
     const content = match[2]?.trim() || "";
     
-    // Always include type, but make it optional in the interface
     codeBlocks.push({
       path,
       content,
@@ -28,12 +28,7 @@ export function extractFilesFromResponse(text: string): FileContent[] {
 }
 
 /**
- * Generate code using Claude API
- * @param prompt The prompt to send to Claude
- * @param existingFiles Optional array of existing files for context
- * @param streamingCallback Optional callback for streaming response
- * @param options Optional API parameters
- * @returns The Claude response text
+ * Generate code using Claude API via our proxy
  */
 export async function generateCode(
   prompt: string,
@@ -43,17 +38,8 @@ export async function generateCode(
     system?: string; 
     temperature?: number; 
     maxTokens?: number;
-    thinkingBudget?: number;
   } = {}
 ): Promise<string> {
-  const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
-  const MODEL = import.meta.env.VITE_CLAUDE_MODEL;
-  
-  if (!API_KEY) {
-    toast.error("Claude API key not configured");
-    return "";
-  }
-  
   try {
     // Prepare system message
     const systemMessage = options.system || 
@@ -72,29 +58,22 @@ export async function generateCode(
       `${filesContext}\n\nNow, based on the existing codebase, ${prompt}` : 
       prompt;
     
-    console.log("Generating code with Claude API...");
+    console.log("Generating code with Claude API via proxy...");
     
-    // Call the proxy endpoint instead of the API directly
+    // Call our proxy endpoint instead of the API directly
     const response = await fetch('/api/claude', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        apiKey: API_KEY,
-        model: MODEL,
+        model: import.meta.env.VITE_CLAUDE_MODEL || 'claude-3-5-sonnet-20241022',
         max_tokens: options.maxTokens || 4000,
         temperature: options.temperature || 0.7,
+        system: systemMessage,
         messages: [
-          { role: 'system', content: systemMessage },
           { role: 'user', content: fullPrompt }
-        ],
-        ...(options.thinkingBudget ? {
-          thinking: {
-            enabled: true,
-            budget_tokens: options.thinkingBudget
-          }
-        } : {})
+        ]
       })
     });
     
@@ -103,8 +82,8 @@ export async function generateCode(
     
     // Handle non-OK responses
     if (!response.ok) {
-      console.error(`Claude API error (${response.status}):`, text);
-      throw new Error(`Claude API error: ${response.status} ${text}`);
+      console.error(`Claude proxy error (${response.status}):`, text);
+      throw new Error(`Claude proxy error: ${response.status} ${text}`);
     }
     
     // Safely parse the JSON response
@@ -117,7 +96,7 @@ export async function generateCode(
     }
     
     if (data.error) {
-      throw new Error(data.error);
+      throw new Error(data.error.message || data.error);
     }
     
     // Extract the text content from Claude's response
@@ -145,7 +124,6 @@ export class ClaudeService {
       system?: string; 
       temperature?: number; 
       maxTokens?: number;
-      thinkingBudget?: number;
     } = {}
   ): Promise<FileContent[]> {
     const response = await generateCode(prompt, [], undefined, options);

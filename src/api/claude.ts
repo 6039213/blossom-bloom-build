@@ -9,8 +9,8 @@ const corsHeaders = {
 
 export async function POST(req: Request) {
   // Extract the Claude API key from environment variables
-  const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
-  const MODEL = import.meta.env.VITE_CLAUDE_MODEL || "claude-3-7-sonnet-20240229";
+  const API_KEY = process.env.VITE_CLAUDE_API_KEY;
+  const MODEL = process.env.VITE_CLAUDE_MODEL || "claude-3-5-sonnet-20241022";
   
   if (!API_KEY) {
     return new Response(
@@ -35,11 +35,11 @@ export async function POST(req: Request) {
         'content-type': 'application/json'
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: body.model || MODEL,
         temperature: body.temperature || 0.7,
         max_tokens: body.max_tokens || 4000,
+        system: body.system || "You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS.",
         messages: body.messages || [
-          { role: 'system', content: body.system || "You are an expert web developer that creates beautiful, modern websites using React and Tailwind CSS." },
           { role: 'user', content: body.prompt || '' }
         ]
       })
